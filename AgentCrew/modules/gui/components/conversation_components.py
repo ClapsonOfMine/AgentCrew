@@ -87,8 +87,8 @@ class ConversationComponents:
                 if message_content.startswith("Content of "):
                     file_path = (
                         message_content.split(":\n\n")[0]
-                        .lstrip("Content of")
-                        .rstrip("(converted to Markdown)")
+                        .removeprefix("Content of")
+                        .removesuffix("(converted to Markdown)")
                         .strip()
                     )
                     self.chat_window.chat_components.append_file(file_path, True)

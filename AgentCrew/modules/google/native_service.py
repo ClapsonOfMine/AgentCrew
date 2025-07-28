@@ -328,7 +328,7 @@ class GoogleAINativeService(BaseLLMService):
                 and function_declaration.parameters.properties is not None
             ):
                 if param_def.get("$ref", ""):
-                    ref_key = param_def["$ref"].lstrip("#/$defs/")
+                    ref_key = param_def["$ref"].removeprefix("#/$defs/")
                     if ref_key in defs.keys():
                         function_declaration.parameters.properties[param_name] = (
                             self._build_schema(defs[ref_key])
