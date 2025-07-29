@@ -93,7 +93,7 @@ class AgentTaskManager(TaskManager):
             # Create task with initial state
             task = Task(
                 id=task_id,
-                contextId=request.params.message.contextId or f"ctx_{task_id}",
+                context_id=request.params.message.contextId or f"ctx_{task_id}",
                 status=TaskStatus(
                     state=TaskState.working, timestamp=datetime.now().isoformat()
                 ),
@@ -228,8 +228,8 @@ class AgentTaskManager(TaskManager):
                                 thinking_content += think_text_chunk
                                 await queue.put(
                                     TaskStatusUpdateEvent(
-                                        taskId=task.id,
-                                        contextId=task.contextId,
+                                        task_id=task.id,
+                                        context_id=task.context_id,
                                         status=TaskStatus(
                                             state=TaskState.working,
                                             message=convert_agent_message_to_a2a(
@@ -254,8 +254,8 @@ class AgentTaskManager(TaskManager):
                             )
                             await queue.put(
                                 TaskArtifactUpdateEvent(
-                                    taskId=task.id,
-                                    contextId=task.contextId,
+                                    task_id=task.id,
+                                    context_id=task.context_id,
                                     artifact=artifact,
                                 )
                             )
@@ -299,8 +299,8 @@ class AgentTaskManager(TaskManager):
                             )
                             await queue.put(
                                 TaskArtifactUpdateEvent(
-                                    taskId=task.id,
-                                    contextId=task.contextId,
+                                    task_id=task.id,
+                                    context_id=task.context_id,
                                     artifact=artifact,
                                 )
                             )
@@ -339,8 +339,8 @@ class AgentTaskManager(TaskManager):
                         )
                         await queue.put(
                             TaskArtifactUpdateEvent(
-                                taskId=task.id,
-                                contextId=task.contextId,
+                                task_id=task.id,
+                                context_id=task.context_id,
                                 artifact=artifact,
                             )
                         )
@@ -376,8 +376,8 @@ class AgentTaskManager(TaskManager):
                 # Send final status
                 await queue.put(
                     TaskStatusUpdateEvent(
-                        taskId=task.id,
-                        contextId=task.contextId,
+                        task_id=task.id,
+                        context_id=task.context_id,
                         status=task.status,
                         final=True,
                     )
@@ -397,8 +397,8 @@ class AgentTaskManager(TaskManager):
                 queue = self.streaming_tasks[task.id]
                 await queue.put(
                     TaskStatusUpdateEvent(
-                        taskId=task.id,
-                        contextId=task.contextId,
+                        task_id=task.id,
+                        context_id=task.context_id,
                         status=task.status,
                         final=True,
                     )
@@ -462,8 +462,8 @@ class AgentTaskManager(TaskManager):
             queue = self.streaming_tasks[task_id]
             await queue.put(
                 TaskStatusUpdateEvent(
-                    taskId=task_id,
-                    contextId=task.contextId,
+                    task_id=task_id,
+                    context_id=task.context_id,
                     status=task.status,
                     final=True,
                 )

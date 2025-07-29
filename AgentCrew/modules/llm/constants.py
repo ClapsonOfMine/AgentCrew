@@ -234,8 +234,8 @@ _DEEPINFRA_MODELS = [
         name="Qwen 3 Coder",
         description="Qwen3-Coder-480B-A35B-Instruct is the Qwen3's most agentic code model",
         capabilities=["text-generation", "tool_use", "stream"],
-        input_token_price_1m=0.9,
-        output_token_price_1m=4.5,
+        input_token_price_1m=0.4,
+        output_token_price_1m=1.6,
     ),
     Model(
         id="Qwen/Qwen3-235B-A22B",

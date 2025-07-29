@@ -105,7 +105,7 @@ def convert_agent_message_to_a2a(
                         FilePart(
                             file=FileWithBytes(
                                 name=part.get("file_name"),
-                                mimeType=part.get("mime_type"),
+                                mime_type=part.get("mime_type"),
                                 bytes=part.get("file_data", ""),
                             )
                         )
@@ -116,7 +116,7 @@ def convert_agent_message_to_a2a(
                         FilePart(
                             file=FileWithUri(
                                 name=part.get("file_name"),
-                                mimeType=part.get("mime_type"),
+                                mime_type=part.get("mime_type"),
                                 uri=part.get("uri", ""),
                             )
                         )
@@ -126,7 +126,7 @@ def convert_agent_message_to_a2a(
                     parts.append(DataPart(data=part.get("data", {})))
 
     return Message(
-        messageId=message_id or f"msg_{hash(str(parts))}",
+        message_id=message_id or f"msg_{hash(str(parts))}",
         role=role,
         parts=parts,
         metadata=message.get("metadata"),
@@ -157,7 +157,7 @@ def convert_agent_response_to_a2a_artifact(
         metadata = {"tool_uses": tool_uses}
 
     return Artifact(
-        artifactId=artifact_id or f"artifact_{hash(response)}",
+        artifact_id=artifact_id or f"artifact_{hash(response)}",
         parts=parts,
         metadata=metadata,
     )
@@ -188,7 +188,7 @@ def convert_agent_response_to_a2a_message(
         metadata = {"tool_uses": tool_uses}
 
     return Message(
-        messageId=message_id or f"message_{hash(response)}",
+        message_id=message_id or f"message_{hash(response)}",
         parts=parts,
         metadata=metadata,
         role=role,
@@ -224,7 +224,9 @@ def convert_file_to_a2a_part(
 
     return Part(
         root=FilePart(
-            file=FileWithBytes(name=file_name, mimeType=mime_type, bytes=base64_content)
+            file=FileWithBytes(
+                name=file_name, mime_type=mime_type, bytes=base64_content
+            )
         )
     )
 

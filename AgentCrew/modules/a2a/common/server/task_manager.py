@@ -200,10 +200,11 @@ class InMemoryTaskManager(TaskManager):
         self, request: GetTaskPushNotificationConfigRequest
     ) -> GetTaskPushNotificationConfigResponse:
         logger.info(f"Getting task push notification {request.params.id}")
-        task_params: TaskIdParams = request.params
+
+        task_id = request.params.id
 
         try:
-            notification_info = await self.get_push_notification_info(task_params.id)
+            notification_info = await self.get_push_notification_info(task_id)
         except Exception as e:
             logger.error(f"Error while getting push notification info: {e}")
             return GetTaskPushNotificationConfigResponse(
@@ -219,7 +220,7 @@ class InMemoryTaskManager(TaskManager):
             root=GetTaskPushNotificationConfigSuccessResponse(
                 id=request.id,
                 result=TaskPushNotificationConfig(
-                    taskId=task_params.id, pushNotificationConfig=notification_info
+                    task_id=task_id, push_notification_config=notification_info
                 ),
             )
         )
@@ -239,7 +240,8 @@ class InMemoryTaskManager(TaskManager):
             if task is None:
                 task = Task(
                     id=task_id,
-                    contextId=message_send_params.message.contextId or f"ctx_{task_id}",
+                    context_id=message_send_params.message.context_id
+                    or f"ctx_{task_id}",
                     status=TaskStatus(state=TaskState.submitted),
                     history=[message_send_params.message],
                 )

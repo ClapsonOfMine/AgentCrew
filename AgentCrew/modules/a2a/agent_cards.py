@@ -41,8 +41,8 @@ def map_tool_to_skill(tool_name: str, tool_def) -> AgentSkill:
         # Could add examples based on tool definition
         examples=None,
         # Most tools work with text input/output
-        inputModes=["text/plain"],
-        outputModes=["text/plain"],
+        input_modes=["text/plain"],
+        output_modes=["text/plain"],
         tags=[tool_name, "tool"],
     )
 
@@ -83,16 +83,16 @@ def create_agent_card(agent: LocalAgent, base_url: str) -> AgentCard:
                 name="General Assistant",
                 description="General purpose AI assistant",
                 tags=["general", "assistant"],
-                inputModes=["text/plain"],
-                outputModes=["text/plain"],
+                input_modes=["text/plain"],
+                output_modes=["text/plain"],
             )
         ]
 
     # Create capabilities based on agent features
     capabilities = AgentCapabilities(
         streaming=True,  # SwissKnife supports streaming
-        pushNotifications=False,  # Not implemented yet
-        stateTransitionHistory=True,  # SwissKnife tracks message history
+        push_notifications=False,  # Not implemented yet
+        state_transition_history=True,  # SwissKnife tracks message history
     )
 
     # Create provider info
@@ -117,7 +117,7 @@ def create_agent_card(agent: LocalAgent, base_url: str) -> AgentCard:
         capabilities=capabilities,
         skills=skills,
         # Most SwissKnife agents work with text and files
-        defaultInputModes=["text/plain", "application/octet-stream"],
-        defaultOutputModes=["text/plain", "application/octet-stream"],
-        securitySchemes={"apiKey": security_schemes},
+        default_input_modes=["text/plain", "application/octet-stream"],
+        default_output_modes=["text/plain", "application/octet-stream"],
+        security_schemes={"apiKey": security_schemes},
     )
