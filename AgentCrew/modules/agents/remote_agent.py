@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Callable, Dict, Any, List, Optional, Tuple
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -95,7 +95,11 @@ class RemoteAgent(BaseAgent):
     def calculate_usage_cost(self, input_tokens, output_tokens) -> float:
         return 0.0
 
-    async def process_messages(self, messages: Optional[List[Dict[str, Any]]] = None):
+    async def process_messages(
+        self,
+        messages: Optional[List[Dict[str, Any]]] = None,
+        callback: Optional[Callable] = None,
+    ):
         if not self.client or not self.agent_card:
             raise ValidationError(
                 f"RemoteAgent '{self.name}' not properly initialized."

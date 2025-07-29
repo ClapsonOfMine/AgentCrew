@@ -82,8 +82,6 @@ class AgentTaskManager(TaskManager):
                 )
             )
 
-        agent.activate()
-
         # Generate task ID from message
         task_id = (
             request.params.message.taskId or f"task_{request.params.message.messageId}"
@@ -195,6 +193,9 @@ class AgentTaskManager(TaskManager):
             if task.id not in self.task_history:
                 raise ValueError("Task history is not existed")
 
+            input_tokens = 0
+            output_tokens = 0
+
             async def _process_task():
                 # Process with agent
 
@@ -203,12 +204,21 @@ class AgentTaskManager(TaskManager):
                 response_message = ""
                 thinking_content = ""
                 thinking_signature = ""
+                tool_uses = []
+
+                def process_result(_tool_uses, _input_tokens, _output_tokens):
+                    nonlocal tool_uses, input_tokens, output_tokens
+                    tool_uses = _tool_uses
+                    input_tokens += _input_tokens
+                    output_tokens += _output_tokens
 
                 async for (
                     response_message,
                     chunk_text,
                     thinking_chunk,
-                ) in agent.process_messages(self.task_history[task.id]):
+                ) in agent.process_messages(
+                    self.task_history[task.id], callback=process_result
+                ):
                     # Update current response
                     if response_message:
                         current_response = response_message
@@ -260,8 +270,6 @@ class AgentTaskManager(TaskManager):
                                 )
                             )
 
-                # Get final result
-                tool_uses, input_tokens, output_tokens = agent.get_process_result()
                 if tool_uses and len(tool_uses) > 0:
                     # Add thinking content as a separate message if available
                     thinking_data = (

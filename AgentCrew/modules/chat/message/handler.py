@@ -195,9 +195,15 @@ class MessageHandler(Observable):
         # Create a reference to the streaming generator
         self.stream_generator = None
 
+        def process_result(_tool_uses, _input_tokens, _output_tokens):
+            nonlocal tool_uses, input_tokens, output_tokens
+            tool_uses = _tool_uses
+            input_tokens += _input_tokens
+            output_tokens += _output_tokens
+
         try:
             # Store the generator in a variable so we can properly close it if needed
-            self.stream_generator = self.agent.process_messages()
+            self.stream_generator = self.agent.process_messages(callback=process_result)
 
             async for (
                 assistant_response,
@@ -238,12 +244,6 @@ class MessageHandler(Observable):
                         # Delays it a bit when using without stream
                         time.sleep(0.5)
                     self._notify("response_chunk", (chunk_text, assistant_response))
-
-            tool_uses, input_tokens_in_turn, output_tokens_in_turn = (
-                self.agent.get_process_result()
-            )
-            input_tokens += input_tokens_in_turn
-            output_tokens += output_tokens_in_turn
 
             # Handle tool use if needed
             if not has_stop_interupted and tool_uses and len(tool_uses) > 0:

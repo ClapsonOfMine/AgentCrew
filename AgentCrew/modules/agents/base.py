@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Tuple, Dict, List, Optional, Any
+from typing import AsyncGenerator, Tuple, Dict, List, Optional, Any, Callable
 from enum import Enum
 
 
@@ -77,7 +77,9 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def process_messages(
-        self, messages: Optional[List[Dict[str, Any]]] = None
+        self,
+        messages: Optional[List[Dict[str, Any]]] = None,
+        callback: Optional[Callable] = None,
     ) -> AsyncGenerator:
         """
         Process messages using this agent.

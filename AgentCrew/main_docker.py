@@ -284,6 +284,7 @@ tools = ["memory", "clipboard", "web_search", "code_analysis"]
             if remoting_provider:
                 agent.set_custom_system_prompt(agent_manager.get_remote_system_prompt())
                 agent.is_remoting_mode = True
+                agent.activate()
         agent_manager.register_agent(agent)
 
     from AgentCrew.modules.mcpclient.tool import register as mcp_register
@@ -468,13 +469,13 @@ def chat(provider, agent_config, mcp_config, memory_llm):
 
         ui = ConsoleUI(message_handler)
         ui.start()
-    except SystemExit:
-        from AgentCrew.modules.mcpclient import MCPSessionManager
-
-        MCPSessionManager.get_instance().cleanup()
     except Exception as e:
         print(traceback.format_exc())
         click.echo(f"❌ Error: {str(e)}", err=True)
+    finally:
+        from AgentCrew.modules.mcpclient import MCPSessionManager
+
+        MCPSessionManager.get_instance().cleanup()
 
 
 @cli.command()
@@ -562,13 +563,13 @@ def a2a_server(
         click.echo(f"Starting A2A server on {host}:{port}")
         click.echo(f"Available agents: {', '.join(agent_manager.agents.keys())}")
         server.start()
-    except SystemExit:
-        from AgentCrew.modules.mcpclient import MCPSessionManager
-
-        MCPSessionManager.get_instance().cleanup()
     except Exception as e:
         print(traceback.format_exc())
         click.echo(f"❌ Error: {str(e)}", err=True)
+    finally:
+        from AgentCrew.modules.mcpclient import MCPSessionManager
+
+        MCPSessionManager.get_instance().cleanup()
 
 
 @cli.command()

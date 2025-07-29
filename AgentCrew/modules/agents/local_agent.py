@@ -1,6 +1,6 @@
 from datetime import datetime
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from AgentCrew.modules.llm.base import BaseLLMService
 from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
@@ -385,7 +385,11 @@ class LocalAgent(BaseAgent):
 
         return True
 
-    async def process_messages(self, messages: Optional[List[Dict[str, Any]]] = None):
+    async def process_messages(
+        self,
+        messages: Optional[List[Dict[str, Any]]] = None,
+        callback: Optional[Callable] = None,
+    ):
         """
         Process messages using this agent.
 
@@ -400,9 +404,9 @@ class LocalAgent(BaseAgent):
         )
 
         assistant_response = ""
-        self.tool_uses = []
-        self.input_tokens_usage = 0
-        self.output_tokens_usage = 0
+        _tool_uses = []
+        _input_tokens_usage = 0
+        _output_tokens_usage = 0
         # Ensure the first message is a system message with the agent's prompt
         if not messages:
             final_messages = list(self.history)
@@ -452,15 +456,23 @@ class LocalAgent(BaseAgent):
                         chunk_text,
                         thinking_chunk,
                     ) = self.llm.process_stream_chunk(
-                        chunk, assistant_response, self.tool_uses
+                        chunk, assistant_response, _tool_uses
                     )
-                    if tool_uses:
-                        self.tool_uses = tool_uses
-                    if chunk_input_tokens > 0:
-                        self.input_tokens_usage = chunk_input_tokens
-                    if chunk_output_tokens > 0:
-                        self.output_tokens_usage = chunk_output_tokens
                     yield (assistant_response, chunk_text, thinking_chunk)
+
+                    if tool_uses:
+                        _tool_uses = tool_uses
+                    if chunk_input_tokens > 0:
+                        _input_tokens_usage = chunk_input_tokens
+                    if chunk_output_tokens > 0:
+                        _output_tokens_usage = chunk_output_tokens
+            if callback:
+                callback(_tool_uses, _input_tokens_usage, _output_tokens_usage)
+            else:
+                self.tool_uses = _tool_uses
+                self.input_tokens_usage = _input_tokens_usage
+                self.output_tokens_usage = _output_tokens_usage
+
         except GeneratorExit as e:
             logger.warning(f"Stream processing interrupted: {e}")
         finally:
