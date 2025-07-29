@@ -213,17 +213,17 @@ class LocalAgent(BaseAgent):
         if self.is_active:
             return True  # Already active
 
-        self.is_active = True
-
-        self.register_tools()
         from AgentCrew.modules.mcpclient.manager import MCPSessionManager
 
-        # Reinitialize MCP session manager for the current agent
-        mcp_manager = MCPSessionManager.get_instance()
-        if mcp_manager.initialized:
-            mcp_manager.initialize_for_agent(self.name)
-
+        self.register_tools()
         self._register_tools_with_llm()
+
+        # Reinitialize MCP session manager for the current agent
+        if not self.is_remoting_mode:
+            mcp_manager = MCPSessionManager.get_instance()
+            if mcp_manager.initialized:
+                mcp_manager.initialize_for_agent(self.name)
+
         system_prompt = self.get_system_prompt()
         if self.custom_system_prompt:
             system_prompt = system_prompt + "\n---\n\n" + self.custom_system_prompt
@@ -232,6 +232,7 @@ class LocalAgent(BaseAgent):
 
         self.llm.set_system_prompt(system_prompt)
         self.llm.temperature = self.temperature if self.temperature is not None else 0.4
+        self.is_active = True
         return True
 
     def deactivate(self):
