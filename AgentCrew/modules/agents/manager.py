@@ -117,13 +117,6 @@ class AgentManager:
                     )
             # Activate the new agent
             if self.current_agent:
-                if isinstance(self.current_agent, LocalAgent):
-                    from AgentCrew.modules.mcpclient.manager import MCPSessionManager
-
-                    mcp_manager = MCPSessionManager.get_instance()
-                    if mcp_manager.initialized:
-                        mcp_manager.initialize_for_agent(self.current_agent.name)
-
                 self.current_agent.activate()
 
             return True
@@ -306,29 +299,11 @@ class AgentManager:
         Args:
             llm_service: The new LLM service to use
         """
-        if self.current_agent:
-            # Deactivate the current agent
-            self.current_agent.deactivate()
 
-            if isinstance(self.current_agent, LocalAgent):
-                # Update the LLM service for the current agent
-                self.current_agent.update_llm_service(llm_service)
-
-                from AgentCrew.modules.mcpclient.manager import MCPSessionManager
-
-                # Reinitialize MCP session manager for the current agent
-                mcp_manager = MCPSessionManager.get_instance()
-                if mcp_manager.initialized:
-                    mcp_manager.initialize_for_agent(self.current_agent.name)
-
-            # Reactivate the agent with the new LLM service
-            self.current_agent.activate()
-
-            # Update all other agents' LLM service but keep them deactivated
-            for _, agent in self.agents.items():
-                if agent != self.current_agent:
-                    if isinstance(agent, LocalAgent):
-                        agent.update_llm_service(llm_service)
+        # Update all other agents' LLM service but keep them deactivated
+        for _, agent in self.agents.items():
+            if isinstance(agent, LocalAgent):
+                agent.update_llm_service(llm_service)
 
     def get_remote_system_prompt(self):
         return """
