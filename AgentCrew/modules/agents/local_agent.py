@@ -412,7 +412,6 @@ class LocalAgent(BaseAgent):
             final_messages = list(self.history)
         else:
             final_messages = list(messages)
-            print(messages)
         if "context_persistent" in self.services and isinstance(
             self.services["context_persistent"], ContextPersistenceService
         ):
