@@ -142,35 +142,41 @@ class CustomLLMService(OpenAIService):
         ):
             stream_params["tools"] = self.tools
 
-        if self.reasoning_effort is None:
+        if (
+            "thinking" in ModelRegistry.get_model_capabilities(self.model)
+            and self.reasoning_effort is None
+        ):
             stream_params["reasoning_effort"] = "none"
 
-        if "stream" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
-        ):
-            self._is_thinking = False
-            return await self.client.chat.completions.create(
-                **stream_params,
-                stream=True,
-                extra_headers=self.extra_headers,
-            )
+        try:
+            if "stream" in ModelRegistry.get_model_capabilities(
+                f"{self._provider_name}/{self.model}"
+            ):
+                self._is_thinking = False
+                return await self.client.chat.completions.create(
+                    **stream_params,
+                    stream=True,
+                    extra_headers=self.extra_headers,
+                )
 
-        else:
-            response = await self.client.chat.completions.create(
-                **stream_params,
-                stream=False,
-                extra_headers=self.extra_headers,
-            )
-
-            if response.usage:
-                self.current_input_tokens = response.usage.prompt_tokens
-                self.current_output_tokens = response.usage.completion_tokens
             else:
-                self.current_input_tokens = 0
-                self.current_output_tokens = 0
+                response = await self.client.chat.completions.create(
+                    **stream_params,
+                    stream=False,
+                    extra_headers=self.extra_headers,
+                )
 
-            # Return an AsyncIterator wrapping response.choices
-            return AsyncIterator(response.choices)
+                if response.usage:
+                    self.current_input_tokens = response.usage.prompt_tokens
+                    self.current_output_tokens = response.usage.completion_tokens
+                else:
+                    self.current_input_tokens = 0
+                    self.current_output_tokens = 0
+
+                # Return an AsyncIterator wrapping response.choices
+                return AsyncIterator(response.choices)
+        except Exception as e:
+            logger.error(f"Error in stream_assistant_response: {str(e)}")
 
     def process_stream_chunk(
         self, chunk, assistant_response: str, tool_uses: List[Dict]

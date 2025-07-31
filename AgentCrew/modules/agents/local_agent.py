@@ -474,8 +474,6 @@ class LocalAgent(BaseAgent):
 
         except GeneratorExit as e:
             logger.warning(f"Stream processing interrupted: {e}")
-        finally:
-            return
 
     def get_process_result(self):
         return (self.tool_uses, self.input_tokens_usage, self.output_tokens_usage)
