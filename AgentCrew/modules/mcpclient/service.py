@@ -270,18 +270,13 @@ class MCPService:
                 continue
             if server_id in self.tools_cache:
                 for tool_name in self.tools_cache[server_id].keys():
-                    was_active = False
                     if local_agent.is_active:
-                        was_active = True
                         local_agent.deactivate()
                     if (
                         f"{server_id}_{tool_name}"
                         in local_agent.tool_definitions.keys()
                     ):
                         del local_agent.tool_definitions[f"{server_id}_{tool_name}"]
-
-                    if was_active:
-                        local_agent.activate()
 
     def _format_tool_definition(
         self, tool: Any, server_id: str, provider: Optional[str] = None
