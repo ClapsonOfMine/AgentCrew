@@ -3,6 +3,7 @@ from .atom_light import AtomLightTheme
 from .nord import NordTheme
 from .dracula import DraculaTheme
 from .unicorn import UnicornTheme
+from .saigontech import SaigonTechTheme
 from AgentCrew.modules.config import ConfigManagement
 from PySide6.QtCore import Signal, QObject
 
@@ -33,7 +34,7 @@ class StyleProvider(QObject):
         # Read theme from global config
         self.config_manager = ConfigManagement()
         global_config = self.config_manager.read_global_config_data()
-        self.theme = global_config.get("global_settings", {}).get("theme", "dark")
+        self.theme = global_config.get("global_settings", {}).get("theme", "saigontech")
 
         self._set_theme_class()
 
@@ -47,8 +48,10 @@ class StyleProvider(QObject):
             self.theme_class = DraculaTheme
         elif self.theme == "unicorn":
             self.theme_class = UnicornTheme
+        elif self.theme == "dark":
+            self.theme_class = CatppuccinTheme
         else:
-            self.theme_class = CatppuccinTheme  # Default to Catppuccin for "dark"
+            self.theme_class = SaigonTechTheme  # Default to Catppuccin for "dark"
 
     def update_theme(self, reload=True):
         """
