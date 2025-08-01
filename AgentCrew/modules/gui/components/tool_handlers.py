@@ -65,6 +65,8 @@ class ToolEventHandler:
         self.chat_window.message_event_handler.think_buffer_queue = []
         self.chat_window.current_response_bubble = None
         self.chat_window.current_response_container = None
+        self.chat_window.current_thinking_bubble = None
+        self.chat_window.thinking_content = ""
 
         # Reset the current response bubble so the next agent message starts in a new bubble
 

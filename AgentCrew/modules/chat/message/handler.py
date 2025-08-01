@@ -245,6 +245,11 @@ class MessageHandler(Observable):
                         time.sleep(0.5)
                     self._notify("response_chunk", (chunk_text, assistant_response))
 
+            # End thinking when break the response stream
+            if not end_thinking and start_thinking:
+                self._notify("thinking_completed", thinking_content)
+                end_thinking = True
+
             # Handle tool use if needed
             if not has_stop_interupted and tool_uses and len(tool_uses) > 0:
                 # Add thinking content as a separate message if available
