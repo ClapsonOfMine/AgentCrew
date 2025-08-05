@@ -5,7 +5,7 @@ from AgentCrew.modules.llm.model_registry import ModelRegistry
 import os
 import re
 
-COMPLETER_PATTERN = re.compile(r"[a-zA-Z0-9-_.]+")
+COMPLETER_PATTERN = re.compile(r"[a-zA-Z0-9-_.]*")
 
 
 class JumpCompleter(Completer):
