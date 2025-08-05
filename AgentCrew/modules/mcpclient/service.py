@@ -4,7 +4,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Prompt, ContentBlock, TextContent, ImageContent
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
-from AgentCrew.modules.agents import AgentManager
+from AgentCrew.modules.agents import AgentManager, LocalAgent
 from AgentCrew.modules.tools.registry import ToolRegistry
 from .config import MCPServerConfig
 import asyncio
@@ -70,7 +70,15 @@ class MCPService:
                             f"MCPService: {server_name} connected. Registering tools..."
                         )
 
-                        await self.register_server_tools(server_name, agent_name)
+                        if agent_name:
+                            await self.register_server_tools(
+                                combined_server_id, server_name, agent_name
+                            )
+                        else:
+                            for agent_name in server_config.enabledForAgents:
+                                await self.register_server_tools(
+                                    combined_server_id, server_name, agent_name
+                                )
 
                         if server_info.capabilities.prompts:
                             prompts = await self.sessions[
@@ -110,7 +118,15 @@ class MCPService:
                             f"MCPService: {combined_server_id} connected. Registering tools..."
                         )
 
-                        await self.register_server_tools(server_name, agent_name)
+                        if agent_name:
+                            await self.register_server_tools(
+                                combined_server_id, server_name, agent_name
+                            )
+                        else:
+                            for agent_name in server_config.enabledForAgents:
+                                await self.register_server_tools(
+                                    combined_server_id, server_name, agent_name
+                                )
 
                         if server_info.capabilities.prompts:
                             prompts = await self.sessions[
@@ -157,6 +173,11 @@ class MCPService:
             )
             return
 
+        if agent_name:
+            agent_manager = AgentManager.get_instance()
+            agent = agent_manager.get_local_agent(agent_name)
+            if agent:
+                agent.is_tool_ready = False
         logger.info(
             f"MCPService: Creating task for _manage_single_connection for {combined_server_id}"
         )
@@ -240,7 +261,7 @@ class MCPService:
         )
 
     async def register_server_tools(
-        self, server_name: str, agent_name: Optional[str] = None
+        self, combined_server_id: str, server_name: str, agent_name: str
     ) -> None:
         """
         Register all tools from a connected server.
@@ -249,7 +270,6 @@ class MCPService:
             server_id: ID of the server to register tools from
         """
 
-        combined_server_id = self._get_server_id_format(server_name, agent_name)
         if combined_server_id not in self.sessions or not self.connected_servers.get(
             combined_server_id
         ):
@@ -290,6 +310,9 @@ class MCPService:
                     registry.register_tool(
                         tool_definition_factory(), handler_factory, self
                     )
+            if isinstance(registry, LocalAgent):
+                registry.is_tool_ready = True
+
         except Exception:
             logger.exception(
                 f"Error registering tools from server '{combined_server_id}'"

@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import asyncio
 from typing import Dict, Any, List, Optional, Callable
 from AgentCrew.modules.llm.base import BaseLLMService
 from AgentCrew.modules.llm.message import MessageTransformer
@@ -47,6 +48,7 @@ class LocalAgent(BaseAgent):
         self.registered_tools = (
             set()
         )  # Set of tool names that are registered with the LLM
+        self.is_tool_ready = True
 
     def _extract_tool_name(self, tool_def: Any) -> str:
         """
@@ -248,6 +250,7 @@ class LocalAgent(BaseAgent):
         self._clear_tools_from_llm()
         self.tool_definitions = {}
         self.is_active = False
+        self.is_tool_ready = True
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
             from AgentCrew.modules.mcpclient.manager import MCPSessionManager
@@ -415,6 +418,8 @@ class LocalAgent(BaseAgent):
         _input_tokens_usage = 0
         _output_tokens_usage = 0
         # Ensure the first message is a system message with the agent's prompt
+        while not self.is_tool_ready:
+            await asyncio.sleep(0.2)
         if not messages:
             final_messages = list(self.history)
         else:
