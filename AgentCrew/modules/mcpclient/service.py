@@ -28,18 +28,23 @@ class MCPService:
         self._server_shutdown_events: Dict[str, asyncio.Event] = {}
         self.server_prompts: Dict[str, List[Prompt]] = {}
 
-    async def _manage_single_connection(self, server_config: MCPServerConfig):
+    async def _manage_single_connection(
+        self, server_config: MCPServerConfig, agent_name: Optional[str] = None
+    ):
         """Manages the lifecycle of a single MCP server connection."""
-        server_id = server_config.name
+        server_name = server_config.name
+        combined_server_id = self._get_server_id_format(server_name, agent_name)
         shutdown_event = asyncio.Event()
-        self._server_shutdown_events[server_id] = shutdown_event
-        logger.info(f"MCPService: Starting connection management for {server_id}")
+        self._server_shutdown_events[combined_server_id] = shutdown_event
+        logger.info(f"MCPService: Starting connection management for {server_name}")
 
         try:
             if server_config.streaming_server:
                 # Import here to avoid import errors if not available
 
-                logger.info(f"MCPService: Using streaming HTTP client for {server_id}")
+                logger.info(
+                    f"MCPService: Using streaming HTTP client for {server_name}"
+                )
 
                 # Prepare headers for the streamable HTTP client
                 headers = server_config.headers if server_config.headers else {}
@@ -52,28 +57,29 @@ class MCPService:
                     _,
                 ):
                     logger.info(
-                        f"MCPService: streamablehttp_client established for {server_id}"
+                        f"MCPService: streamablehttp_client established for {server_name}"
                     )
                     async with ClientSession(read_stream, write_stream) as session:
                         logger.info(
-                            f"MCPService: ClientSession established for {server_id}"
+                            f"MCPService: ClientSession established for {server_name}"
                         )
                         server_info = await session.initialize()
-                        self.sessions[server_id] = session
-                        self.connected_servers[server_id] = True
+                        self.sessions[combined_server_id] = session
+                        self.connected_servers[combined_server_id] = True
                         logger.info(
-                            f"MCPService: {server_id} connected. Registering tools..."
+                            f"MCPService: {server_name} connected. Registering tools..."
                         )
 
-                        for agent_name in server_config.enabledForAgents:
-                            await self.register_server_tools(server_id, agent_name)
+                        await self.register_server_tools(server_name, agent_name)
 
                         if server_info.capabilities.prompts:
-                            prompts = await self.sessions[server_id].list_prompts()
-                            self.server_prompts[server_id] = prompts.prompts
+                            prompts = await self.sessions[
+                                combined_server_id
+                            ].list_prompts()
+                            self.server_prompts[server_name] = prompts.prompts
 
                         logger.info(
-                            f"MCPService: {server_id} setup complete. Waiting for shutdown signal."
+                            f"MCPService: {server_name} setup complete. Waiting for shutdown signal."
                         )
                         await shutdown_event.wait()
             else:
@@ -88,75 +94,93 @@ class MCPService:
                     read_stream,
                     write_stream,
                 ):
-                    logger.info(f"MCPService: stdio_client established for {server_id}")
+                    logger.info(
+                        f"MCPService: stdio_client established for {server_name}"
+                    )
                     async with ClientSession(read_stream, write_stream) as session:
                         logger.info(
-                            f"MCPService: ClientSession established for {server_id}"
+                            f"MCPService: ClientSession established for {server_name}"
                         )
                         server_info = await session.initialize()
-                        self.sessions[server_id] = session
-                        self.connected_servers[server_id] = (
+                        self.sessions[combined_server_id] = session
+                        self.connected_servers[combined_server_id] = (
                             True  # Mark as connected before tool registration
                         )
                         logger.info(
-                            f"MCPService: {server_id} connected. Registering tools..."
+                            f"MCPService: {combined_server_id} connected. Registering tools..."
                         )
 
-                        for agent_name in server_config.enabledForAgents:
-                            await self.register_server_tools(server_id, agent_name)
+                        await self.register_server_tools(server_name, agent_name)
 
                         if server_info.capabilities.prompts:
-                            prompts = await self.sessions[server_id].list_prompts()
-                            self.server_prompts[server_id] = prompts.prompts
+                            prompts = await self.sessions[
+                                combined_server_id
+                            ].list_prompts()
+                            self.server_prompts[server_name] = prompts.prompts
 
                         logger.info(
-                            f"MCPService: {server_id} setup complete. Waiting for shutdown signal."
+                            f"MCPService: {server_name} setup complete. Waiting for shutdown signal."
                         )
                         await shutdown_event.wait()
 
         except asyncio.CancelledError:
-            logger.info(f"MCPService: Connection task for {server_id} was cancelled.")
+            logger.info(f"MCPService: Connection task for {server_name} was cancelled.")
         except Exception:
             logger.exception(
-                f"MCPService: Error in connection management for '{server_id}'"
+                f"MCPService: Error in connection management for '{server_name}'"
             )
         finally:
-            logger.info(f"MCPService: Cleaning up connection for {server_id}.")
-            self.sessions.pop(server_id, None)
-            self.connected_servers.pop(server_id, False)
-            self.tools_cache.pop(server_id, None)
-            self._server_shutdown_events.pop(server_id, None)
-            logger.info(f"MCPService: Cleanup for {server_id} complete.")
+            logger.info(f"MCPService: Cleaning up connection for {server_name}.")
+            self.sessions.pop(server_name, None)
+            self.connected_servers.pop(server_name, False)
+            self.tools_cache.pop(server_name, None)
+            self._server_shutdown_events.pop(server_name, None)
+            logger.info(f"MCPService: Cleanup for {server_name} complete.")
 
-    async def start_server_connection_management(self, server_config: MCPServerConfig):
+    def _get_server_id_format(
+        self, server_name: str, agent_name: Optional[str] = None
+    ) -> str:
+        """Format server ID with optional agent name prefix."""
+        return f"{agent_name}__{server_name}" if agent_name else server_name
+
+    async def start_server_connection_management(
+        self, server_config: MCPServerConfig, agent_name: Optional[str] = None
+    ):
         """Starts and manages the connection for a single MCP server."""
-        server_id = server_config.name
+        combined_server_id = self._get_server_id_format(server_config.name, agent_name)
         if (
-            server_id in self._server_connection_tasks
-            and not self._server_connection_tasks[server_id].done()
+            combined_server_id in self._server_connection_tasks
+            and not self._server_connection_tasks[combined_server_id].done()
         ):
             logger.info(
-                f"MCPService: Connection management for {server_id} already in progress."
+                f"MCPService: Connection management for {combined_server_id} already in progress."
             )
             return
 
         logger.info(
-            f"MCPService: Creating task for _manage_single_connection for {server_id}"
+            f"MCPService: Creating task for _manage_single_connection for {combined_server_id}"
         )
         if self.loop.is_closed():
             logger.warning(
                 "MCPService: Loop is closed, cannot create task for server connection."
             )
             return
-        task = self.loop.create_task(self._manage_single_connection(server_config))
-        self._server_connection_tasks[server_id] = task
+        task = self.loop.create_task(
+            self._manage_single_connection(server_config, agent_name)
+        )
+        self._server_connection_tasks[combined_server_id] = task
 
-    async def shutdown_all_server_connections(self):
+    async def shutdown_all_server_connections(self, agent_name: Optional[str] = None):
         """Signals all active server connections to shut down and waits for them."""
         logger.info("MCPService: Shutting down all server connections...")
         active_tasks = []
         for server_id, event in list(self._server_shutdown_events.items()):
-            await self.deregister_server_tools(server_id)
+            if agent_name and agent_name not in server_id:
+                continue  # Skip servers not matching the agent name
+            extracted_server_id = server_id.replace(
+                f"{agent_name}__", ""
+            )  # Remove prefix if present
+            await self.deregister_server_tools(extracted_server_id, agent_name)
             logger.info(f"MCPService: Signaling shutdown for {server_id}")
             event.set()
             if server_id in self._server_connection_tasks:
@@ -216,7 +240,7 @@ class MCPService:
         )
 
     async def register_server_tools(
-        self, server_id: str, agent_name: Optional[str] = None
+        self, server_name: str, agent_name: Optional[str] = None
     ) -> None:
         """
         Register all tools from a connected server.
@@ -224,17 +248,23 @@ class MCPService:
         Args:
             server_id: ID of the server to register tools from
         """
-        if server_id not in self.sessions or not self.connected_servers.get(server_id):
+
+        combined_server_id = self._get_server_id_format(server_name, agent_name)
+        if combined_server_id not in self.sessions or not self.connected_servers.get(
+            combined_server_id
+        ):
             logger.warning(
-                f"Cannot register tools: Server '{server_id}' is not connected"
+                f"Cannot register tools: Server '{combined_server_id}' is not connected"
             )
             return
 
         try:
-            response = await self.sessions[server_id].list_tools()
+            response = await self.sessions[combined_server_id].list_tools()
 
             # Cache tools
-            self.tools_cache[server_id] = {tool.name: tool for tool in response.tools}
+            self.tools_cache[combined_server_id] = {
+                tool.name: tool for tool in response.tools
+            }
 
             if agent_name:
                 agent_manager = AgentManager.get_instance()
@@ -244,14 +274,16 @@ class MCPService:
                 registry = ToolRegistry.get_instance()
             for tool in response.tools:
                 # Create namespaced tool definition
-                def tool_definition_factory(tool_info=tool, srv_id=server_id):
+                def tool_definition_factory(tool_info=tool, srv_id=server_name):
                     def get_definition(provider=None):
                         return self._format_tool_definition(tool_info, srv_id, provider)
 
                     return get_definition
 
                 # Create tool handler
-                handler_factory = self._create_tool_handler(server_id, tool.name)
+                handler_factory = self._create_tool_handler(
+                    combined_server_id, tool.name
+                )
 
                 # Register the tool
                 if registry:
@@ -259,24 +291,47 @@ class MCPService:
                         tool_definition_factory(), handler_factory, self
                     )
         except Exception:
-            logger.exception(f"Error registering tools from server '{server_id}'")
-            self.connected_servers[server_id] = False
+            logger.exception(
+                f"Error registering tools from server '{combined_server_id}'"
+            )
+            self.connected_servers[combined_server_id] = False
 
-    async def deregister_server_tools(self, server_id: str):
+    async def deregister_server_tools(
+        self, server_name: str, agent_name: Optional[str] = None
+    ):
         agent_manager = AgentManager.get_instance()
-        for agent_name in agent_manager.agents.keys():
+        if agent_name:
             local_agent = agent_manager.get_local_agent(agent_name)
             if not local_agent:
-                continue
-            if server_id in self.tools_cache:
-                for tool_name in self.tools_cache[server_id].keys():
+                return
+            combined_server_id = self._get_server_id_format(server_name, agent_name)
+            if server_name in self.tools_cache:
+                for tool_name in self.tools_cache[combined_server_id].keys():
                     if local_agent.is_active:
                         local_agent.deactivate()
                     if (
-                        f"{server_id}_{tool_name}"
+                        f"{server_name}_{tool_name}"
                         in local_agent.tool_definitions.keys()
                     ):
-                        del local_agent.tool_definitions[f"{server_id}_{tool_name}"]
+                        del local_agent.tool_definitions[f"{server_name}_{tool_name}"]
+        else:
+            for agent_name in agent_manager.agents.keys():
+                local_agent = agent_manager.get_local_agent(agent_name)
+                if not local_agent:
+                    continue
+
+                combined_server_id = self._get_server_id_format(server_name, agent_name)
+                if combined_server_id in self.tools_cache:
+                    for tool_name in self.tools_cache[combined_server_id].keys():
+                        if local_agent.is_active:
+                            local_agent.deactivate()
+                        if (
+                            f"{server_name}_{tool_name}"
+                            in local_agent.tool_definitions.keys()
+                        ):
+                            del local_agent.tool_definitions[
+                                f"{server_name}_{tool_name}"
+                            ]
 
     def _format_tool_definition(
         self, tool: Any, server_id: str, provider: Optional[str] = None

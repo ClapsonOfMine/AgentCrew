@@ -57,7 +57,7 @@ class MCPSessionManager:
 
         try:
             self.mcp_service._run_async(
-                self.mcp_service.shutdown_all_server_connections()
+                self.mcp_service.shutdown_all_server_connections(agent_name)
             )
             self.mcp_service._run_async(self.initialize_servers_async(agent_name))
             logger.info("MCPSessionManager: Initialization process started.")
@@ -89,12 +89,31 @@ class MCPSessionManager:
             )
             # This is an async call. Since this method itself runs on the MCPService's loop (via _run_async),
             # we can directly await it.
-            await self.mcp_service.start_server_connection_management(config)
+            await self.mcp_service.start_server_connection_management(
+                config, agent_name
+            )
 
         logger.info(
             "MCPSessionManager: Finished requesting connection management for all enabled servers."
         )
         # Note: Actual connections are managed by background tasks in MCPService.
+
+    def cleanup_for_agent(self, agent_name: str):
+        if not self.initialized:
+            logger.error("MCPSessionManager: Has not initialized.")
+            return
+
+        try:
+            logger.info("MCPSessionManager: Starting cleanup...")
+            self.mcp_service._run_async(
+                self.mcp_service.shutdown_all_server_connections(agent_name)
+            )
+        except Exception as e:
+            logger.error(
+                f"MCPSessionManager: Error during cleanup_for_agent {agent_name}: {e}"
+            )
+        finally:
+            logger.info("MCPSessionManager: Cleanup complete.")
 
     def cleanup(self):
         """Clean up all resources, including stopping MCP service and connections."""

@@ -213,13 +213,13 @@ class LocalAgent(BaseAgent):
         if self.is_active:
             return True  # Already active
 
-        from AgentCrew.modules.mcpclient.manager import MCPSessionManager
-
         self.register_tools()
         self._register_tools_with_llm()
 
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
+            from AgentCrew.modules.mcpclient.manager import MCPSessionManager
+
             mcp_manager = MCPSessionManager.get_instance()
             if mcp_manager.initialized:
                 mcp_manager.initialize_for_agent(self.name)
@@ -248,6 +248,13 @@ class LocalAgent(BaseAgent):
         self._clear_tools_from_llm()
         self.tool_definitions = {}
         self.is_active = False
+        # Reinitialize MCP session manager for the current agent
+        if not self.is_remoting_mode:
+            from AgentCrew.modules.mcpclient.manager import MCPSessionManager
+
+            mcp_manager = MCPSessionManager.get_instance()
+            if mcp_manager.initialized:
+                mcp_manager.cleanup_for_agent(self.name)
         return True
 
     def _register_tools_with_llm(self):
