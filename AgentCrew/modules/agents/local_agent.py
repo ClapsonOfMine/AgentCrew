@@ -78,9 +78,13 @@ class LocalAgent(BaseAgent):
         if self.services.get("agent_manager") and not self.is_remoting_mode:
             from AgentCrew.modules.agents.tools.transfer import (
                 register as register_transfer,
+                transfer_tool_prompt,
             )
 
             register_transfer(self.services["agent_manager"], self)
+            self.tool_prompts.append(
+                transfer_tool_prompt(self.services["agent_manager"])
+            )
         for tool_name in self.tools:
             if self.services and tool_name in self.services:
                 service = self.services[tool_name]
@@ -249,6 +253,7 @@ class LocalAgent(BaseAgent):
 
         self._clear_tools_from_llm()
         self.tool_definitions = {}
+        self.tool_prompts = []
         self.is_active = False
         self.is_tool_ready = True
         # Reinitialize MCP session manager for the current agent

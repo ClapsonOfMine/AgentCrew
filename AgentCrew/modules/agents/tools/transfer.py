@@ -56,6 +56,10 @@ def get_transfer_tool_definition(provider="claude") -> Dict[str, Any]:
         }
 
 
+def transfer_tool_prompt(agent_manager: AgentManager) -> str:
+    return agent_manager.get_transfer_system_prompt()
+
+
 def get_transfer_tool_handler(agent_manager: AgentManager) -> Callable:
     """
     Get the handler function for the transfer tool.

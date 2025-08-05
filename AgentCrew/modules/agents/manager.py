@@ -110,11 +110,11 @@ class AgentManager:
             # Set the new agent as current
             self.current_agent = new_agent
 
-            if self.current_agent and isinstance(self.current_agent, LocalAgent):
-                if not self.current_agent.custom_system_prompt:
-                    self.current_agent.set_custom_system_prompt(
-                        self.get_transfer_system_prompt()
-                    )
+            # if self.current_agent and isinstance(self.current_agent, LocalAgent):
+            #     if not self.current_agent.custom_system_prompt:
+            #         self.current_agent.set_custom_system_prompt(
+            #             self.get_transfer_system_prompt()
+            #         )
             # Activate the new agent
             if self.current_agent:
                 self.current_agent.activate()
