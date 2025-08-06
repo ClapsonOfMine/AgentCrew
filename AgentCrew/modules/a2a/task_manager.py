@@ -84,14 +84,15 @@ class AgentTaskManager(TaskManager):
 
         # Generate task ID from message
         task_id = (
-            request.params.message.taskId or f"task_{request.params.message.messageId}"
+            request.params.message.task_id
+            or f"task_{request.params.message.message_id}"
         )
 
         if task_id not in self.tasks:
             # Create task with initial state
             task = Task(
                 id=task_id,
-                context_id=request.params.message.contextId or f"ctx_{task_id}",
+                context_id=request.params.message.context_id or f"ctx_{task_id}",
                 status=TaskStatus(
                     state=TaskState.working, timestamp=datetime.now().isoformat()
                 ),
@@ -148,7 +149,8 @@ class AgentTaskManager(TaskManager):
         """
         # Generate task ID from message
         task_id = (
-            request.params.message.taskId or f"task_{request.params.message.messageId}"
+            request.params.message.task_id
+            or f"task_{request.params.message.message_id}"
         )
 
         # Create streaming queue
