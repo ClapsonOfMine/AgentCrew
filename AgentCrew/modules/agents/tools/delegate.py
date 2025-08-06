@@ -111,7 +111,6 @@ def get_delegate_tool_handler(agent_manager: AgentManager) -> Callable:
 
         # Store the current agent and its state
         original_agent = agent_manager.get_agent(from_agent_name)
-        print(original_agent.std_history)
 
         try:
             # Get the target agent
@@ -167,7 +166,6 @@ def get_delegate_tool_handler(agent_manager: AgentManager) -> Callable:
             delegate_history = MessageTransformer.convert_messages(
                 [user_message], target_agent.get_provider()
             )
-            print(delegate_history)
 
             try:
 
