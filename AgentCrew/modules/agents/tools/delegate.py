@@ -102,6 +102,12 @@ def get_delegate_tool_handler(agent_manager: AgentManager) -> Callable:
                 f"Error: Agent '{target_agent_name}' not found. Available agents: {available_agents}"
             )
 
+        if from_agent_name not in agent_manager.agents:
+            available_agents = ", ".join(agent_manager.agents.keys())
+            raise ValueError(
+                f"Error: Agent '{from_agent_name}' not found. Available agents: {available_agents}"
+            )
+
         # Check if trying to delegate to self
         if (
             agent_manager.current_agent
