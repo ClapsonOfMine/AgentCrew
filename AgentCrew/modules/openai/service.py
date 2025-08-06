@@ -25,7 +25,6 @@ class OpenAIService(BaseLLMService):
         self.tool_handlers = {}  # Map tool names to handler functions
         self._provider_name = "openai"
         self.system_prompt = ""
-        self.temperature = 0.4
         self.reasoning_effort = None
         logger.info("Initialized OpenAI Service")
 

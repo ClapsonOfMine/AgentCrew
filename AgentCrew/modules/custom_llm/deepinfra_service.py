@@ -21,7 +21,6 @@ class DeepInfraService(CustomLLMService):
         self.model = "Qwen/Qwen3-235B-A22B"
         self.current_input_tokens = 0
         self.current_output_tokens = 0
-        self.temperature = 0.6
         self._is_thinking = False
         logger.info("Initialized DeepInfra Service")
 

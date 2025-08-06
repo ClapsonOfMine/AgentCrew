@@ -90,6 +90,15 @@ class BaseLLMService(ABC):
         """Get the provider name for this service."""
         return getattr(self, "_is_stream", True)
 
+    @property
+    def temperature(self) -> float:
+        """Get the temperature for this service."""
+        return getattr(self, "_temperature", 0.4)
+
+    @temperature.setter
+    def temperature(self, value: float):
+        self._temperature = value
+
     def _extract_tool_name(self, tool_def):
         """Extract tool name from definition regardless of format"""
         if "name" in tool_def:

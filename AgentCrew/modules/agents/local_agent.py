@@ -75,16 +75,26 @@ class LocalAgent(BaseAgent):
         Register tools for this agent using the services dictionary.
         """
 
-        if self.services.get("agent_manager") and not self.is_remoting_mode:
-            from AgentCrew.modules.agents.tools.transfer import (
-                register as register_transfer,
-                transfer_tool_prompt,
+        if self.services.get("agent_manager"):
+            from AgentCrew.modules.agents.tools.delegate import (
+                register as register_delegate,
+                delegate_tool_prompt,
             )
 
-            register_transfer(self.services["agent_manager"], self)
+            register_delegate(self.services["agent_manager"], self)
             self.tool_prompts.append(
-                transfer_tool_prompt(self.services["agent_manager"])
+                delegate_tool_prompt(self.services["agent_manager"])
             )
+            if not self.is_remoting_mode:
+                from AgentCrew.modules.agents.tools.transfer import (
+                    register as register_transfer,
+                    transfer_tool_prompt,
+                )
+
+                register_transfer(self.services["agent_manager"], self)
+                self.tool_prompts.append(
+                    transfer_tool_prompt(self.services["agent_manager"])
+                )
         for tool_name in self.tools:
             if self.services and tool_name in self.services:
                 service = self.services[tool_name]

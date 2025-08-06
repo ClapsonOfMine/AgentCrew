@@ -32,7 +32,6 @@ class GithubCopilotService(CustomLLMService):
         self.model = "gpt-4.1"
         self.current_input_tokens = 0
         self.current_output_tokens = 0
-        self.temperature = 0.6
         self._is_thinking = False
         # self._interaction_id = None
         logger.info("Initialized Github Copilot Service")

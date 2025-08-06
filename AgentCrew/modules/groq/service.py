@@ -36,7 +36,6 @@ class GroqService(BaseLLMService):
         self.current_input_tokens = 0
         self.current_output_tokens = 0
         self.system_prompt = ""
-        self.temperature = 0.4
         logger.info("Initialized Groq Service")
 
     def set_think(self, budget_tokens) -> bool:

@@ -352,7 +352,7 @@ class AgentTaskManager(TaskManager):
                                 artifact=artifact,
                             )
                         )
-                    await _process_task()
+                    return await _process_task()
                 return current_response
 
             current_response = await _process_task()

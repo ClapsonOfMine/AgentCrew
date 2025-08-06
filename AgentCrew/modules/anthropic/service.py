@@ -27,7 +27,6 @@ class AnthropicService(BaseLLMService):
         self.thinking_budget = 0
         self.caching_blocks = 0
         self._provider_name = "claude"
-        self.temperature = 0.4
         self.system_prompt = ""
         logger.info("Initialized Anthropic Service")
 
