@@ -397,6 +397,25 @@ class MessageHandler(Observable):
                 )
                 self.current_user_input = None
                 self.current_user_input_idx = -1
+            if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
+                # Get all messages added since the user input for this turn
+                current_provider = self.agent.get_provider()
+                messages_for_this_turn = MessageTransformer.standardize_messages(
+                    self.agent.history[self.last_assisstant_response_idx :],
+                    current_provider,
+                    self.agent.name,
+                )
+                if (
+                    messages_for_this_turn
+                ):  # Only save if there are messages for the turn
+                    self.persistent_service.append_conversation_messages(
+                        self.current_conversation_id, messages_for_this_turn
+                    )
+                    self._notify(
+                        "conversation_saved", {"id": self.current_conversation_id}
+                    )
+            self.last_assisstant_response_idx = len(self.agent.history)
+
             error_message = str(e)
             traceback_str = traceback.format_exc()
             self._notify(

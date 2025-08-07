@@ -169,7 +169,7 @@ class OpenAIService(BaseLLMService):
             dict: Result of the tool execution
         """
         if tool_name not in self.tool_handlers:
-            return {"error": f"Tool '{tool_name}' not found"}
+            raise ValueError(f"Tool '{tool_name}' not found")
 
         handler = self.tool_handlers[tool_name]
         result = handler(**tool_params)

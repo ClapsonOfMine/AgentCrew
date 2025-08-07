@@ -361,7 +361,7 @@ class GoogleAINativeService(BaseLLMService):
             Any: Result of the tool execution
         """
         if tool_name not in self.tool_handlers:
-            return f"Error: Tool '{tool_name}' not found"
+            raise ValueError(f"Tool '{tool_name}' not found")
 
         try:
             handler = self.tool_handlers[tool_name]

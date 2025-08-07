@@ -424,14 +424,11 @@ class MCPService:
                         f"Cannot call tool: Server '{server_id}' is not connected"
                     )
 
-                try:
-                    # The agent framework should be awaiting this coroutine.
-                    # The call to session.call_tool is already async.
-                    session = self.sessions[server_id]
-                    result = self._run_async(session.call_tool(tool_name, params))
-                    return self._format_contents(result.content)
-                except Exception as e:
-                    raise e  # Re-raise the exception to be handled by the agent/tool execution framework
+                # The agent framework should be awaiting this coroutine.
+                # The call to session.call_tool is already async.
+                session = self.sessions[server_id]
+                result = self._run_async(session.call_tool(tool_name, params))
+                return self._format_contents(result.content)
 
             return actual_tool_executor  # Return the async function
 

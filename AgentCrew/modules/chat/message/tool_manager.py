@@ -4,6 +4,7 @@ import asyncio
 from AgentCrew.modules import logger
 from AgentCrew.modules.config import ConfigManagement
 from AgentCrew.modules.llm.message import MessageTransformer
+from AgentCrew.modules.agents.base import MessageType
 
 
 class ToolManager:
@@ -40,7 +41,6 @@ class ToolManager:
                 self._post_tool_transfer(tool_use, tool_result)
             except Exception as e:
                 # if transfer failed we should add the tool_call message back for record
-                from AgentCrew.modules.agents.base import MessageType
 
                 self.message_handler._messages_append(
                     self.message_handler.agent.format_message(
@@ -76,9 +76,6 @@ class ToolManager:
             action = confirmation.get("action", "deny")
 
             if action == "deny":
-                # User denied the tool execution
-                from AgentCrew.modules.agents.base import MessageType
-
                 error_message = self.message_handler.agent.format_message(
                     MessageType.ToolResult,
                     {
@@ -109,8 +106,6 @@ class ToolManager:
                 tool_name, tool_use["input"]
             )
 
-            from AgentCrew.modules.agents.base import MessageType
-
             tool_result_message = self.message_handler.agent.format_message(
                 MessageType.ToolResult,
                 {"tool_use": tool_use, "tool_result": tool_result},
@@ -126,8 +121,6 @@ class ToolManager:
             )
 
         except Exception as e:
-            from AgentCrew.modules.agents.base import MessageType
-
             error_message = self.message_handler.agent.format_message(
                 MessageType.ToolResult,
                 {
