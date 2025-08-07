@@ -229,6 +229,15 @@ _DEEPINFRA_MODELS = [
         output_token_price_1m=0.2,
     ),
     Model(
+        id="openai/gpt-oss-120b",
+        provider="deepinfra",
+        name="GPT-OSS 120B",
+        description="gpt-oss-120b is an open-weight, 117B-parameter Mixture-of-Experts (MoE) language model from OpenAI designed for high-reasoning, agentic, and general-purpose production use cases",
+        capabilities=["text-generation", "tool_use", "stream", "thinking"],
+        input_token_price_1m=0.09,
+        output_token_price_1m=0.45,
+    ),
+    Model(
         id="Qwen/Qwen3-Coder-480B-A35B-Instruct",
         provider="deepinfra",
         name="Qwen 3 Coder",
