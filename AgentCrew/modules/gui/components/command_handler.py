@@ -44,10 +44,13 @@ class CommandHandler:
             or user_input.startswith("/agent ")
             or user_input.startswith("/model ")
             or user_input.startswith("/think ")
-            or user_input.startswith("/consolidate ")
         ):
             self.chat_window.llm_worker.process_request.emit(user_input)
             self.chat_window.ui_state_manager.set_input_controls_enabled(True)
+            return True
+        elif user_input.startswith("/consolidate "):
+            self.chat_window.llm_worker.process_request.emit(user_input)
+            self.chat_window.ui_state_manager.set_input_controls_enabled(False)
             return True
 
         # Exit command

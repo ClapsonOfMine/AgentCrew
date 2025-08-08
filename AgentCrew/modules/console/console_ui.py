@@ -364,8 +364,10 @@ class ConsoleUI(Observer):
                         continue
 
                     # Start loading animation while waiting for response
-                    if not user_input.startswith("/") or user_input.startswith(
-                        "/file "
+                    if (
+                        not user_input.startswith("/")
+                        or user_input.startswith("/file ")
+                        or user_input.startswith("/consolidate ")
                     ):
                         self.start_loading_animation()
 

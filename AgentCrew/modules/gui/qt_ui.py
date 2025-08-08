@@ -415,7 +415,7 @@ class ChatWindow(QMainWindow, Observer):
         )
 
         # Execute the consolidated command
-        self.llm_worker.process_request.emit(f"/consolidated {preseved_messages}")
+        self.llm_worker.process_request.emit(f"/consolidate {preseved_messages}")
 
         self.ui_state_manager.set_input_controls_enabled(
             False

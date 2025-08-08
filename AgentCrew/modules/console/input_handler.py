@@ -177,6 +177,15 @@ class InputHandler:
                 # Regular up arrow behavior - move cursor up
                 buffer.cursor_up()
 
+        @kb.add(Keys.Backspace)
+        def _(event):
+            if not event.current_buffer.text:
+                prompt = Text("👤 YOU: ", style=RICH_STYLE_BLUE)
+                self.console.print("", end="\r")
+                self.console.print(prompt, end="")
+            else:
+                event.current_buffer.delete_before_cursor()
+
         @kb.add(Keys.Down)
         def _(event):
             """Navigate to next history entry if cursor is at last line."""

@@ -52,6 +52,13 @@ class ConversationConsolidator:
                 last_consolidated_idx = i
                 break
 
+        # if first message preserved is a tool message, we need to find the assistant message that called it
+        if all_messages[-preserve_count].get("role", "") == "tool":
+            for i, msg in reversed(list(enumerate(all_messages[:-preserve_count]))):
+                if msg.get("role") == "assistant":
+                    preserve_count += len(all_messages[:-preserve_count]) - i
+                    break
+
         # Split messages into those to consolidate and those to preserve
         if last_consolidated_idx >= 0:
             # Already have consolidated messages, so consolidate from the last one to (total - preserve_count)
