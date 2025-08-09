@@ -418,11 +418,11 @@ class MessageHandler(Observable):
 
             error_message = str(e)
             traceback_str = traceback.format_exc()
+            logger.error(f"{error_message} \n {traceback_str}")
             self._notify(
                 "error",
                 {
                     "message": error_message,
-                    "traceback": traceback_str,
                     "messages": self.agent.history,
                 },
             )

@@ -85,4 +85,4 @@ class LLMWorker(QObject):
             traceback_str = traceback.format_exc()
             error_msg = f"{str(e)}\n{traceback_str}"
             logger.error(f"Error in LLMWorker: {error_msg}")
-            self.error.emit(error_msg)
+            self.error.emit(str(e))
