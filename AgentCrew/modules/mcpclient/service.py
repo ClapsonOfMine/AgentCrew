@@ -1,7 +1,7 @@
 from AgentCrew.modules import logger
 from typing import Dict, Any, List, Optional, Callable
 from mcp import ClientSession, StdioServerParameters
-from mcp.types import Prompt, ContentBlock, TextContent, ImageContent
+from mcp.types import Prompt, ContentBlock, TextContent, ImageContent, Tool
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 from AgentCrew.modules.agents import AgentManager, LocalAgent
@@ -357,7 +357,7 @@ class MCPService:
                             ]
 
     def _format_tool_definition(
-        self, tool: Any, server_id: str, provider: Optional[str] = None
+        self, tool: Tool, server_id: str, provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Format a tool definition for the tool registry.

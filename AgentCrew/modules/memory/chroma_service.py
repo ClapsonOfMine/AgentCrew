@@ -1,6 +1,7 @@
 import os
 import chromadb
 import uuid
+from chromadb.config import Settings
 import numpy as np
 import queue
 import asyncio
@@ -50,7 +51,9 @@ class ChromaMemoryService(BaseMemoryService):
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         # Initialize ChromaDB client with persistence
-        self.client = chromadb.PersistentClient(path=self.db_path)
+        self.client = chromadb.PersistentClient(
+            path=self.db_path, settings=Settings(anonymized_telemetry=False)
+        )
 
         self.llm_service = llm_service
         ## set to groq if key available

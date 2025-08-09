@@ -410,6 +410,8 @@ class CommandProcessor:
         # If an agent name is provided, try to switch to that agent
         agent_name = parts[1]
         old_agent_name = self.message_handler.agent_manager.get_current_agent().name
+        if old_agent_name == agent_name:
+            return (False, f"Already using {agent_name} agent")
         if self.message_handler.agent_manager.select_agent(agent_name):
             self.message_handler.agent = (
                 self.message_handler.agent_manager.get_current_agent()
