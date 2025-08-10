@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 
+from PySide6.QtCore import Qt
 from AgentCrew.modules.config import ConfigManagement
 from AgentCrew.modules.gui.themes import StyleProvider
 from .configs.custom_llm_provider import CustomLLMProvidersConfigTab
@@ -21,6 +22,8 @@ class ConfigWindow(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Agentcrew - Settings")
         self.setMinimumSize(800, 600)
+
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
 
         # Flag to track if changes were made
         self.changes_made = False

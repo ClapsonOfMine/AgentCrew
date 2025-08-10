@@ -81,6 +81,7 @@ class ChatWindow(QMainWindow, Observer):
             "agentcrew_logo.png",
         )
         self.setWindowIcon(QIcon(icon_path))
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
 
         self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled)
 
