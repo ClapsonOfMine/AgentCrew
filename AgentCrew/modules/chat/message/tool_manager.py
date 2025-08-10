@@ -80,7 +80,11 @@ class ToolManager:
                     MessageType.ToolResult,
                     {
                         "tool_use": tool_use,
-                        "tool_result": "User is not approved for this action, Stop the current task and ask for more information.",
+                        "tool_result": (
+                            "This tool call has been rejected by user, "
+                            "Immediately Stop and ask for reason why this call has been rejected, adapt the behavior if needed. "
+                            "Suggest alternative actions if possible."
+                        ),
                         "is_error": True,
                     },
                 )

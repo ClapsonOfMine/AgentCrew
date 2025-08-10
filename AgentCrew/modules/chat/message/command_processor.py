@@ -357,13 +357,10 @@ class CommandProcessor:
                 # Update the LLM service
                 manager.set_model(model.provider, model.id)
 
-                # Get the new LLM service
                 new_llm_service = manager.get_service(model.provider)
 
-                # Update the agent manager with the new LLM service
                 self.message_handler.agent_manager.update_llm_service(new_llm_service)
 
-                # NEW: Persist the last used model to global config
                 try:
                     config_manager = ConfigManagement()
                     config_manager.set_last_used_model(model_id, model.provider)
