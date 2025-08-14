@@ -284,6 +284,8 @@ def get_delegate_tool_handler(agent_manager: AgentManager) -> Callable:
             # Deactivate the target agent if it wasn't originally active
             if not original_target_active:
                 target_agent.deactivate()
+                if agent_manager.current_agent:
+                    agent_manager.current_agent.activate()
 
             # Format the response
             formatted_response = (
