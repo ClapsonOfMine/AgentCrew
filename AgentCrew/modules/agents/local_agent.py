@@ -194,9 +194,21 @@ class LocalAgent(BaseAgent):
         Args:
             prompt: The system prompt
         """
-        self.system_prompt = prompt.replace(
-            "{current_date}", datetime.today().strftime("%A, %d/%m/%Y")
-        ).replace("{cwd}", os.getcwd())
+        self.system_prompt = prompt
+
+    def _parse_system_prompt(self, prompt: str) -> str:
+        """
+        Parse the system prompt to ensure it is in the correct format.
+
+        Args:
+            prompt: The system prompt
+        """
+        return (
+            prompt.replace("{current_date}", datetime.today().strftime("%A, %d/%m/%Y"))
+            .replace("{cwd}", os.getcwd())
+            .replace("{current_agent_name}", self.name)
+            .replace("{current_agent_description}", self.description)
+        )
 
     def set_custom_system_prompt(self, prompt: str):
         """
@@ -246,7 +258,7 @@ class LocalAgent(BaseAgent):
         if self.tool_prompts:
             system_prompt = system_prompt + "\n---\n\n" + "\n".join(self.tool_prompts)
 
-        self.llm.set_system_prompt(system_prompt)
+        self.llm.set_system_prompt(self._parse_system_prompt(system_prompt))
         self.llm.temperature = self.temperature if self.temperature is not None else 0.4
         self.is_active = True
         return True

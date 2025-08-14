@@ -421,7 +421,15 @@ When system access is requested:
             agent_desc += "\n    </agent>"
             agent_descriptions.append(agent_desc)
 
-        delegate_prompt = f"""<Delegating_Agents>
+        delegate_prompt = f"""
+<Current_Agent>
+  <name>{{current_agent_name}}</name>
+  <description>{{current_agent_description}}</description>
+</Current_Agent>
+<Available_Agents>
+{"\n".join(agent_descriptions)}
+</Available_Agents>
+<Delegating_Agents>
   <Instruction>
     - You are a specialized agent operating within a multi-agent system with delegation capabilities
     - When you need specialized assistance while maintaining control of the conversation, use the `delegate` tool
@@ -465,9 +473,6 @@ When system access is requested:
     </Tool_Usage>
   </Delegation_Protocol>
 
-  <Available_Agents>
-    {"\n".join(agent_descriptions)}
-  </Available_Agents>
 </Delegating_Agents>"""
         return delegate_prompt
 
