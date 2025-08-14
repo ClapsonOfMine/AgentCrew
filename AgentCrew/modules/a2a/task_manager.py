@@ -273,6 +273,23 @@ class AgentTaskManager(TaskManager):
                             )
 
                 if tool_uses and len(tool_uses) > 0:
+                    if task.id in self.streaming_tasks:
+                        queue = self.streaming_tasks[task.id]
+                        artifact = convert_agent_response_to_a2a_artifact(
+                            "",
+                            artifact_id=f"artifact_{task.id}_{len(artifacts)}",
+                            tool_uses=tool_uses,
+                        )
+                        await queue.put(
+                            TaskArtifactUpdateEvent(
+                                task_id=task.id,
+                                context_id=task.context_id,
+                                artifact=artifact,
+                            )
+                        )
+                        # prevent the execute_tool_call take the control of event loop before queue has been process
+                        await asyncio.sleep(0.5)
+
                     # Add thinking content as a separate message if available
                     thinking_data = (
                         (thinking_content, thinking_signature)
@@ -300,21 +317,6 @@ class AgentTaskManager(TaskManager):
 
                     # Process each tool use
                     for tool_use in tool_uses:
-                        if task.id in self.streaming_tasks:
-                            queue = self.streaming_tasks[task.id]
-
-                            artifact = convert_agent_response_to_a2a_artifact(
-                                f"\n```tool_call\ntool_name: {tool_use['name']}\nInput: {tool_use['input']}\n```",
-                                artifact_id=f"artifact_{task.id}_{len(artifacts)}",
-                            )
-                            await queue.put(
-                                TaskArtifactUpdateEvent(
-                                    task_id=task.id,
-                                    context_id=task.context_id,
-                                    artifact=artifact,
-                                )
-                            )
-
                         try:
                             tool_result = await agent.execute_tool_call(
                                 tool_use["name"],
@@ -340,20 +342,6 @@ class AgentTaskManager(TaskManager):
                             if error_message:
                                 self.task_history[task.id].append(error_message)
 
-                    if task.id in self.streaming_tasks:
-                        queue = self.streaming_tasks[task.id]
-
-                        artifact = convert_agent_response_to_a2a_artifact(
-                            "\n",
-                            artifact_id=f"artifact_{task.id}_{len(artifacts)}",
-                        )
-                        await queue.put(
-                            TaskArtifactUpdateEvent(
-                                task_id=task.id,
-                                context_id=task.context_id,
-                                artifact=artifact,
-                            )
-                        )
                     return await _process_task()
                 return current_response
 
