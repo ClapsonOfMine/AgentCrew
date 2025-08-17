@@ -50,7 +50,7 @@ def convert_a2a_message_to_agent(message: Message) -> Dict[str, Any]:
                         "type": "file",
                         "file_data": base64.b64decode(file_data.bytes),
                         "file_name": file_data.name or "file",
-                        "mime_type": file_data.mimeType or "application/octet-stream",
+                        "mime_type": file_data.mime_type or "application/octet-stream",
                     }
                 )
             elif isinstance(file_data, FileWithUri) and file_data.uri:
@@ -60,7 +60,7 @@ def convert_a2a_message_to_agent(message: Message) -> Dict[str, Any]:
                         "type": "file_uri",
                         "uri": file_data.uri,
                         "file_name": file_data.name or "file",
-                        "mime_type": file_data.mimeType or "application/octet-stream",
+                        "mime_type": file_data.mime_type or "application/octet-stream",
                     }
                 )
         elif part_data.kind == "data":
