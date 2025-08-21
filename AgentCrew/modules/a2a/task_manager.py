@@ -8,6 +8,8 @@ from typing import Dict, AsyncIterable, Optional, Any, Union
 from AgentCrew.modules.agents import AgentManager, LocalAgent
 from AgentCrew.modules.agents.base import MessageType
 from AgentCrew.modules import logger
+from AgentCrew.modules.memory import ChromaMemoryService
+from AgentCrew.modules.llm.service_manager import ServiceManager
 import tempfile
 import os
 
@@ -59,6 +61,16 @@ class AgentTaskManager(TaskManager):
         self.streaming_tasks: Dict[str, asyncio.Queue] = {}
         self.file_handler = None
 
+        self.agent = self.agent_manager.get_agent(self.agent_name)
+        if self.agent is None or not isinstance(self.agent, LocalAgent):
+            raise ValueError(f"Agent {agent_name} not found or is not a LocalAgent")
+        llm_manager = ServiceManager.get_instance()
+        self.memory_service = ChromaMemoryService(
+            llm_service=llm_manager.initialize_standalone_service(
+                self.agent.get_provider()
+            )
+        )
+
     async def on_send_message(
         self, request: SendMessageRequest | SendStreamingMessageRequest
     ) -> SendMessageResponse:
@@ -71,8 +83,7 @@ class AgentTaskManager(TaskManager):
         Returns:
             JSON-RPC response with task result
         """
-        agent = self.agent_manager.get_agent(self.agent_name)
-        if not agent or not isinstance(agent, LocalAgent):
+        if not self.agent or not isinstance(self.agent, LocalAgent):
             return SendMessageResponse(
                 root=JSONRPCErrorResponse(
                     id=request.id,
@@ -128,7 +139,7 @@ class AgentTaskManager(TaskManager):
         self.task_history[task_id].append(message)
 
         # Process with agent (non-blocking)
-        asyncio.create_task(self._process_agent_task(agent, task))
+        asyncio.create_task(self._process_agent_task(self.agent, task))
 
         # Return initial task state
         return SendMessageResponse(
@@ -288,7 +299,7 @@ class AgentTaskManager(TaskManager):
                             )
                         )
                         # prevent the execute_tool_call take the control of event loop before queue has been process
-                        await asyncio.sleep(0.5)
+                        await asyncio.sleep(0.7)
 
                     # Add thinking content as a separate message if available
                     thinking_data = (
@@ -355,6 +366,14 @@ class AgentTaskManager(TaskManager):
                 )
                 if assistant_message:
                     self.task_history[task.id].append(assistant_message)
+                user_message = (
+                    self.task_history[task.id][0]
+                    .get("content", [{}])[0]
+                    .get("text", "")
+                )
+                await self.memory_service.store_conversation(
+                    user_message, current_response, self.agent_name
+                )
 
             # Create artifact from final response
             artifact = convert_agent_response_to_a2a_artifact(
