@@ -9,7 +9,6 @@ from AgentCrew.modules.agents import AgentManager, LocalAgent
 from AgentCrew.modules.agents.base import MessageType
 from AgentCrew.modules import logger
 from AgentCrew.modules.memory import ChromaMemoryService
-from AgentCrew.modules.llm.service_manager import ServiceManager
 import tempfile
 import os
 
@@ -64,6 +63,9 @@ class AgentTaskManager(TaskManager):
         self.agent = self.agent_manager.get_agent(self.agent_name)
         if self.agent is None or not isinstance(self.agent, LocalAgent):
             raise ValueError(f"Agent {agent_name} not found or is not a LocalAgent")
+
+        from AgentCrew.modules.llm.service_manager import ServiceManager
+
         llm_manager = ServiceManager.get_instance()
         self.memory_service = ChromaMemoryService(
             llm_service=llm_manager.initialize_standalone_service(
