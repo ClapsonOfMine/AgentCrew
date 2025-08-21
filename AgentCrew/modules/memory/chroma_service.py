@@ -575,6 +575,15 @@ class ChromaMemoryService(BaseMemoryService):
                 "count": 0,
             }
 
+    def forget_ids(self, ids: List[str], agent_name: str = "None") -> Dict[str, Any]:
+        self.collection.delete(ids=ids, where={"agent": agent_name})
+
+        return {
+            "success": True,
+            "message": f"Successfully removed {len(ids)} memory chunks from {agent_name}",
+            "count": len(ids),
+        }
+
     def get_queue_status(self) -> Dict[str, Any]:
         """Get current queue status for monitoring."""
         return {

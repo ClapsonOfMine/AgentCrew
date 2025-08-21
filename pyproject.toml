@@ -47,6 +47,7 @@ dependencies = [
   "rapidocr-onnxruntime>=1.4.4",
   "a2a-sdk>=0.2.9",
   "qtawesome>=1.4.0",
+  "xmltodict>=0.14.2",
 ]
 
 [project.optional-dependencies]

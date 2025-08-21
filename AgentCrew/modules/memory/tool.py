@@ -21,6 +21,11 @@ def get_memory_forget_tool_definition(provider="claude") -> Dict[str, Any]:
             "type": "string",
             "description": "Keywords describing the topic to be forgotten. Be precise and comprehensive to ensure all relevant memories are removed. Include any IDs or specific identifiers related to the topic.",
         },
+        "ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of specific memory IDs to forget. If provided, only these memories will be removed. Use this to target specific entries without affecting the entire topic.",
+        },
     }
     tool_required = ["topic"]
     if provider == "claude":
@@ -61,7 +66,18 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
 
     def handle_memory_forget(**params) -> str:
         topic = params.get("topic")
+        ids = params.get("ids", [])
         current_agent = AgentManager.get_instance().get_current_agent()
+
+        if len(ids) > 0:
+            try:
+                result = memory_service.forget_ids(ids, current_agent.name)
+                if result["success"]:
+                    return result["message"]
+                else:
+                    return "Unable to forget memories"
+            except Exception as e:
+                return f"Error forgetting memories: {str(e)}"
 
         if not topic:
             return "Error: Topic is required for forgetting memories."
@@ -124,6 +140,20 @@ def get_memory_retrieve_tool_definition(provider="claude") -> Dict[str, Any]:
                 },
             },
         }
+
+
+def memory_instruction_prompt():
+    return """<Memory_System>
+  <Purpose>
+    Enrichment the input context with relevant past interactions and knowledge.
+    Allow agent control over memory retrieval and forgetting.
+  </Purpose>
+  <Trigger_Conditions>
+    <retrieve_memory>At beginning of conversations or when user changes the discussion subject</retrieve_memory>
+    <forget_memory_topic>When user deny about a fact that you provided, use `ids` when possible</forget_memory_topic>
+  </Trigger_Conditions>
+
+</Memory_System>"""
 
 
 def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Callable:

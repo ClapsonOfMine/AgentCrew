@@ -105,3 +105,16 @@ class BaseMemoryService(ABC):
             Dict with success status and information about the operation
         """
         pass
+
+    @abstractmethod
+    def forget_ids(self, ids: List[str], agent_name: str = "None") -> Dict[str, Any]:
+        """
+        Remove memories using list of id.
+
+        Args:
+            ids: list of IDs to remove
+
+        Returns:
+            Dict with success status and information about the operation
+        """
+        pass

@@ -102,3 +102,6 @@ class Mem0MemoryService(BaseMemoryService):
             Dict with success status and information about the operation
         """
         return {}
+
+    def forget_ids(self, ids: List[str], agent_name: str = "None") -> Dict[str, Any]:
+        return {}
