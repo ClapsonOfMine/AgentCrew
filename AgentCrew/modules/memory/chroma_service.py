@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from threading import Thread, Event
 from AgentCrew.modules import logger
+import xmltodict
 
 from AgentCrew.modules.llm.base import BaseLLMService
 
@@ -101,6 +102,7 @@ class ChromaMemoryService(BaseMemoryService):
         self.current_embedding_context = None
 
         self.context_embedding = []
+        self.current_conversation_context: Dict[str, Any] = {}
 
         # Memory queue infrastructure
         self._conversation_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
@@ -219,35 +221,71 @@ class ChromaMemoryService(BaseMemoryService):
 
             # Use the existing storage logic but make it synchronous
             ids = []
+            memory_data = {}
+            avaialble_ids = self.collection.get(
+                where={
+                    "agent": agent_name,
+                },
+                include=[],
+            )["ids"]
+            print(avaialble_ids)
             if self.llm_service:
                 try:
                     # Process with LLM using asyncio.run to handle async call in worker thread
-                    conversation_text = asyncio.run(
+                    analyzed_text = asyncio.run(
                         self.llm_service.process_message(
                             PRE_ANALYZE_PROMPT.replace(
                                 "{current_date}", datetime.today().strftime("%Y-%m-%d")
                             )
+                            .replace(
+                                "{current_conversation_context}",
+                                self.current_conversation_context.get(session_id, ""),
+                            )
+                            .replace("{existing_ids}", ", ".join(avaialble_ids))
                             .replace("{user_message}", user_message)
                             .replace("{assistant_response}", assistant_response)
                         )
                     )
-                    lines = conversation_text.split("\n")
-                    for i, line in enumerate(lines):
-                        if line == "## ID:":
-                            ids.append(lines[i + 1])
+                    print(analyzed_text)
+                    start_xml = analyzed_text.find("<MEMORY>")
+                    end_xml = analyzed_text.find("</MEMORY>")
+                    if start_xml != -1 and end_xml != -1:
+                        xml_content = analyzed_text[
+                            start_xml : end_xml + len("</MEMORY>")
+                        ]
+                        memory_data = xmltodict.parse(xml_content)
+                    if "MEMORY" in memory_data and "ID" in memory_data["MEMORY"]:
+                        ids.append(memory_data["MEMORY"]["ID"])
+                    memory_data["MEMORY"]["USER_REQUEST"] = user_message
+                    memory_data["MEMORY"]["ASSISTANT_RESPONSE"] = assistant_response
+
                 except Exception as e:
                     logger.warning(f"Error processing conversation with LLM: {e}")
                     # Fallback to simple concatenation if LLM fails
-                    conversation_text = f"Date: {datetime.today().strftime('%Y-%m-%d')}.\n\n User: {user_message}.\n\nAssistant: {assistant_response}"
+                    memory_data = {
+                        "MEMORY": {
+                            "DATE": datetime.today().strftime("%Y-%m-%d"),
+                            "USER_REQUEST": user_message,
+                            "ASSISTANT_RESPONSE": assistant_response,
+                        }
+                    }
             else:
                 # Create the memory document by combining user message and response
-                conversation_text = f"Date: {datetime.today().strftime('%Y-%m-%d')}.\n\n User: {user_message}.\n\nAssistant: {assistant_response}"
+                memory_data = {
+                    "MEMORY": {
+                        "DATE": datetime.today().strftime("%Y-%m-%d"),
+                        "USER_REQUEST": user_message,
+                        "ASSISTANT_RESPONSE": assistant_response,
+                    }
+                }
 
             # Store in ChromaDB (existing logic)
             memory_id = str(uuid.uuid4())
             timestamp = datetime.now().isoformat()
+            conversation_document = xmltodict.unparse(memory_data, pretty=True)
+            self.current_conversation_context[session_id] = conversation_document
 
-            conversation_embedding = self.embedding_function([conversation_text])
+            conversation_embedding = self.embedding_function([conversation_document])
             self.context_embedding.append(conversation_embedding)
             if len(self.context_embedding) > 5:
                 self.context_embedding.pop(0)
@@ -256,7 +294,7 @@ class ChromaMemoryService(BaseMemoryService):
             if ids:
                 self.collection.upsert(
                     ids=[ids[0]],
-                    documents=[conversation_text],
+                    documents=[conversation_document],
                     embeddings=conversation_embedding,
                     metadatas=[
                         {
@@ -265,14 +303,12 @@ class ChromaMemoryService(BaseMemoryService):
                             "session_id": session_id,
                             "agent": agent_name,
                             "type": "conversation",
-                            "user_message": user_message,
-                            "assistant_messsage": assistant_response,
                         }
                     ],
                 )
             else:
                 self.collection.add(
-                    documents=[conversation_text],
+                    documents=[conversation_document],
                     embeddings=conversation_embedding,
                     metadatas=[
                         {
@@ -281,8 +317,6 @@ class ChromaMemoryService(BaseMemoryService):
                             "session_id": session_id,
                             "agent": agent_name,
                             "type": "conversation",
-                            "user_message": user_message,
-                            "assistant_messsage": assistant_response,
                         }
                     ],
                     ids=[memory_id],
@@ -381,8 +415,9 @@ class ChromaMemoryService(BaseMemoryService):
                 conversation_chunks[conv_id] = {
                     "chunks": [],
                     "timestamp": metadata.get("timestamp", "unknown"),
-                    "relevance": len(results["documents"][0])
-                    - i,  # Higher relevance for earlier results
+                    "relevance": results["distances"][0][i]
+                    if results["distances"]
+                    else 99,
                 }
             conversation_chunks[conv_id]["chunks"].append(
                 (metadata.get("chunk_index", 0), doc)
@@ -390,11 +425,12 @@ class ChromaMemoryService(BaseMemoryService):
 
         # Sort conversations by relevance
         sorted_conversations = sorted(
-            conversation_chunks.items(), key=lambda x: x[1]["relevance"], reverse=True
+            conversation_chunks.items(), key=lambda x: x[1]["relevance"]
         )
 
         # Format the output
         output = []
+        print(sorted_conversations)
         for conv_id, conv_data in sorted_conversations:
             # Sort chunks by index
             sorted_chunks = sorted(conv_data["chunks"], key=lambda x: x[0])

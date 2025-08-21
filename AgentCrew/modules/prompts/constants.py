@@ -1,32 +1,42 @@
 PRE_ANALYZE_PROMPT = """
-Enhance this conversation for AI memory storage. Create a single comprehensive text document that includes ALL of the following sections:
+Extract this conversation for AI memory storage. Create a comprehensive xml record that includes ALL of the following sections:
 
-    1. ID: keywords from user_message written as snake_case
+    1. ID: keywords from user_message written as snake_case, use same id from existing_ids if it exists, otherwise create a new one.
     2. DATE: {current_date}
     3. SUMMARY: Brief summary of the conversation (1-2 sentences)
     4. CONTEXT: Background information relevant to understanding this exchange
     5. ENTITIES: Important people, organizations, products, or concepts mentioned including essential facts, concepts, or data points discussed about that entity
-    6. DOMAIN: The subject domain(s) this conversation relates to
+    6. DOMAINS: The subject domain(s) this conversation relates to
 
+    <CURRENT_CONVERSATION_CONTEXT>
+        {current_conversation_context}
+    </CURRENT_CONVERSATION_CONTEXT>
+    
     USER: {user_message}
     ASSISTANT: {assistant_response}
+    EXISTING IDS: {existing_ids}
 
-    Format each section with its heading in ALL CAPS followed by the content.
+    Format each section with its heading in ALL CAPS as a tag wrapped around the content.
     If a section would be empty, include the heading with "None detected" as the content.
     Focus on extracting factual information rather than making assumptions.
     No explanations or additional text.
 
     Examples:
-
-    ## ID:
-    donald_trump
-
-    ## DATE:
-    2025-01-03
-
-    ## SUMMARY:
-    A summary about Donald Trump
-
+    <MEMORY>
+        <ID>donald_trump</ID>
+        <DATE>2025-01-03</DATE>
+        <SUMMARY>A summary about Donald Trump</SUMMARY>
+        <CONTEXT>Contact information, background, and other relevant details about Donald Trump</CONTEXT>
+        <ENTITIES>
+            <ENTITY>
+                <NAME>DONALP TRUMP</NAME>
+                <DESC>President of United States</DESC>
+            </ENTITY>
+        </ENTITIES>
+        <DOMAINS>
+            <DOMAIN>Politics</DOMAIN>
+        </DOMAINS>
+    </MEMORY>
     Enhanced memory text:
 """
 
