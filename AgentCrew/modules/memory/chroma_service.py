@@ -18,7 +18,7 @@ from .voyageai_ef import VoyageEmbeddingFunction
 from AgentCrew.modules.prompts.constants import (
     SEMANTIC_EXTRACTING,
     PRE_ANALYZE_PROMPT,
-    POST_RETRIEVE_MEMORY,
+    # POST_RETRIEVE_MEMORY,
 )
 from .github_copilot_ef import GithubCopilotEmbeddingFunction
 import chromadb.utils.embedding_functions as embedding_functions
@@ -30,6 +30,7 @@ DEFAULT_QUEUE_TIMEOUT = 5.0  # seconds
 MAX_QUEUE_SIZE = 1000  # maximum pending operations
 WORKER_THREAD_NAME = "ChromaMemoryWorker"
 MEMORY_DB_PATH = "./memory_db"
+RELEVANT_THRESHOLD = 0.5
 
 
 class ChromaMemoryService(BaseMemoryService):
@@ -228,7 +229,6 @@ class ChromaMemoryService(BaseMemoryService):
                 },
                 include=[],
             )["ids"]
-            print(avaialble_ids)
             if self.llm_service:
                 try:
                     # Process with LLM using asyncio.run to handle async call in worker thread
@@ -246,7 +246,6 @@ class ChromaMemoryService(BaseMemoryService):
                             .replace("{assistant_response}", assistant_response)
                         )
                     )
-                    print(analyzed_text)
                     start_xml = analyzed_text.find("<MEMORY>")
                     end_xml = analyzed_text.find("</MEMORY>")
                     if start_xml != -1 and end_xml != -1:
@@ -430,12 +429,12 @@ class ChromaMemoryService(BaseMemoryService):
 
         # Format the output
         output = []
-        print(sorted_conversations)
         for conv_id, conv_data in sorted_conversations:
             # Sort chunks by index
             sorted_chunks = sorted(conv_data["chunks"], key=lambda x: x[0])
             conversation_text = "\n".join([chunk for _, chunk in sorted_chunks])
-
+            if conv_data["relevance"] > RELEVANT_THRESHOLD:
+                continue
             # Format timestamp
             timestamp = "Unknown time"
             if conv_data["timestamp"] != "unknown":
@@ -445,22 +444,24 @@ class ChromaMemoryService(BaseMemoryService):
                 except Exception:
                     timestamp = conv_data["timestamp"]
 
-            output.append(f"--- Memory from {timestamp} ---\n{conversation_text}\n---")
+            output.append(
+                f"--- Memory from {timestamp} (Distance point: {conv_data['relevance']}) ---\n{conversation_text}\n---"
+            )
 
         memories = "\n\n".join(output)
-        if self.llm_service:
-            try:
-                return await self.llm_service.process_message(
-                    POST_RETRIEVE_MEMORY.replace("{keywords}", keywords).replace(
-                        "{memory_list}", memories
-                    )
-                )
-            except Exception as e:
-                logger.warning(f"Error processing retrieved memories with LLM: {e}")
-                # Fallback to returning raw memories if LLM processing fails
-                return memories
-        else:
-            return memories
+        # if self.llm_service:
+        #     try:
+        #         return await self.llm_service.process_message(
+        #             POST_RETRIEVE_MEMORY.replace("{keywords}", keywords).replace(
+        #                 "{memory_list}", memories
+        #             )
+        #         )
+        #     except Exception as e:
+        #         logger.warning(f"Error processing retrieved memories with LLM: {e}")
+        #         # Fallback to returning raw memories if LLM processing fails
+        #         return memories
+        # else:
+        return memories
 
     def _cosine_similarity(self, vec_a, vec_b):
         """Calculate cosine similarity between vectors"""
