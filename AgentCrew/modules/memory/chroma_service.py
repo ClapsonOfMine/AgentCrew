@@ -30,7 +30,7 @@ DEFAULT_QUEUE_TIMEOUT = 5.0  # seconds
 MAX_QUEUE_SIZE = 1000  # maximum pending operations
 WORKER_THREAD_NAME = "ChromaMemoryWorker"
 MEMORY_DB_PATH = "./memory_db"
-RELEVANT_THRESHOLD = 0.5
+RELEVANT_THRESHOLD = 2
 
 
 class ChromaMemoryService(BaseMemoryService):
@@ -400,7 +400,11 @@ class ChromaMemoryService(BaseMemoryService):
         results = self.collection.query(
             query_texts=[keywords],
             n_results=limit,
-            where={"$and": and_conditions} if len(and_conditions) > 0 else None,
+            where={"$and": and_conditions}
+            if len(and_conditions) >= 2
+            else and_conditions[0]
+            if and_conditions
+            else None,
         )
 
         if not results["documents"] or not results["documents"][0]:
