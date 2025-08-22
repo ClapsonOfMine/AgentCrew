@@ -18,9 +18,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.api_key = api_key or "default-api-key"  # You can configure this
         self.logger = logger or logging.getLogger(__name__)
-        self.logger.debug(
-            "AuthMiddleware initialized."
-        )
+        self.logger.debug("AuthMiddleware initialized.")
 
     async def dispatch(self, request: Request, call_next):
         """

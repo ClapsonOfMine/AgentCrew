@@ -8,7 +8,6 @@ from typing import Dict, AsyncIterable, Optional, Any, Union
 from AgentCrew.modules.agents import AgentManager, LocalAgent
 from AgentCrew.modules.agents.base import MessageType
 from AgentCrew.modules import logger
-from AgentCrew.modules.memory import ChromaMemoryService
 import tempfile
 import os
 
