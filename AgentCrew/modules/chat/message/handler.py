@@ -375,7 +375,7 @@ class MessageHandler(Observable):
                         user_input = user_message["content"]
 
                     try:
-                        await self.memory_service.store_conversation(
+                        self.memory_service.store_conversation(
                             user_input, assistant_response, self.agent.name
                         )
                     except Exception as e:

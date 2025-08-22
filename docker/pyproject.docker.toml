@@ -45,6 +45,7 @@ dependencies = [
   "pyobjc; sys_platform == 'darwin'",
   "rapidocr-onnxruntime>=1.4.4",
   "a2a-sdk>=0.2.9",
+  "xmltodict>=0.14.2",
 ]
 
 [project.optional-dependencies]

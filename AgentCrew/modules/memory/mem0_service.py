@@ -21,7 +21,7 @@ class Mem0MemoryService(BaseMemoryService):
         }
         self.mem0 = Memory.from_config(config)
 
-    async def store_conversation(
+    def store_conversation(
         self, user_message: str, assistant_response: str, agent_name: str = "None"
     ) -> List[str]:
         """
@@ -49,9 +49,7 @@ class Mem0MemoryService(BaseMemoryService):
     def clear_conversation_context(self):
         pass
 
-    async def generate_user_context(
-        self, user_input: str, agent_name: str = "None"
-    ) -> str:
+    def generate_user_context(self, user_input: str, agent_name: str = "None") -> str:
         """
         Generate context based on user input by retrieving relevant memories.
 
@@ -61,9 +59,9 @@ class Mem0MemoryService(BaseMemoryService):
         Returns:
             Formatted string containing relevant context from past conversations
         """
-        return await self.retrieve_memory(user_input, 8)
+        return self.retrieve_memory(user_input, 8)
 
-    async def retrieve_memory(
+    def retrieve_memory(
         self, keywords: str, limit: int = 5, agent_name: str = "None"
     ) -> str:
         """

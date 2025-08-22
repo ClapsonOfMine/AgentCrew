@@ -109,8 +109,8 @@ class LocalAgent(BaseAgent):
                         register_memory(
                             service, self.services.get("context_persistent", None), self
                         )
-                        self.tool_prompts.append(adaptive_instruction_prompt())
                         self.tool_prompts.append(memory_instruction_prompt())
+                        self.tool_prompts.append(adaptive_instruction_prompt())
                     elif tool_name == "clipboard":
                         from AgentCrew.modules.clipboard.tool import (
                             register as register_clipboard,

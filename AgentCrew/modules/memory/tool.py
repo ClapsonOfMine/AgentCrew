@@ -150,7 +150,7 @@ def memory_instruction_prompt():
   </Purpose>
   <Trigger_Conditions>
     <retrieve_memory>At beginning of conversations or when user changes the discussion subject</retrieve_memory>
-    <forget_memory_topic>When user deny about a fact that you provided, use `ids` when possible</forget_memory_topic>
+    <forget_memory_topic>When user deny or corrects about facts that you provided, use `ids` when possible</forget_memory_topic>
   </Trigger_Conditions>
 
 </Memory_System>"""
@@ -171,14 +171,18 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
         keywords = params.get("keywords")
         limit = params.get("limit", 5)
 
-        current_agent = AgentManager.get_instance().get_current_agent()
+        try:
+            current_agent = AgentManager.get_instance().get_current_agent()
+        except ValueError:
+            current_agent = None
+            pass
 
         if not keywords:
             return "Error: Keywords are required for memory retrieval."
 
         try:
-            result = asyncio.run(
-                memory_service.retrieve_memory(keywords, limit, current_agent.name)
+            result = memory_service.retrieve_memory(
+                keywords, limit, current_agent.name if current_agent else ""
             )
             return result
         except Exception as e:

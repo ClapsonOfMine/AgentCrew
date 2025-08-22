@@ -140,6 +140,7 @@ class ChromaMemoryService(BaseMemoryService):
 
     def _memory_worker_thread(self):
         """Worker thread for processing conversation storage operations."""
+        loop = asyncio.new_event_loop()
         while not self._memory_stop_event.is_set():
             try:
                 # Get operation from queue with timeout
@@ -151,13 +152,16 @@ class ChromaMemoryService(BaseMemoryService):
                     break
 
                 # Process conversation storage
-                self._store_conversation_internal(operation_data)
+                loop.run_until_complete(
+                    self._store_conversation_internal(operation_data)
+                )
                 self._conversation_queue.task_done()
 
             except queue.Empty:
                 continue
             except Exception as e:
                 logger.error(f"Memory worker error: {e}")
+        loop.close()
 
     def _start_memory_worker(self):
         """Start the memory worker thread."""
@@ -178,7 +182,7 @@ class ChromaMemoryService(BaseMemoryService):
             except queue.Full:
                 logger.warning("Could not send shutdown signal to memory worker")
 
-    async def store_conversation(
+    def store_conversation(
         self, user_message: str, assistant_response: str, agent_name: str = "None"
     ) -> List[str]:
         """
@@ -212,7 +216,7 @@ class ChromaMemoryService(BaseMemoryService):
             logger.warning("Memory queue full, dropping conversation storage")
             return []
 
-    def _store_conversation_internal(self, operation_data: Dict[str, Any]):
+    async def _store_conversation_internal(self, operation_data: Dict[str, Any]):
         """Internal method to actually store conversation (runs in worker thread)."""
         try:
             user_message = operation_data["user_message"]
@@ -232,19 +236,17 @@ class ChromaMemoryService(BaseMemoryService):
             if self.llm_service:
                 try:
                     # Process with LLM using asyncio.run to handle async call in worker thread
-                    analyzed_text = asyncio.run(
-                        self.llm_service.process_message(
-                            PRE_ANALYZE_PROMPT.replace(
-                                "{current_date}", datetime.today().strftime("%Y-%m-%d")
-                            )
-                            .replace(
-                                "{current_conversation_context}",
-                                self.current_conversation_context.get(session_id, ""),
-                            )
-                            .replace("{existing_ids}", ", ".join(avaialble_ids))
-                            .replace("{user_message}", user_message)
-                            .replace("{assistant_response}", assistant_response)
+                    analyzed_text = await self.llm_service.process_message(
+                        PRE_ANALYZE_PROMPT.replace(
+                            "{current_date}", datetime.today().strftime("%Y-%m-%d")
                         )
+                        .replace(
+                            "{current_conversation_context}",
+                            self.current_conversation_context.get(session_id, ""),
+                        )
+                        .replace("{existing_ids}", ", ".join(avaialble_ids))
+                        .replace("{user_message}", user_message)
+                        .replace("{assistant_response}", assistant_response)
                     )
                     start_xml = analyzed_text.find("<MEMORY>")
                     end_xml = analyzed_text.find("</MEMORY>")
@@ -349,9 +351,7 @@ class ChromaMemoryService(BaseMemoryService):
         self.current_embedding_context = None
         self.context_embedding = []
 
-    async def generate_user_context(
-        self, user_input: str, agent_name: str = "None"
-    ) -> str:
+    def generate_user_context(self, user_input: str, agent_name: str = "None") -> str:
         """
         Generate context based on user input by retrieving relevant memories.
 
@@ -361,7 +361,7 @@ class ChromaMemoryService(BaseMemoryService):
         Returns:
             Formatted string containing relevant context from past conversations
         """
-        return await self.retrieve_memory(user_input, 3, agent_name=agent_name)
+        return self.retrieve_memory(user_input, 3, agent_name=agent_name)
 
     async def _semantic_extracting(self, input: str) -> str:
         if self.llm_service:
@@ -376,8 +376,8 @@ class ChromaMemoryService(BaseMemoryService):
         else:
             return input
 
-    async def retrieve_memory(
-        self, keywords: str, limit: int = 5, agent_name: str = "None"
+    def retrieve_memory(
+        self, keywords: str, limit: int = 5, agent_name: str = ""
     ) -> str:
         """
         Retrieve relevant memories based on keywords.
@@ -390,15 +390,17 @@ class ChromaMemoryService(BaseMemoryService):
             Formatted string of relevant memories
         """
 
+        and_conditions: List[Dict[str, Any]] = []
+
+        if self.session_id.strip():
+            and_conditions.append({"session_id": {"$ne": self.session_id}})
+        if agent_name.strip():
+            and_conditions.append({"agent": agent_name})
+
         results = self.collection.query(
             query_texts=[keywords],
             n_results=limit,
-            where={
-                "$and": [
-                    {"session_id": {"$ne": self.session_id}},
-                    {"agent": agent_name},
-                ]
-            },
+            where={"$and": and_conditions} if len(and_conditions) > 0 else None,
         )
 
         if not results["documents"] or not results["documents"][0]:

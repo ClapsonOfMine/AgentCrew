@@ -8,7 +8,7 @@ class BaseMemoryService(ABC):
     @property
     def session_id(self) -> str:
         """Get the provider name for this service."""
-        return getattr(self, "_session_id", "unknown")
+        return getattr(self, "_session_id", "")
 
     @session_id.setter
     def session_id(self, value: str):
@@ -26,7 +26,7 @@ class BaseMemoryService(ABC):
         self._load_conversation = value
 
     @abstractmethod
-    async def store_conversation(
+    def store_conversation(
         self, user_message: str, assistant_response: str, agent_name: str = "None"
     ) -> List[str]:
         """
@@ -50,9 +50,7 @@ class BaseMemoryService(ABC):
         pass
 
     @abstractmethod
-    async def generate_user_context(
-        self, user_input: str, agent_name: str = "None"
-    ) -> str:
+    def generate_user_context(self, user_input: str, agent_name: str = "None") -> str:
         """
         Generate context based on user input by retrieving relevant memories.
 
@@ -65,7 +63,7 @@ class BaseMemoryService(ABC):
         pass
 
     @abstractmethod
-    async def retrieve_memory(
+    def retrieve_memory(
         self, keywords: str, limit: int = 5, agent_name: str = "None"
     ) -> str:
         """

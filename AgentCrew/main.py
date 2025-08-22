@@ -296,12 +296,6 @@ def setup_services(provider, memory_llm=None):
         memory_service = ChromaMemoryService(
             llm_service=llm_manager.initialize_standalone_service(memory_llm)
         )
-    # use groq if not defined if available
-    # elif os.getenv("GROQ_API_KEY"):
-    #     memory_service = ChromaMemoryService(
-    #         llm_service=llm_manager.initialize_standalone_service("groq")
-    #     )
-    # fallback to default provider if no memory_llm specified
     else:
         memory_service = ChromaMemoryService(
             llm_service=llm_manager.initialize_standalone_service(provider)
@@ -334,12 +328,6 @@ def setup_services(provider, memory_llm=None):
     except Exception as e:
         click.echo(f"⚠️ Image generation service not available: {str(e)}")
         image_gen_service = None
-
-    # try:
-    #     scraping_service = ScrapingService()
-    # except Exception as e:
-    #     click.echo(f"⚠️ Scraping service not available: {str(e)}")
-    #     scraping_service = None
 
     # Clean up old memories (older than 1 month)
     try:

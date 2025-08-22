@@ -64,14 +64,7 @@ class AgentTaskManager(TaskManager):
         if self.agent is None or not isinstance(self.agent, LocalAgent):
             raise ValueError(f"Agent {agent_name} not found or is not a LocalAgent")
 
-        from AgentCrew.modules.llm.service_manager import ServiceManager
-
-        llm_manager = ServiceManager.get_instance()
-        self.memory_service = ChromaMemoryService(
-            llm_service=llm_manager.initialize_standalone_service(
-                self.agent.get_provider()
-            )
-        )
+        self.memory_service = self.agent.services["memory"]
 
     async def on_send_message(
         self, request: SendMessageRequest | SendStreamingMessageRequest
@@ -373,7 +366,7 @@ class AgentTaskManager(TaskManager):
                     .get("content", [{}])[0]
                     .get("text", "")
                 )
-                await self.memory_service.store_conversation(
+                self.memory_service.store_conversation(
                     user_message, current_response, self.agent_name
                 )
 
