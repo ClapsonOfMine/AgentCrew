@@ -662,6 +662,26 @@ QPushButton:pressed {
 }
 """
 
+    UNCONSOLIDATE_BUTTON = """
+QPushButton {
+    background-color: #6272A4; /* Dracula Comment */
+    color: #F8F8F2; /* Dracula Foreground */
+    border: none;
+    border-radius: 15px;
+    padding: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 30px;
+    height: 30px;
+}
+QPushButton:hover {
+    background-color: #FF5555; /* Dracula Red for undo action */
+}
+QPushButton:pressed {
+    background-color: #FF6E6E; /* Lighter Dracula Red */
+}
+"""
+
     # Tool dialog styles
     TOOL_DIALOG_TEXT_EDIT = """
 QTextEdit {

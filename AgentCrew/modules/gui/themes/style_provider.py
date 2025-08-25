@@ -203,6 +203,10 @@ class StyleProvider(QObject):
         """Get style for consolidated buttons."""
         return self.theme_class.CONSOLIDATED_BUTTON
 
+    def get_unconsolidate_button_style(self):
+        """Get style for unconsolidate buttons."""
+        return self.theme_class.UNCONSOLIDATE_BUTTON
+
     def get_user_message_label_style(self):
         """Get style for user message labels."""
         return self.theme_class.USER_MESSAGE_LABEL

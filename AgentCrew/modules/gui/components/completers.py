@@ -120,6 +120,7 @@ class GuiCommandCompleter:
             "/debug",
             "/think",
             "/consolidate",
+            "/unconsolidate",
             "/jump",
             "/agent",
             "/model",

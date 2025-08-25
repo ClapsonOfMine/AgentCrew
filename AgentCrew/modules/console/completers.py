@@ -162,6 +162,10 @@ class ChatCompleter(Completer):
                 "Consolidate conversation messages (usage: /consolidate [count])",
             ),
             (
+                "/unconsolidate",
+                "Remove the last consolidated message (usage: /unconsolidate)",
+            ),
+            (
                 "/jump",
                 "Jump to a previous conversation turn (usage: /jump <turn_number>)",
             ),

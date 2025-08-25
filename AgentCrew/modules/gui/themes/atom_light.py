@@ -654,6 +654,26 @@ QPushButton:pressed {
 }
 """
 
+    UNCONSOLIDATE_BUTTON = """
+QPushButton {
+    background-color: #9e9e9e; /* Gray */
+    color: #ffffff; /* White text */
+    border: none;
+    border-radius: 15px;
+    padding: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 30px;
+    height: 30px;
+}
+QPushButton:hover {
+    background-color: #f44336; /* Red for undo action */
+}
+QPushButton:pressed {
+    background-color: #d32f2f; /* Darker red */
+}
+"""
+
     # Tool dialog styles
     TOOL_DIALOG_TEXT_EDIT = """
 QTextEdit {

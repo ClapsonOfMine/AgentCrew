@@ -33,10 +33,8 @@ class ConversationConsolidator:
         if preserve_count < 1:
             raise ValueError("preserve_count must be a positive integer")
 
-        # Get current messages
         all_messages = messages
 
-        # Nothing to consolidate if we don't have enough messages
         if len(all_messages) <= preserve_count:
             return {
                 "success": False,
@@ -45,23 +43,19 @@ class ConversationConsolidator:
                 "preserve_count": preserve_count,
             }
 
-        # Find the last consolidated message if one exists
         last_consolidated_idx = -1
         for i, msg in reversed(list(enumerate(all_messages))):
             if msg.get("role") == "consolidated":
                 last_consolidated_idx = i
                 break
 
-        # if first message preserved is a tool message, we need to find the assistant message that called it
         if all_messages[-preserve_count].get("role", "") == "tool":
             for i, msg in reversed(list(enumerate(all_messages[:-preserve_count]))):
                 if msg.get("role") == "assistant":
                     preserve_count += len(all_messages[:-preserve_count]) - i
                     break
 
-        # Split messages into those to consolidate and those to preserve
         if last_consolidated_idx >= 0:
-            # Already have consolidated messages, so consolidate from the last one to (total - preserve_count)
             to_consolidate = (
                 all_messages[last_consolidated_idx + 1 : -preserve_count]
                 if preserve_count > 0
@@ -69,17 +63,12 @@ class ConversationConsolidator:
             )
             to_preserve = all_messages[-preserve_count:] if preserve_count > 0 else []
 
-            # Remove the old consolidated message since we'll create a new one
         else:
-            # First time consolidating - consolidate all but the last preserve_count messages
             to_consolidate = (
                 all_messages[:-preserve_count] if preserve_count > 0 else all_messages
             )
             to_preserve = all_messages[-preserve_count:] if preserve_count > 0 else []
 
-            # Start with an empty list as we haven't consolidated before
-
-        # Don't proceed if nothing to consolidate
         if not to_consolidate:
             return {
                 "success": False,
@@ -88,13 +77,10 @@ class ConversationConsolidator:
                 "preserve_count": preserve_count,
             }
 
-        # Calculate token counts before consolidation
         original_tokens = self.estimate_token_count(to_consolidate)
 
-        # Generate a summary of the messages to consolidate
         summary = await self.generate_summary(to_consolidate)
 
-        # Create a consolidated message
         consolidated_msg = {
             "role": "consolidated",
             "content": [{"type": "text", "text": summary}],
@@ -107,13 +93,10 @@ class ConversationConsolidator:
             },
         }
 
-        # Calculate token savings
         consolidated_tokens = self.estimate_token_count([consolidated_msg])
 
-        # Update the streamline messages
         messages.insert(-preserve_count, consolidated_msg)
 
-        # Return information about the consolidation
         result = {
             "success": True,
             "messages_consolidated": len(to_consolidate),
@@ -135,15 +118,11 @@ class ConversationConsolidator:
         Returns:
             A string summary of the messages
         """
-        # Get the current agent
 
-        # Format the messages for summary generation
         formatted_conversation = self.format_conversation_for_summary(messages)
 
-        # Create a prompt for summarizing
         summary_prompt = self.create_summary_prompt(formatted_conversation)
 
-        # Process the summary request
         summary = await self.llm.process_message(summary_prompt)
 
         return summary
@@ -175,16 +154,13 @@ class ConversationConsolidator:
                 # include it directly to preserve that context
                 prefix = "PREVIOUS SUMMARY: "
             else:
-                # Skip other types of messages
                 continue
 
             content = msg.get("content", "")
 
-            # Handle different content formats
             if isinstance(content, str):
                 text_content = content
             elif isinstance(content, list):
-                # Extract text from content parts
                 text_parts = []
                 for part in content:
                     if isinstance(part, dict):
@@ -244,6 +220,57 @@ The conversation to summarize is delimited between triple quotes:
 """
             + f'"""\n{conversation}\n"""'
         )
+
+    async def unconsolidate(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Remove the last consolidated message and restore original messages.
+
+        Args:
+            messages: The current message list containing consolidated messages
+
+        Returns:
+            A dictionary with information about the unconsolidation
+        """
+        # Find the last consolidated message
+        last_consolidated_idx = -1
+        consolidated_message = None
+
+        for i, msg in reversed(list(enumerate(messages))):
+            if msg.get("role") == "consolidated":
+                last_consolidated_idx = i
+                consolidated_message = msg
+                break
+
+        if last_consolidated_idx == -1 or consolidated_message is None:
+            return {
+                "success": False,
+                "reason": "No consolidated message found to unconsolidate",
+                "total_messages": len(messages),
+            }
+
+        metadata = consolidated_message.get("metadata", {})
+        messages_consolidated = metadata.get("messages_consolidated", 0)
+
+        messages.pop(last_consolidated_idx)
+
+        return {
+            "success": True,
+            "messages_restored": messages_consolidated,
+            "consolidated_message_removed": True,
+            "restoration_note": "Consolidated message removed. Original messages would need to be restored from backup if available.",
+        }
+
+    def has_consolidated_message(self, messages: List[Dict[str, Any]]) -> bool:
+        """
+        Check if the message list contains any consolidated messages.
+
+        Args:
+            messages: The message list to check
+
+        Returns:
+            True if consolidated messages exist, False otherwise
+        """
+        return any(msg.get("role") == "consolidated" for msg in messages)
 
     def estimate_token_count(self, messages: List[Dict[str, Any]]) -> int:
         """

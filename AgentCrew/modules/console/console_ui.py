@@ -189,6 +189,14 @@ class ConsoleUI(Observer):
             self.display_handlers._added_files.remove(data["file_path"])
         elif event == "consolidation_completed":
             self.display_handlers.display_consolidation_result(data)
+            self.display_handlers.display_loaded_conversation(
+                self.message_handler.streamline_messages, self.message_handler
+            )
+
+        elif event == "unconsolidation_completed":
+            self.display_handlers.display_loaded_conversation(
+                self.message_handler.streamline_messages, self.message_handler
+            )
         elif event == "conversations_listed":
             self.display_handlers.display_conversations(
                 data

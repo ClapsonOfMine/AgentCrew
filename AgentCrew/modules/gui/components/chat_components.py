@@ -220,6 +220,10 @@ class ChatComponents:
 
         # Center the consolidated message
         container_layout.addWidget(message_bubble)
+        if message_bubble.unconsolidate_button:
+            message_bubble.unconsolidate_button.clicked.connect(
+                lambda: self.chat_window.unconsolidate_messages(message_bubble)
+            )
 
         self.chat_window.chat_layout.addWidget(container)
 

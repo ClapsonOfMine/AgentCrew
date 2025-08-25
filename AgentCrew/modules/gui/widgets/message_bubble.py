@@ -164,6 +164,8 @@ class MessageBubble(QFrame):
             self.rollback_button = rollback_button
 
         # For file bubbles, add remove button functionality
+        self.unconsolidate_button = None
+        self.consolidated_button = None
 
         if not self.is_consolidated:
             # Create consolidated button with icon only
@@ -183,14 +185,32 @@ class MessageBubble(QFrame):
             # Store the buttons as properties of the message bubble
             self.consolidated_button = consolidated_button
         else:
-            self.consolidated_button = None
+            # Create unconsolidate button for consolidated messages
+            unconsolidate_icon = qta.icon("fa6s.rotate-left", color="white")
+            unconsolidate_button = QPushButton(unconsolidate_icon, "", self)
+            unconsolidate_font = unconsolidate_button.font()
+            unconsolidate_font.setPixelSize(9)
+            unconsolidate_button.setFont(unconsolidate_font)
+            unconsolidate_button.setToolTip("Unconsolidate this message")
+            unconsolidate_button.setStyleSheet(
+                self.style_provider.get_unconsolidate_button_style()
+            )
+            unconsolidate_button.hide()
+
+            # Store the buttons as properties of the message bubble
+            self.unconsolidate_button = unconsolidate_button
 
         # Override enter and leave events
         original_enter_event = self.enterEvent
         original_leave_event = self.leaveEvent
 
         def enter_event_wrapper(event):
-            if self.rollback_button or self.consolidated_button or self.remove_button:
+            if (
+                self.rollback_button
+                or self.consolidated_button
+                or self.remove_button
+                or self.unconsolidate_button
+            ):
                 # Position buttons in the top right corner with spacing
                 button_width = 30
                 button_height = 30
@@ -200,6 +220,8 @@ class MessageBubble(QFrame):
                 # Count visible buttons to calculate positions
                 if self.consolidated_button:
                     button_count += 1
+                if self.unconsolidate_button:
+                    button_count += 1
                 if self.rollback_button:
                     button_count += 1
                 if self.remove_button and not self.is_file_processed:
@@ -207,7 +229,21 @@ class MessageBubble(QFrame):
 
                 current_position = 0
 
-                # Position consolidated button first (rightmost)
+                # Position unconsolidate button first (rightmost) for consolidated messages
+                if self.unconsolidate_button:
+                    self.unconsolidate_button.setGeometry(
+                        self.width()
+                        - (button_width * (current_position + 1))
+                        - (spacing * current_position)
+                        - 5,
+                        5,
+                        button_width,
+                        button_height,
+                    )
+                    self.unconsolidate_button.show()
+                    current_position += 1
+
+                # Position consolidated button first (rightmost) for non-consolidated messages
                 if self.consolidated_button:
                     self.consolidated_button.setGeometry(
                         self.width()
@@ -256,6 +292,8 @@ class MessageBubble(QFrame):
                 self.rollback_button.hide()
             if self.consolidated_button:
                 self.consolidated_button.hide()
+            if self.unconsolidate_button:
+                self.unconsolidate_button.hide()
             if self.remove_button:
                 self.remove_button.hide()
             if original_leave_event:
@@ -273,8 +311,21 @@ class MessageBubble(QFrame):
             spacing = 5
             current_position = 0
 
-            # Position consolidated button first (rightmost)
-            if hasattr(self, "consolidated_button") and self.consolidated_button:
+            # Position unconsolidate button first (rightmost) for consolidated messages
+            if self.unconsolidate_button and self.unconsolidate_button.isVisible():
+                self.unconsolidate_button.setGeometry(
+                    self.width()
+                    - (button_width * (current_position + 1))
+                    - (spacing * current_position)
+                    - 5,
+                    5,
+                    button_width,
+                    button_height,
+                )
+                current_position += 1
+
+            # Position consolidated button first (rightmost) for non-consolidated messages
+            if self.consolidated_button and self.consolidated_button.isVisible():
                 self.consolidated_button.setGeometry(
                     self.width()
                     - (button_width * (current_position + 1))

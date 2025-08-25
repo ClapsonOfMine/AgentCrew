@@ -655,6 +655,26 @@ QPushButton:pressed {
 }
 """
 
+    UNCONSOLIDATE_BUTTON = """
+QPushButton {
+    background-color: #4c566a; /* Nord Polar Night 2 */
+    color: #eceff4; /* Nord Snow Storm 2 */
+    border: none;
+    border-radius: 15px;
+    padding: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 30px;
+    height: 30px;
+}
+QPushButton:hover {
+    background-color: #bf616a; /* Nord Aurora Red for undo action */
+}
+QPushButton:pressed {
+    background-color: #d08770; /* Nord Aurora Orange */
+}
+"""
+
     # Tool dialog styles
     TOOL_DIALOG_TEXT_EDIT = """
 QTextEdit {

@@ -33,24 +33,17 @@ class CommandProcessor:
 
     async def process_command(self, user_input: str) -> CommandResult:
         """Process a command and return the result."""
-        # Exit command
         if self._is_exit_command(user_input):
             self.message_handler._notify("exit_requested")
             return CommandResult(handled=True, exit_flag=True)
-
-        # Clear command
         elif user_input.lower() == "/clear":
             self.message_handler.start_new_conversation()
             return CommandResult(handled=True, clear_flag=True)
-
-        # Copy command
         elif user_input.lower() == "/copy":
             self.message_handler._notify(
                 "copy_requested", self.message_handler.latest_assistant_response
             )
             return CommandResult(handled=True, clear_flag=True)
-
-        # Debug command
         elif user_input.lower() == "/debug":
             self.message_handler._notify(
                 "debug_requested", self.message_handler.agent.history
@@ -59,8 +52,6 @@ class CommandProcessor:
                 "debug_requested", self.message_handler.streamline_messages
             )
             return CommandResult(handled=True, clear_flag=True)
-
-        # Think command
         elif user_input.lower().startswith("/think "):
             try:
                 budget = user_input[7:].strip()
@@ -71,25 +62,19 @@ class CommandProcessor:
                     "error", "Invalid budget value. Please provide a number."
                 )
             return CommandResult(handled=True, clear_flag=True)
-
-        # Consolidate command
         elif user_input.lower().startswith("/consolidate"):
             return await self._handle_consolidate_command(user_input)
-
-        # Jump command
+        elif user_input.lower().startswith("/unconsolidate"):
+            return await self._handle_unconsolidate_command(user_input)
         elif user_input.lower().startswith("/jump "):
             jumped = self._handle_jump_command(user_input)
             return CommandResult(handled=jumped, clear_flag=True)
-
-        # Agent command
         elif user_input.lower().startswith("/agent"):
             success, message = self._handle_agent_command(user_input)
             self.message_handler._notify(
                 "agent_command_result", {"success": success, "message": message}
             )
             return CommandResult(handled=True, clear_flag=True)
-
-        # Model command
         elif user_input.lower().startswith("/model"):
             exit_flag, clear_flag = self._handle_model_command(user_input)
             return CommandResult(
@@ -100,16 +85,10 @@ class CommandProcessor:
             return CommandResult(
                 handled=True, exit_flag=exit_flag, clear_flag=clear_flag
             )
-
-        # File command
         elif user_input.startswith("/file "):
             return self._handle_file_command(user_input)
-
-        # Drop command
         elif user_input.startswith("/drop "):
             return self._handle_drop_command(user_input)
-
-        # Not a command
         return CommandResult(handled=False)
 
     def _is_exit_command(self, user_input: str) -> bool:
@@ -118,7 +97,6 @@ class CommandProcessor:
     async def _handle_consolidate_command(self, user_input: str) -> CommandResult:
         """Handle consolidate command."""
         try:
-            # Extract the parameter (number of messages to preserve)
             parts = user_input.split()
             if len(parts) == 1:
                 preserve_count = 10
@@ -128,21 +106,17 @@ class CommandProcessor:
             if isinstance(self.message_handler.agent, LocalAgent):
                 consolidator = ConversationConsolidator(self.message_handler.agent.llm)
 
-                # Consolidate messages
                 result = await consolidator.consolidate(
                     self.message_handler.streamline_messages, preserve_count
                 )
 
                 if result["success"]:
-                    # Rebuild agent messages from consolidated messages
                     self.message_handler.agent_manager.rebuild_agents_messages(
                         self.message_handler.streamline_messages
                     )
 
-                    # Notify UI about consolidation
                     self.message_handler._notify("consolidation_completed", result)
 
-                    # If we have a conversation ID, update the persistent storage
                     if self.message_handler.current_conversation_id:
                         try:
                             self.message_handler.persistent_service.append_conversation_messages(
@@ -187,6 +161,60 @@ class CommandProcessor:
             )
             return CommandResult(handled=True, clear_flag=True)
 
+    async def _handle_unconsolidate_command(self, user_input: str) -> CommandResult:
+        """Handle unconsolidate command to remove last consolidated message."""
+        try:
+            if isinstance(self.message_handler.agent, LocalAgent):
+                consolidator = ConversationConsolidator(self.message_handler.agent.llm)
+
+                result = await consolidator.unconsolidate(
+                    self.message_handler.streamline_messages
+                )
+
+                if result["success"]:
+                    self.message_handler.agent_manager.rebuild_agents_messages(
+                        self.message_handler.streamline_messages
+                    )
+
+                    self.message_handler._notify("unconsolidation_completed", result)
+
+                    if self.message_handler.current_conversation_id:
+                        try:
+                            self.message_handler.persistent_service.append_conversation_messages(
+                                self.message_handler.current_conversation_id,
+                                self.message_handler.streamline_messages,
+                                True,
+                            )
+                        except Exception as e:
+                            self.message_handler._notify(
+                                "error",
+                                f"Failed to save unconsolidated conversation: {str(e)}",
+                            )
+
+                    message = (
+                        f"Unconsolidated last consolidated message containing "
+                        f"{result['messages_restored']} original messages."
+                    )
+                    self.message_handler._notify("system_message", message)
+                else:
+                    self.message_handler._notify(
+                        "system_message",
+                        f"Unconsolidation skipped: {result['reason']}",
+                    )
+
+                return CommandResult(handled=True, clear_flag=True)
+            else:
+                self.message_handler._notify(
+                    "error",
+                    "Unconsolidation is only supported with LocalAgent.",
+                )
+                return CommandResult(handled=False, clear_flag=False)
+        except Exception as e:
+            self.message_handler._notify(
+                "error", f"Error during unconsolidation: {str(e)}"
+            )
+            return CommandResult(handled=True, clear_flag=True)
+
     async def _handle_mcp_command(self, command: str) -> Tuple[bool, bool]:
         """
         Handle the /mcp command: list prompts or fetch a specific prompt content.
@@ -198,7 +226,6 @@ class CommandProcessor:
         mcp_service: Optional[MCPService] = self.message_handler.mcp_manager.mcp_service
         # /mcp with no args: list all prompts
         if len(parts) == 1:
-            # Aggregate prompts from all servers
             prompts = []
             if mcp_service:
                 for server_id, prompt_list in mcp_service.server_prompts.items():
@@ -247,7 +274,6 @@ class CommandProcessor:
     def _handle_jump_command(self, command: str) -> bool:
         """Handle the /jump command to rewind conversation to a previous turn."""
         try:
-            # Extract the turn number from the command
             parts = command.split()
             if len(parts) != 2:
                 self.message_handler._notify("error", "Usage: /jump <turn_number>")
@@ -255,7 +281,6 @@ class CommandProcessor:
 
             turn_number = int(parts[1])
 
-            # Validate the turn number
             if turn_number < 1 or turn_number > len(
                 self.message_handler.conversation_turns
             ):
@@ -265,10 +290,8 @@ class CommandProcessor:
                 )
                 return False
 
-            # Get the selected turn
             selected_turn = self.message_handler.conversation_turns[turn_number - 1]
 
-            # Truncate messages to the index from the selected turn
             self.message_handler.streamline_messages = (
                 self.message_handler.streamline_messages[: selected_turn.message_index]
             )
@@ -279,7 +302,6 @@ class CommandProcessor:
                     True,
                 )
 
-            # Get the last assistant message from the streamline messages
             last_assistant_message = next(
                 (
                     msg
@@ -350,11 +372,9 @@ class CommandProcessor:
             self.message_handler._notify("models_listed", models_by_provider)
             return False, True
 
-        # Try to switch to the specified model
         if registry.set_current_model(model_id):
             model = registry.get_current_model()
             if model:
-                # Update the LLM service
                 manager.set_model(model.provider, model.id)
 
                 new_llm_service = manager.get_service(model.provider)
@@ -365,7 +385,6 @@ class CommandProcessor:
                     config_manager = ConfigManagement()
                     config_manager.set_last_used_model(model_id, model.provider)
                 except Exception as e:
-                    # Don't fail the command if config save fails, just log it
                     print(f"Warning: Failed to save last used model: {e}")
 
                 self.message_handler._notify(
@@ -388,7 +407,6 @@ class CommandProcessor:
         """
         parts = command.split()
 
-        # If no agent name is provided, list available agents
         if len(parts) == 1:
             agents_info = {"current": self.message_handler.agent.name, "available": {}}
 
@@ -404,7 +422,6 @@ class CommandProcessor:
             self.message_handler._notify("agents_listed", agents_info)
             return True, "Listed available agents"
 
-        # If an agent name is provided, try to switch to that agent
         agent_name = parts[1]
         old_agent_name = self.message_handler.agent_manager.get_current_agent().name
         if old_agent_name == agent_name:
@@ -418,7 +435,6 @@ class CommandProcessor:
                 self.message_handler.agent.history = list(old_agent.history)
                 old_agent.history = []
 
-            # NEW: Persist the last used agent to global config
             try:
                 config_manager = ConfigManagement()
                 config_manager.set_last_used_agent(agent_name)

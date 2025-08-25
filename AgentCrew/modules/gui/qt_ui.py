@@ -425,6 +425,28 @@ class ChatWindow(QMainWindow, Observer):
             True
         )  # Change button to stop state
 
+    def unconsolidate_messages(self, message_bubble=None):
+        """Unconsolidate the last consolidated message."""
+        # Check if there are any consolidated messages
+        has_consolidated = any(
+            msg.get("role") == "consolidated"
+            for msg in self.message_handler.streamline_messages
+        )
+
+        if not has_consolidated:
+            self.display_status_message(
+                "No consolidated messages found to unconsolidate."
+            )
+            return
+
+        print("Test")
+        # Execute the unconsolidate command
+        self.llm_worker.process_request.emit("/unconsolidate")
+
+        # Update UI state
+        self.ui_state_manager.set_input_controls_enabled(False)
+        self.display_status_message("Unconsolidating messages...")
+
     def listen(self, event: str, data: Any = None):
         """Handle events from the message handler."""
         # Use a signal to ensure thread-safety
@@ -502,6 +524,9 @@ class ChatWindow(QMainWindow, Observer):
             self.display_error(data)
         elif event == "consolidation_completed":
             self.conversation_components.display_consolidation(data)
+            self.ui_state_manager.set_input_controls_enabled(True)
+        elif event == "unconsolidation_completed":
+            self.conversation_components.display_unconsolidation(data)
             self.ui_state_manager.set_input_controls_enabled(True)
         elif event == "file_processing":
             file_path = data["file_path"]

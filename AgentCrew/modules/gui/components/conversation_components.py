@@ -177,3 +177,22 @@ class ConversationComponents:
             self.chat_window.message_handler.streamline_messages,
             self.chat_window.message_handler.current_conversation_id,
         )
+
+    def display_unconsolidation(self, result: Dict[str, Any]):
+        """Display the result of a conversation unconsolidation."""
+        if result.get("success"):
+            # Reload the conversation to show unconsolidated state
+            self.display_conversation(
+                self.chat_window.message_handler.streamline_messages,
+                self.chat_window.message_handler.current_conversation_id,
+            )
+            
+            # Show success message
+            messages_restored = result.get("messages_restored", 0)
+            self.chat_window.display_status_message(
+                f"Successfully unconsolidated {messages_restored} messages"
+            )
+        else:
+            # Show error message
+            reason = result.get("reason", "Unknown error")
+            self.chat_window.display_status_message(f"Unconsolidation failed: {reason}")
