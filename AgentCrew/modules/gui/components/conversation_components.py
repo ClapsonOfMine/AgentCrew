@@ -186,7 +186,7 @@ class ConversationComponents:
                 self.chat_window.message_handler.streamline_messages,
                 self.chat_window.message_handler.current_conversation_id,
             )
-            
+
             # Show success message
             messages_restored = result.get("messages_restored", 0)
             self.chat_window.display_status_message(

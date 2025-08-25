@@ -167,7 +167,7 @@ class AgentManager:
         messages_to_process = []
         if last_consolidated_idx >= 0:
             # Include the consolidated message and everything after it
-            messages_to_process = streamline_messages[last_consolidated_idx:]
+            messages_to_process = streamline_messages[last_consolidated_idx + 1 :]
             messages_to_process = consolidated_messages + messages_to_process
         else:
             # No consolidated messages, include everything
