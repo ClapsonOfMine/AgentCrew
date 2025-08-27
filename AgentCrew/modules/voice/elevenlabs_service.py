@@ -8,15 +8,20 @@ import soundfile as sf
 from elevenlabs import ElevenLabs, VoiceSettings, stream, SpeechToTextChunkResponseModel
 from .text_cleaner import TextCleaner
 from .audio_handler import AudioHandler
+from .base import BaseVoiceService
 
 from AgentCrew.modules import logger
 
 
-class VoiceService:
+class ElevenLabsVoiceService(BaseVoiceService):
     """Service for ElevenLabs voice interactions including TTS and STT."""
 
     def __init__(self, api_key: Optional[str] = None):
         """Initialize the voice service with ElevenLabs API."""
+        # Initialize parent class
+        super().__init__()
+
+        # Set the API key
         self.api_key = api_key or os.getenv("ELEVENLABS_API_KEY")
         if not self.api_key:
             raise ValueError(
@@ -38,18 +43,7 @@ class VoiceService:
             speed=1,
         )
 
-        # Audio streaming and TTS threading
-        self.audio_queue = queue.Queue()
-        self.is_playing = False
-        self.playback_thread = None
-
         # TTS streaming thread management
-        self.tts_queue = queue.Queue(
-            maxsize=10
-        )  # Limit queue size to prevent memory issues
-        self.tts_thread = None
-        self.tts_thread_running = False
-        self.tts_lock = threading.Lock()
         self._start_tts_thread()
 
     def start_voice_recording(self, sample_rate: int = 44100) -> Dict[str, Any]:

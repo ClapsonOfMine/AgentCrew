@@ -5,13 +5,18 @@ import numpy as np
 import sounddevice as sd
 import pyaudio
 from AgentCrew.modules import logger
+from .base import BaseAudioHandler
 
 
-class AudioHandler:
+class AudioHandler(BaseAudioHandler):
     """Handles audio recording and playback operations."""
 
     def __init__(self):
         """Initialize audio handler."""
+        # Initialize parent class
+        super().__init__()
+        
+        # Override parent attributes and add specific implementations
         self.recording = False
         self.recording_thread = None
         self.audio_queue = queue.Queue()

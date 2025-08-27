@@ -11,7 +11,7 @@ from AgentCrew.modules.agents import AgentManager
 from AgentCrew.modules.chat.file_handler import FileHandler
 from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.config import ConfigManagement
-from AgentCrew.modules.voice import VoiceService
+from AgentCrew.modules.voice import ElevenLabsVoiceService
 from AgentCrew.modules.memory import (
     BaseMemoryService,
     ContextPersistenceService,
@@ -74,7 +74,7 @@ class MessageHandler(Observable):
         self.voice_service = None
         # Check if voice service is available
         if os.getenv("ELEVENLABS_API_KEY"):
-            self.voice_service = VoiceService()
+            self.voice_service = ElevenLabsVoiceService()
 
     def _messages_append(self, message):
         """Append a message to the agent history and streamline messages."""

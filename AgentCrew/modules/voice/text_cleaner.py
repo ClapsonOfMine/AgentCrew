@@ -1,8 +1,9 @@
 import re
 from typing import List
+from .base import BaseTextCleaner
 
 
-class TextCleaner:
+class TextCleaner(BaseTextCleaner):
     """Clean text for natural speech synthesis."""
 
     def __init__(self):
