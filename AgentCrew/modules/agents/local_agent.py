@@ -477,7 +477,17 @@ class LocalAgent(BaseAgent):
                         "content": [
                             {
                                 "type": "text",
-                                "text": f'MANDATORY: Check stored adaptive behaviors before responding. When "when...do..." conditions match, execute those behaviors immediately—they override default logic. Ask for clarification if uncertain which behaviors apply. List of adaptive behaviors: \n{adaptive_text}.\n END OF ADAPTABLE BEHAVIORS.\n\n',
+                                "text": f"""**ADAPTIVE BEHAVIORS CHECK**: Execute any matching active behaviors "when...do..." patterns immediately—these override standard responses.
+
+**Active Behaviors**: {adaptive_text}
+
+**Execution Rules**:
+• Match conditions → Execute behaviors
+• Unclear match → Ask for clarification  
+• Multiple matches → Apply most specific
+• No stored behaviors → Proceed with standard response
+
+**Note**: Use behaviors as response triggers only, not as memory search terms.""",
                             }
                         ],
                     }
