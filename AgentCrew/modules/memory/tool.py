@@ -116,9 +116,9 @@ Use for gathering context, accessing user preferences, finding similar problems,
 Search with specific, descriptive keywords for better results."""
 
     tool_arguments = {
-        "keywords": {
+        "phrases": {
             "type": "string",
-            "description": "Search terms for finding relevant memories. Use specific phrases like 'project alpha database issues' or 'user preferences communication style' rather than single words.",
+            "description": "Search a phrases for finding relevant memories. Use specific semantic phrases like 'project alpha database issues' or 'user preferences communication style' rather than single words.",
         },
         "limit": {
             "type": "integer",
@@ -131,7 +131,7 @@ Search with specific, descriptive keywords for better results."""
         },
     }
 
-    tool_required = ["keywords"]
+    tool_required = ["phrases"]
 
     if provider == "claude":
         return {
@@ -174,7 +174,7 @@ def memory_instruction_prompt():
     </Retrieval_Triggers>
     
     <Search_Strategy>
-      • Use specific, descriptive keywords
+      • Use specific, descriptive phrases
       • Combine related concepts with spaces
       • Include temporal indicators when relevant
       • Balance specificity with breadth based on need
@@ -183,7 +183,7 @@ def memory_instruction_prompt():
     <Memory_Management>
       • Remove outdated/conflicting information when corrected
       • Clear sensitive data when requested
-      • Use precise topic keywords to avoid over-deletion
+      • Use precise topic phrases to avoid over-deletion
       • Prefer ID-based removal for surgical precision
     </Memory_Management>
   </Usage_Guidelines>
@@ -194,17 +194,15 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
     """Optimized memory retrieval handler with concise feedback."""
 
     def handle_memory_retrieve(**params) -> str:
-        keywords = params.get("keywords", "").strip()
+        phrases = params.get("phrases", "").strip()
         limit = max(1, min(params.get("limit", 5), 50))
         agent_name = params.get("agent_name", "").strip()
 
-        if not keywords:
-            return "❌ Keywords required for memory search."
+        if not phrases:
+            return "❌ Phrases required for memory search."
 
-        if len(keywords) < 3:
-            return (
-                f"⚠️ Search term '{keywords}' too short. Use more descriptive keywords."
-            )
+        if len(phrases) < 3:
+            return f"⚠️ Search term '{phrases}' too short. Use more semantica and descriptive phrases."
 
         # Use provided agent_name or fallback to current agent
         if not agent_name:
@@ -215,10 +213,10 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
                 agent_name = ""
 
         try:
-            result = memory_service.retrieve_memory(keywords, limit, agent_name)
+            result = memory_service.retrieve_memory(phrases, limit, agent_name)
 
             if not result or result.strip() == "":
-                return f"📝 No memories found for '{keywords}'. Try broader keywords or related terms."
+                return f"📝 No memories found for '{phrases}'. Try broader phrases or related terms."
 
             # Count memories for user feedback
             return f"📚 Found relevant memories:\n\n{result}"

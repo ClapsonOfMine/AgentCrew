@@ -145,6 +145,11 @@ class MCPService:
             logger.exception(
                 f"MCPService: Error in connection management for '{server_name}'"
             )
+            if agent_name:
+                agent_manager = AgentManager.get_instance()
+                agent = agent_manager.get_local_agent(agent_name)
+                if agent:
+                    agent.is_tool_ready = True
         finally:
             logger.info(f"MCPService: Cleaning up connection for {server_name}.")
             self.sessions.pop(server_name, None)
