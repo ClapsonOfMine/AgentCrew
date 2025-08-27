@@ -142,7 +142,9 @@ class SettingsTab(QWidget):
         voice_enabled_label = QLabel("Voice Enabled:")
         self.voice_enabled_checkbox = QCheckBox()
         self.voice_enabled_checkbox.setChecked(False)  # Default to unchecked
-        global_settings_form_layout.addRow(voice_enabled_label, self.voice_enabled_checkbox)
+        global_settings_form_layout.addRow(
+            voice_enabled_label, self.voice_enabled_checkbox
+        )
 
         # Voice ID input
         voice_id_label = QLabel("Voice ID:")
@@ -229,10 +231,14 @@ class SettingsTab(QWidget):
             self.yolo_mode_checkbox.isChecked() if self.yolo_mode_checkbox else False
         )
         self.global_config["global_settings"]["voice_enabled"] = (
-            self.voice_enabled_checkbox.isChecked() if self.voice_enabled_checkbox else False
+            self.voice_enabled_checkbox.isChecked()
+            if self.voice_enabled_checkbox
+            else False
         )
         self.global_config["global_settings"]["voice_id"] = (
-            self.voice_id_input.text().strip() if self.voice_id_input else "kHhWB9Fw3aF6ly7JvltC"
+            self.voice_id_input.text().strip()
+            if self.voice_id_input
+            else "kHhWB9Fw3aF6ly7JvltC"
         )
 
         try:

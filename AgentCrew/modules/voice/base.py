@@ -325,4 +325,3 @@ class BaseAudioHandler(ABC):
                 self.stop_recording()
         except Exception:
             pass
-

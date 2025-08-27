@@ -14,7 +14,7 @@ from .audio_handler import AudioHandler
 __all__ = [
     "BaseVoiceService",
     "ElevenLabsVoiceService",
-    "DeepInfraVoiceService", 
+    "DeepInfraVoiceService",
     "TextCleaner",
     "AudioHandler",
 ]

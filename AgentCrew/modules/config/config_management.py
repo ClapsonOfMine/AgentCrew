@@ -233,10 +233,10 @@ class ConfigManagement:
             "api_keys": {},
             "auto_approval_tools": [],
             "global_settings": {
-                "theme": "dark", 
+                "theme": "dark",
                 "yolo_mode": False,
                 "voice_enabled": False,
-                "voice_id": "kHhWB9Fw3aF6ly7JvltC"  # Default ElevenLabs voice ID
+                "voice_id": "kHhWB9Fw3aF6ly7JvltC",  # Default ElevenLabs voice ID
             },
         }
         try:

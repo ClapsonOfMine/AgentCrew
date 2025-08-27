@@ -264,7 +264,7 @@ class DeepInfraVoiceService(BaseVoiceService):
             model_id: Not used in DeepInfra
         """
         logger.warning(
-            f"TTS not available with DeepInfra service. Use STT functionality instead."
+            "TTS not available with DeepInfra service. Use STT functionality instead."
         )
 
     def text_to_speech_stream_sync(
@@ -283,7 +283,7 @@ class DeepInfraVoiceService(BaseVoiceService):
         Returns:
             None - TTS not supported
         """
-        logger.warning(f"TTS not available with DeepInfra service.")
+        logger.warning("TTS not available with DeepInfra service.")
         return None
 
     def list_voices(self) -> Dict[str, Any]:
@@ -360,4 +360,3 @@ class DeepInfraVoiceService(BaseVoiceService):
             self.stop_tts_thread()
         except Exception:
             pass
-

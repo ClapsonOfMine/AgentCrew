@@ -15,7 +15,7 @@ class AudioHandler(BaseAudioHandler):
         """Initialize audio handler."""
         # Initialize parent class
         super().__init__()
-        
+
         # Override parent attributes and add specific implementations
         self.recording = False
         self.recording_thread = None
