@@ -284,13 +284,13 @@ _DEEPINFRA_MODELS = [
         output_token_price_1m=0.2,
     ),
     Model(
-        id="deepseek-ai/DeepSeek-V3-0324",
+        id="deepseek-ai/DeepSeek-V3.1",
         provider="deepinfra",
-        name="DeepSeek V3 0324",
-        description="DeepSeek-V3-0324, a strong Mixture-of-Experts (MoE) language model with 671B total parameters with 37B activated for each token, an improved iteration over DeepSeek-V3",
-        capabilities=["text-generation", "tool_use"],
+        name="DeepSeek V3.1",
+        description="DeepSeek-V3.1 is post-trained on the top of DeepSeek-V3.1-Base, which is built upon the original V3 base checkpoint through a two-phase long context extension approach",
+        capabilities=["text-generation", "tool_use", "stream"],
         input_token_price_1m=0.3,
-        output_token_price_1m=0.88,
+        output_token_price_1m=1.0,
     ),
     Model(
         id="deepseek-ai/DeepSeek-R1-0528",
