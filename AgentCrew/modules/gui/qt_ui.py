@@ -56,6 +56,7 @@ class ChatWindow(QMainWindow, Observer):
     version_label: QWidget  # Placeholder for all components
     send_button: QPushButton
     file_button: QPushButton
+    voice_button: QPushButton
     message_input: QTextEdit
     file_completer: QCompleter
     command_completer: QCompleter
@@ -151,6 +152,9 @@ class ChatWindow(QMainWindow, Observer):
         # --- Connect signals and slots (rest of the setup) ---
         self.send_button.clicked.connect(self.send_message)
         self.file_button.clicked.connect(self.input_components.browse_file)
+        self.voice_button.clicked.connect(
+            self.input_components.handle_voice_button_click
+        )
 
         # Setup context menu
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -253,14 +257,7 @@ class ChatWindow(QMainWindow, Observer):
             return  # Command was processed locally
 
         # Add user message to chat
-        self.chat_components.append_message(
-            user_input, True, self.message_handler.current_user_input_idx
-        )  # True = user message
-
-        # Set flag to expect a response (for chunking)
-        self.expecting_response = True
-        self.current_response_bubble = None
-        self.current_response_container = None
+        self._add_user_message_bubble(user_input)
 
         # Update status bar
         self.display_status_message("Processing your message...")
@@ -563,6 +560,31 @@ class ChatWindow(QMainWindow, Observer):
             self._update_cost_info(data["input_tokens"], data["output_tokens"])
         elif event == "mcp_prompt":
             self.message_input.setPlainText(data.get("content", ""))
+        elif event == "voice_recording_started":
+            # Update UI to show recording state
+            self.ui_state_manager.set_input_controls_enabled(False)
+            self.message_input.setPlaceholderText(
+                "🎤 Recording... Click voice button or press Enter to stop"
+            )
+            # Update voice button to show recording state
+            self.input_components.update_voice_button_state(True)
+        elif event == "voice_recording_completed":
+            # Restore normal UI state
+            self.message_input.setPlaceholderText("Type a message...")
+            # Update voice button to show normal state
+            self.input_components.update_voice_button_state(False)
+            self.ui_state_manager._set_send_button_state(True)
+            self._add_user_message_bubble(data)
+
+    def _add_user_message_bubble(self, data):
+        self.chat_components.append_message(
+            data, True, self.message_handler.current_user_input_idx
+        )  # True = user message
+
+        # Set flag to expect a response (for chunking)
+        self.expecting_response = True
+        self.current_response_bubble = None
+        self.current_response_container = None
 
     def _handle_theme_changed(self, theme_name):
         """
@@ -596,6 +618,16 @@ class ChatWindow(QMainWindow, Observer):
         self.file_button.setStyleSheet(
             self.style_provider.get_button_style("secondary")
         )
+
+        if (
+            hasattr(self.input_components, "is_voice_recording")
+            and self.input_components.is_voice_recording
+        ):
+            self.voice_button.setStyleSheet(self.style_provider.get_button_style("red"))
+        else:
+            self.voice_button.setStyleSheet(
+                self.style_provider.get_button_style("secondary")
+            )
 
         self.status_indicator.setStyleSheet(
             self.style_provider.get_status_indicator_style()

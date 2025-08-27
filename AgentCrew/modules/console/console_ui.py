@@ -48,6 +48,7 @@ class ConsoleUI(Observer):
             message_handler: The MessageHandler instance that this UI will observe.
         """
         self.message_handler = message_handler
+        self.voice_recording = False
         self.message_handler.attach(self)
 
         self.console = Console()
@@ -212,6 +213,19 @@ class ConsoleUI(Observer):
             self.session_cost = 0.0
         elif event == "update_token_usage":
             self._calculate_token_usage(data["input_tokens"], data["output_tokens"])
+        elif event == "voice_recording_started":
+            self.display_handlers.display_message(
+                Text("Start recording press Enter to stop...", style="bold yellow")
+            )
+        elif event == "voice_recording_stopping":
+            self.display_handlers.display_message(
+                Text("⏹️  Stopping recording...", style="bold yellow")
+            )
+        elif event == "voice_recording_completed":
+            self.voice_recording = False
+            # Re-enable normal input
+            if hasattr(self, "input_handler"):
+                self.input_handler._start_input_thread()
 
     def copy_to_clipboard(self, text: str):
         """Copy text to clipboard and show confirmation."""
@@ -379,11 +393,20 @@ class ConsoleUI(Observer):
                     ):
                         self.start_loading_animation()
 
+                    if user_input.startswith("/voice"):
+                        self.input_handler._stop_input_thread()
+                        self.voice_recording = True
+
                     # Process user input and commands
                     should_exit, was_cleared = asyncio.run(
                         self.message_handler.process_user_input(user_input)
                     )
 
+                    if self.voice_recording:
+                        input()
+                        should_exit, was_cleared = asyncio.run(
+                            self.message_handler.process_user_input("/end_voice")
+                        )
                     # Exit if requested
                     if should_exit:
                         break

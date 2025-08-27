@@ -89,6 +89,10 @@ class CommandProcessor:
             return self._handle_file_command(user_input)
         elif user_input.startswith("/drop "):
             return self._handle_drop_command(user_input)
+        elif user_input.lower() == "/voice":
+            return await self._handle_voice_command(user_input)
+        elif user_input.lower() == "/end_voice":
+            return await self._handle_end_voice_command(user_input)
         return CommandResult(handled=False)
 
     def _is_exit_command(self, user_input: str) -> bool:
@@ -572,4 +576,100 @@ class CommandProcessor:
             return CommandResult(handled=True, clear_flag=True)
         except Exception as e:
             self.message_handler._notify("error", f"Error removing file: {str(e)}")
+            return CommandResult(handled=True, clear_flag=True)
+
+    async def _handle_voice_command(self, command: str) -> CommandResult:
+        """Handle /voice command to start voice recording."""
+        try:
+            # Check if already recording
+            if self.message_handler.voice_service is None:
+                self.message_handler._notify(
+                    "error",
+                    "Voice service not available. Set ELEVENLABS_API_KEY environment variable.",
+                )
+                return CommandResult(handled=True, clear_flag=True)
+
+            if self.message_handler.voice_service.is_recording():
+                self.message_handler._notify(
+                    "error",
+                    "Already recording. Use /end_voice to stop current recording.",
+                )
+                return CommandResult(handled=True, clear_flag=True)
+
+            # Start recording
+            result = self.message_handler.voice_service.start_voice_recording()
+
+            if result["success"]:
+                self.message_handler._notify("voice_recording_started", None)
+                self.message_handler._notify(
+                    "system_message",
+                    "🎤 Recording started. Press Enter to stop.",
+                )
+            else:
+                self.message_handler._notify("error", result["error"])
+
+            return CommandResult(handled=True, clear_flag=True)
+
+        except Exception as e:
+            self.message_handler._notify("error", f"Voice command failed: {str(e)}")
+            return CommandResult(handled=True, clear_flag=True)
+
+    async def _handle_end_voice_command(self, command: str) -> CommandResult:
+        """Handle /end_voice command to stop recording and transcribe."""
+        try:
+            # Check if voice service exists and is recording
+            if self.message_handler.voice_service is None:
+                self.message_handler._notify(
+                    "error",
+                    "No voice service initialized. Use /voice to start recording.",
+                )
+                return CommandResult(handled=True, clear_flag=True)
+
+            if not self.message_handler.voice_service.is_recording():
+                self.message_handler._notify("error", "No recording in progress.")
+                return CommandResult(handled=True, clear_flag=True)
+
+            # Stop recording
+            self.message_handler._notify("voice_recording_stopping", None)
+            stop_result = self.message_handler.voice_service.stop_voice_recording()
+
+            if not stop_result["success"]:
+                self.message_handler._notify("error", stop_result["error"])
+                return CommandResult(handled=True, clear_flag=True)
+
+            # Transcribe
+            self.message_handler._notify("system_message", "🔄 Transcribing audio...")
+
+            transcribe_result = await self.message_handler.voice_service.speech_to_text(
+                stop_result["audio_data"], stop_result["sample_rate"]
+            )
+            transcribed_text = None
+
+            if transcribe_result["success"]:
+                transcribed_text = transcribe_result["text"]
+                confidence = transcribe_result.get("confidence", 1.0)
+
+                # Notify about transcription
+                self.message_handler._notify(
+                    "system_message",
+                    f"✅ Transcribed (confidence: {confidence:.0%}): {transcribed_text}",
+                )
+
+                # Process as regular user input if there's text
+                if transcribed_text.strip():
+                    await self.message_handler.process_user_input(transcribed_text)
+                else:
+                    self.message_handler._notify(
+                        "system_message", "No speech detected in the recording."
+                    )
+
+            else:
+                self.message_handler._notify("error", transcribe_result["error"])
+
+            self.message_handler._notify("voice_recording_completed", transcribed_text)
+            return CommandResult(handled=True, clear_flag=False)
+
+        except Exception as e:
+            self.message_handler._notify("error", f"End voice command failed: {str(e)}")
+            self.message_handler._notify("voice_recording_completed", None)
             return CommandResult(handled=True, clear_flag=True)

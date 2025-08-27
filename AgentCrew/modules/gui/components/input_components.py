@@ -69,12 +69,22 @@ class InputComponents:
             self.chat_window.style_provider.get_button_style("secondary")
         )
 
-        # Add buttons to layout
+        # Create Voice button
+        mic_icon = qta.icon("fa6s.microphone", color="white")
+        self.chat_window.voice_button = QPushButton(mic_icon, "")
+        self.chat_window.voice_button.setFont(input_font)
+        self.chat_window.voice_button.setStyleSheet(
+            self.chat_window.style_provider.get_button_style("secondary")
+        )
+        self.chat_window.voice_button.setToolTip("Start/Stop voice recording")
+
+        self.is_voice_recording = False
+
         buttons_layout.addWidget(self.chat_window.send_button)
         buttons_layout.addWidget(self.chat_window.file_button)
+        buttons_layout.addWidget(self.chat_window.voice_button)
         buttons_layout.addStretch(1)
 
-        # Store the buttons layout for use in main window
         self.buttons_layout = buttons_layout
 
     @Slot(str)
@@ -260,6 +270,39 @@ class InputComponents:
                     position = text_to_cursor.rfind(word)
             cursor.setPosition(position, QTextCursor.MoveMode.KeepAnchor)
             cursor.insertText(completion)
+
+    @Slot()
+    def handle_voice_button_click(self):
+        """Handle voice button click to start/stop recording."""
+        if not self.is_voice_recording:
+            # Start recording
+            self.chat_window.llm_worker.process_request.emit("/voice")
+        else:
+            # Stop recording
+            self.chat_window.llm_worker.process_request.emit("/end_voice")
+
+    def update_voice_button_state(self, is_recording: bool):
+        """Update the voice button icon and state based on recording status."""
+        self.is_voice_recording = is_recording
+
+        if is_recording:
+            # Change to stop icon when recording
+            stop_icon = qta.icon("fa6s.stop", color="white")
+            self.chat_window.voice_button.setIcon(stop_icon)
+            self.chat_window.voice_button.setToolTip("Stop voice recording")
+            # Update button style to indicate recording state
+            self.chat_window.voice_button.setStyleSheet(
+                self.chat_window.style_provider.get_button_style("red")
+            )
+        else:
+            # Change back to microphone icon when not recording
+            mic_icon = qta.icon("fa6s.microphone", color="white")
+            self.chat_window.voice_button.setIcon(mic_icon)
+            self.chat_window.voice_button.setToolTip("Start voice recording")
+            # Restore normal button style
+            self.chat_window.voice_button.setStyleSheet(
+                self.chat_window.style_provider.get_button_style("secondary")
+            )
 
     def get_input_layout(self):
         """Get the input row layout for integration with main window."""
