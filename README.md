@@ -37,6 +37,8 @@ AgentCrew can help.
 - **Works with Many AI Models:** Supports AI from OpenAI (GPT), Anthropic
   (Claude), Google (Gemini), GitHub Copilot, and others. Switching models is
   simple.
+- **🎤 Voice Interaction:** NEW in v0.6.9! Natural voice conversations with
+  TTS/STT powered by ElevenLabs.
 - **Creates Expert Agents:** Make AI agents for specific jobs, like writing or
   research.
 - **Connects to Other Tools:** Agents can use external software through the
@@ -109,6 +111,11 @@ Here are some things AgentCrew can do:
 - **Memory:** Agents remember past parts of your conversation. This helps them
   give relevant replies. You can tell agents to forget certain topics.
 - **Code Assistance:** Agents can analyze code and help with coding tasks.
+- **🎤 Voice Integration (TTS/STT):** Natural voice interaction capabilities
+  powered by ElevenLabs:
+  - **Speech-to-Text:** Record voice input using the microphone button
+  - **Text-to-Speech:** AI responses can be read aloud with natural voice
+    synthesis
 
 **💬 Easy Interaction and Chat Management:**
 
@@ -116,7 +123,14 @@ Here are some things AgentCrew can do:
   window (GUI).
 - **File Handling:** AI agents can work with text and image files in chat.
   AgentCrew also supports PDF, DOCX, XLSX, and PPTX files.
-- **📋 Smart Paste Detection:** Automatically detects images and binary content when pasted (Ctrl+V). Images from screenshots, copied files, or other sources are automatically converted to `/file` commands for seamless processing.
+- **📋 Smart Paste Detection:** Automatically detects images and binary content
+  when pasted (Ctrl+V). Images from screenshots, copied files, or other sources
+  are automatically converted to `/file` commands for seamless processing.
+- **🎤 Voice Controls:** Interactive voice features in the GUI:
+  - Microphone button for easy voice recording
+  - Visual recording indicators and status feedback
+  - Voice settings in global configuration
+  - Enable/disable voice features as needed
 - **Streaming Responses:** Get real-time replies from AI agents.
 - **"Thinking Mode":** Some AI models can show their reasoning process.
 - **Rollback Messages:** Easily go back to an earlier point in your
@@ -392,6 +406,9 @@ docker run -it --rm \
   one.
 - `/think <level>`: Turns on "thinking mode" for some AIs. Example:
   `/think medium`. Use `/think 0` to turn it off.
+- **🎤 Voice Commands:**
+  - `/voice`: Start voice recording (or use the microphone button in GUI)
+  - `/end_voice`: Stop voice recording and process the audio
 - `exit` or `quit`: Closes the chat.
 
 ## 🔧 Configuration Overview
@@ -408,9 +425,55 @@ easiest way to configure AgentCrew is through its graphical user interface
 - **Global Settings & MCP Servers:** Manage other settings and Model Context
   Protocol server connections using the GUI. This updates files like
   `~/.AgentCrew/config.json` and `~/.AgentCrew/mcp_servers.json`.
+- **🎤 Voice Settings:** Configure voice features in Global Settings:
+  - **Voice Enabled:** Toggle to enable/disable TTS and STT features
+  - **Voice ID:** Customize the ElevenLabs voice for text-to-speech
+  - **ElevenLabs API Key:** Required for voice functionality
 
 For full configuration details, see `CONFIGURATION.md` (this file will contain
 detailed setup information).
+
+## 🎤 Voice Features (TTS/STT)
+
+AgentCrew v0.6.9 introduces comprehensive voice interaction capabilities powered
+by ElevenLabs, enabling natural conversations with your AI agents.
+
+### 🔧 Setup and Configuration
+
+**Prerequisites:**
+
+- ElevenLabs API Key (get one at [ElevenLabs](https://elevenlabs.io))
+- Audio system dependencies (automatically installed with AgentCrew)
+
+**Configuration Steps:**
+
+1. **Add ElevenLabs API Key:**
+   - In GUI: Go to Settings → Global Settings → API Keys
+   - Add your ElevenLabs API key in the "ElevenLabs API Key" field
+   - Or set environment variable: `export ELEVENLABS_API_KEY="your_api_key"`
+
+2. **Enable Voice Features:**
+   - In GUI: Settings → Global Settings → Voice Enabled (check the box)
+   - Choose a Voice ID (defaults to a high-quality voice)
+
+3. **Optional Voice Customization:**
+   - Browse available voices at ElevenLabs and copy the Voice ID
+   - Enter the Voice ID in Settings → Global Settings → Voice ID field
+
+### 🔍 Troubleshooting
+
+**Voice not working?**
+
+- Verify ElevenLabs API key is correctly set
+- Check that "Voice Enabled" is checked in settings
+- Ensure microphone permissions are granted
+- Try restarting AgentCrew after configuration changes
+
+**Audio quality issues?**
+
+- Experiment with different Voice IDs from ElevenLabs
+- Check your microphone settings and noise levels
+- Ensure stable internet connection for API calls
 
 ## 👨‍💻 Development & Customization
 

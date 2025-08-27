@@ -31,10 +31,10 @@ class VoiceService:
         self.default_voice_id = "kHhWB9Fw3aF6ly7JvltC"
         self.default_model = "eleven_turbo_v2_5"  # Low latency model
         self.voice_settings = VoiceSettings(
-            stability=0.5,
-            similarity_boost=0.75,
-            style=0.5,
-            use_speaker_boost=True,
+            stability=1,
+            similarity_boost=1,
+            style=0,
+            use_speaker_boost=False,
             speed=1,
         )
 
@@ -287,7 +287,7 @@ class VoiceService:
                 voice_id=voice_id or self.default_voice_id,
                 model_id=model_id or self.default_model,
                 output_format="mp3_44100_128",
-                voice_settings=self.voice_settings,
+                # voice_settings=self.voice_settings,
             )
             stream(response)
 
@@ -322,15 +322,20 @@ class VoiceService:
         """Get the voice ID from global config or return default."""
         try:
             from AgentCrew.modules.config import ConfigManagement
+
             config_management = ConfigManagement()
             global_config = config_management.read_global_config_data()
-            voice_id = global_config.get("global_settings", {}).get("voice_id", self.default_voice_id)
-            
+            voice_id = global_config.get("global_settings", {}).get(
+                "voice_id", self.default_voice_id
+            )
+
             # Validate voice_id is not empty and has reasonable length
             if voice_id and voice_id.strip() and len(voice_id.strip()) >= 10:
                 return voice_id.strip()
             else:
-                logger.warning(f"Invalid voice_id in config: '{voice_id}', using default")
+                logger.warning(
+                    f"Invalid voice_id in config: '{voice_id}', using default"
+                )
                 return self.default_voice_id
         except Exception as e:
             logger.warning(f"Failed to read voice_id from config: {e}")
