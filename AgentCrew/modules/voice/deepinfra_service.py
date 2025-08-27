@@ -5,6 +5,9 @@ from typing import Dict, Any, Optional
 import queue
 import soundfile as sf
 from openai import OpenAI
+from pathlib import Path
+import subprocess
+import platform
 from .text_cleaner import TextCleaner
 from .audio_handler import AudioHandler
 from .base import BaseVoiceService
@@ -39,8 +42,9 @@ class DeepInfraVoiceService(BaseVoiceService):
         # STT settings - Using the specified model for DeepInfra
         self.stt_model = "openai/whisper-large-v3-turbo"
 
-        # TTS settings - Note: DeepInfra primarily provides STT, not TTS
-        # We'll implement STT functionality and leave TTS as placeholder
+        # TTS settings - DeepInfra now supports TTS via OpenAI-compatible Speech API
+        self.tts_model = "canopylabs/orpheus-3b-0.1-ft"  # DeepInfra TTS model
+        self.default_voice = "tara"  # Default voice for DeepInfra TTS
 
         # TTS streaming thread management
         self._start_tts_thread()
@@ -142,51 +146,6 @@ class DeepInfraVoiceService(BaseVoiceService):
             logger.error(f"Speech-to-text failed: {str(e)}")
             return {"success": False, "error": f"Failed to transcribe audio: {str(e)}"}
 
-    def translate_to_english(self, audio_data: Any, sample_rate: int) -> Dict[str, Any]:
-        """
-        Translate audio to English using DeepInfra's translation endpoint.
-
-        Args:
-            audio_data: NumPy array of audio data
-            sample_rate: Sample rate of the audio
-
-        Returns:
-            Dict containing translation results
-        """
-        try:
-            # Save audio to temporary file
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
-                sf.write(tmp_file.name, audio_data, sample_rate)
-                tmp_file_path = tmp_file.name
-
-            # Perform translation using OpenAI-compatible API
-            with open(tmp_file_path, "rb") as audio_file:
-                translation = self.client.audio.translations.create(
-                    model=self.stt_model,
-                    file=audio_file,
-                    response_format="verbose_json",
-                    temperature=0.2,
-                    prompt="",  # Optional prompt in English to guide translation
-                )
-
-            # Clean up temp file
-            os.unlink(tmp_file_path)
-
-            # Extract information from the response
-            text = translation.text if hasattr(translation, "text") else ""
-
-            return {
-                "success": True,
-                "text": text,
-                "language": "en",  # Always English for translations
-                "confidence": 1.0,
-                "is_translation": True,
-            }
-
-        except Exception as e:
-            logger.error(f"Translation failed: {str(e)}")
-            return {"success": False, "error": f"Failed to translate audio: {str(e)}"}
-
     def clean_text_for_speech(self, text: str) -> str:
         """
         Clean assistant response text for natural speech.
@@ -206,12 +165,10 @@ class DeepInfraVoiceService(BaseVoiceService):
                 self.tts_thread_running = True
                 self.tts_thread = threading.Thread(target=self._tts_worker, daemon=True)
                 self.tts_thread.start()
-                logger.debug("TTS worker thread started (DeepInfra - STT only)")
+                logger.debug("TTS worker thread started (DeepInfra)")
 
     def _tts_worker(self):
         """Worker thread for processing TTS requests."""
-        # Note: DeepInfra primarily provides STT, not TTS
-        # This is a placeholder implementation
         while self.tts_thread_running:
             try:
                 # Wait for TTS request with timeout
@@ -220,9 +177,7 @@ class DeepInfraVoiceService(BaseVoiceService):
                     break
 
                 text, voice_id, model_id = tts_request
-                logger.warning(
-                    f"TTS not available with DeepInfra service. Text: {text[:50]}..."
-                )
+                self._process_tts_request(text, voice_id, model_id)
 
             except queue.Empty:
                 continue
@@ -237,35 +192,84 @@ class DeepInfraVoiceService(BaseVoiceService):
         """
         Process a single TTS request synchronously in the worker thread.
 
-        Note: DeepInfra doesn't provide TTS functionality, only STT.
-        This is a placeholder implementation.
-
         Args:
             text: Text to convert to speech
-            voice_id: Not used in DeepInfra
-            model_id: Not used in DeepInfra
+            voice_id: Voice ID (defaults to "tara")
+            model_id: Model ID (defaults to canopylabs/orpheus-3b-0.1-ft)
         """
-        logger.warning(
-            f"TTS not available with DeepInfra service. Text: {text[:50]}..."
-        )
+        try:
+            # Clean text for speech
+            cleaned_text = self.clean_text_for_speech(text)
+
+            if not cleaned_text.strip():
+                logger.warning("No speakable text after cleaning")
+                return
+
+            logger.debug(f"Processing TTS for text: {cleaned_text[:50]}...")
+
+            # Use default values if not provided
+            voice = voice_id or self.default_voice
+            model = model_id or self.tts_model
+
+            # Create temporary file for audio output
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+                speech_file_path = Path(tmp_file.name)
+
+            # Generate speech using DeepInfra's OpenAI-compatible Speech API
+            with self.client.audio.speech.with_streaming_response.create(
+                model=model,
+                voice=voice,
+                input=cleaned_text,
+                response_format="mp3",
+            ) as response:
+                response.stream_to_file(speech_file_path)
+
+            # Play the generated audio file
+            self._play_audio_file(speech_file_path)
+
+            # Clean up temporary file
+            try:
+                os.unlink(speech_file_path)
+            except Exception as e:
+                logger.warning(f"Failed to clean up temp file {speech_file_path}: {e}")
+
+            logger.debug("TTS processing completed")
+
+        except Exception as e:
+            logger.error(f"Text-to-speech processing failed: {str(e)}")
 
     def text_to_speech_stream(
         self, text: str, voice_id: Optional[str] = None, model_id: Optional[str] = None
     ):
         """
         Queue text-to-speech audio for streaming in a separate thread.
-
-        Note: DeepInfra doesn't provide TTS functionality.
-        This method logs a warning and returns immediately.
+        This method returns immediately and doesn't block the calling thread.
 
         Args:
             text: Text to convert to speech
-            voice_id: Not used in DeepInfra
-            model_id: Not used in DeepInfra
+            voice_id: Voice ID (defaults to "tara")
+            model_id: Model ID (defaults to canopylabs/orpheus-3b-0.1-ft)
         """
-        logger.warning(
-            "TTS not available with DeepInfra service. Use STT functionality instead."
-        )
+        try:
+            if not text or not text.strip():
+                logger.warning("Empty text provided for TTS")
+                return
+
+            # Ensure TTS thread is running
+            if not self.tts_thread_running:
+                self._start_tts_thread()
+
+            # Queue the TTS request
+            tts_request = (text, voice_id, model_id)
+            try:
+                self.tts_queue.put(tts_request, block=False)
+                logger.debug(f"TTS request queued for text: {text[:50]}...")
+            except queue.Full:
+                logger.warning(
+                    f"TTS queue is full (size: {self.tts_queue.qsize()}), dropping request"
+                )
+        except Exception as e:
+            logger.error(f"Failed to queue TTS request: {str(e)}")
 
     def text_to_speech_stream_sync(
         self, text: str, voice_id: Optional[str] = None, model_id: Optional[str] = None
@@ -273,56 +277,119 @@ class DeepInfraVoiceService(BaseVoiceService):
         """
         Synchronous version of text-to-speech streaming.
 
-        Note: DeepInfra doesn't provide TTS functionality.
-
         Args:
             text: Text to convert to speech
-            voice_id: Not used in DeepInfra
-            model_id: Not used in DeepInfra
+            voice_id: Voice ID (defaults to "tara")
+            model_id: Model ID (defaults to canopylabs/orpheus-3b-0.1-ft)
 
         Returns:
-            None - TTS not supported
+            Path to generated audio file
         """
-        logger.warning("TTS not available with DeepInfra service.")
-        return None
+        try:
+            # Clean text for speech
+            cleaned_text = self.clean_text_for_speech(text)
+
+            if not cleaned_text.strip():
+                logger.warning("No speakable text after cleaning")
+                return None
+
+            # Use default values if not provided
+            voice = voice_id or self.default_voice
+            model = model_id or self.tts_model
+
+            # Create temporary file for audio output
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+                speech_file_path = Path(tmp_file.name)
+
+            # Generate speech using DeepInfra's OpenAI-compatible Speech API
+            with self.client.audio.speech.with_streaming_response.create(
+                model=model,
+                voice=voice,
+                input=cleaned_text,
+                response_format="mp3",
+            ) as response:
+                response.stream_to_file(speech_file_path)
+
+            logger.debug(f"TTS file generated: {speech_file_path}")
+            return speech_file_path
+
+        except Exception as e:
+            logger.error(f"Text-to-speech failed: {str(e)}")
+            raise
 
     def list_voices(self) -> Dict[str, Any]:
         """
-        List available voices.
+        List available voices for DeepInfra TTS.
 
-        Note: DeepInfra doesn't provide TTS, so no voices available.
+        Note: DeepInfra TTS supports a limited set of voices.
+        Based on OpenAI TTS compatibility, common voices include:
+        alloy, echo, fable, onyx, nova, shimmer, tara
         """
-        return {
-            "success": False,
-            "error": "TTS voices not available with DeepInfra service. Service provides STT only.",
-            "voices": [],
-        }
+        try:
+            # DeepInfra TTS voices (based on OpenAI compatibility)
+            voices = [
+                {"voice_id": "alloy", "name": "Alloy", "category": "standard"},
+                {"voice_id": "echo", "name": "Echo", "category": "standard"},
+                {"voice_id": "fable", "name": "Fable", "category": "standard"},
+                {"voice_id": "onyx", "name": "Onyx", "category": "standard"},
+                {"voice_id": "nova", "name": "Nova", "category": "standard"},
+                {"voice_id": "shimmer", "name": "Shimmer", "category": "standard"},
+                {"voice_id": "tara", "name": "Tara", "category": "standard"},
+            ]
+
+            return {
+                "success": True,
+                "voices": voices,
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Failed to list voices: {str(e)}"}
 
     def set_voice(self, voice_id: str):
         """
         Set the default voice for TTS.
 
-        Note: Not applicable for DeepInfra as it doesn't provide TTS.
+        Args:
+            voice_id: Voice identifier to set as default
         """
-        logger.warning("Voice setting not available with DeepInfra service (STT only).")
+        self.default_voice = voice_id
+        logger.info(f"Default voice set to: {voice_id}")
 
     def get_configured_voice_id(self) -> str:
         """
-        Get the voice ID from configuration.
-
-        Note: Not applicable for DeepInfra as it doesn't provide TTS.
+        Get the voice ID from global config or return default.
         """
-        return ""
+
+        try:
+            from AgentCrew.modules.config import ConfigManagement
+
+            config_management = ConfigManagement()
+            global_config = config_management.read_global_config_data()
+            voice_id = global_config.get("global_settings", {}).get(
+                "voice_id", self.default_voice
+            )
+
+            # Validate voice_id is not empty and has reasonable length
+            if voice_id and voice_id.strip():
+                return voice_id.strip()
+            else:
+                logger.warning(
+                    f"Invalid voice_id in config: '{voice_id}', using default"
+                )
+                return self.default_voice
+        except Exception as e:
+            logger.warning(f"Failed to read voice_id from config: {e}")
+            return self.default_voice
 
     def set_voice_settings(self, **kwargs):
         """
         Update voice settings.
 
-        Note: Not applicable for DeepInfra as it doesn't provide TTS.
+        Note: DeepInfra TTS has limited voice settings compared to other services.
+        Most settings are handled by the model itself.
         """
-        logger.warning(
-            "Voice settings not available with DeepInfra service (STT only)."
-        )
+        logger.info(f"Voice settings updated: {kwargs}")
+        # DeepInfra TTS doesn't support detailed voice settings like ElevenLabs
+        # The voice characteristics are built into the voice selection
 
     def stop_tts_thread(self):
         """Stop the TTS worker thread gracefully."""
@@ -353,6 +420,47 @@ class DeepInfraVoiceService(BaseVoiceService):
             logger.debug("TTS queue cleared")
         except queue.Empty:
             pass
+
+    def _play_audio_file(self, file_path: Path):
+        """
+        Play an audio file using the system's default audio player.
+
+        Args:
+            file_path: Path to the audio file to play
+        """
+        try:
+            system = platform.system().lower()
+
+            if system == "darwin":  # macOS
+                subprocess.run(["afplay", str(file_path)], check=True)
+            elif system == "linux":
+                # Try different audio players available on Linux
+                players = ["mpg123", "ffplay", "aplay", "paplay"]
+                for player in players:
+                    try:
+                        subprocess.run(
+                            [player, str(file_path)],
+                            check=True,
+                            capture_output=True,
+                            timeout=30,
+                        )
+                        break
+                    except (
+                        subprocess.CalledProcessError,
+                        FileNotFoundError,
+                        subprocess.TimeoutExpired,
+                    ):
+                        continue
+                else:
+                    logger.warning("No suitable audio player found on Linux")
+            elif system == "windows":
+                # Windows
+                subprocess.run(["start", str(file_path)], shell=True, check=True)
+            else:
+                logger.warning(f"Unsupported platform for audio playback: {system}")
+
+        except Exception as e:
+            logger.error(f"Failed to play audio file {file_path}: {e}")
 
     def __del__(self):
         """Cleanup when service is destroyed."""
