@@ -358,5 +358,5 @@ class VoiceService:
         """Cleanup when service is destroyed."""
         try:
             self.stop_tts_thread()
-        except:
+        except Exception:
             pass

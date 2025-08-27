@@ -95,7 +95,7 @@ class TextCleaner:
         text = re.sub(r"\[\s*\]", "", text)
 
         # Ensure proper sentence ending
-        if text and not text[-1] in ".!?":
+        if text and text[-1] not in ".!?":
             text += "."
 
         return text
@@ -113,4 +113,3 @@ class TextCleaner:
         # Simple sentence splitting
         sentences = re.split(r"(?<=[.!?])\s+", text)
         return [s.strip() for s in sentences if s.strip()]
-
