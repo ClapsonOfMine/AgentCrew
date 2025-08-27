@@ -82,6 +82,11 @@ class SettingsTab(QWidget):
             "key_name": "VOYAGE_API_KEY",
             "placeholder": "e.g., pa-...",
         },
+        {
+            "label": "ElevenLabs API Key:",
+            "key_name": "ELEVENLABS_API_KEY",
+            "placeholder": "e.g., ...",
+        },
     ]
 
     def __init__(self, config_manager: ConfigManagement):
@@ -92,6 +97,8 @@ class SettingsTab(QWidget):
         self.api_key_inputs = {}
         self.theme_dropdown = None
         self.yolo_mode_checkbox = None
+        self.voice_enabled_checkbox = None
+        self.voice_id_input = None
 
         self.init_ui()
         self.load_api_keys()
@@ -130,6 +137,19 @@ class SettingsTab(QWidget):
         self.yolo_mode_checkbox = QCheckBox()
         self.yolo_mode_checkbox.setChecked(False)  # Default to unchecked
         global_settings_form_layout.addRow(yolo_label, self.yolo_mode_checkbox)
+
+        # Voice Enabled checkbox
+        voice_enabled_label = QLabel("Voice Enabled:")
+        self.voice_enabled_checkbox = QCheckBox()
+        self.voice_enabled_checkbox.setChecked(False)  # Default to unchecked
+        global_settings_form_layout.addRow(voice_enabled_label, self.voice_enabled_checkbox)
+
+        # Voice ID input
+        voice_id_label = QLabel("Voice ID:")
+        self.voice_id_input = QLineEdit()
+        self.voice_id_input.setPlaceholderText("e.g., kHhWB9Fw3aF6ly7JvltC")
+        self.voice_id_input.setText("kHhWB9Fw3aF6ly7JvltC")  # Default voice ID
+        global_settings_form_layout.addRow(voice_id_label, self.voice_id_input)
 
         global_settings_group.setLayout(global_settings_form_layout)
         form_layout.addWidget(global_settings_group)
@@ -182,6 +202,15 @@ class SettingsTab(QWidget):
         if self.yolo_mode_checkbox:
             self.yolo_mode_checkbox.setChecked(yolo_mode)
 
+        # Load voice settings
+        voice_enabled = global_settings_data.get("voice_enabled", False)
+        if self.voice_enabled_checkbox:
+            self.voice_enabled_checkbox.setChecked(voice_enabled)
+
+        voice_id = global_settings_data.get("voice_id", "kHhWB9Fw3aF6ly7JvltC")
+        if self.voice_id_input:
+            self.voice_id_input.setText(voice_id)
+
     def save_settings(self):
         if "api_keys" not in self.global_config:
             self.global_config["api_keys"] = {}
@@ -198,6 +227,12 @@ class SettingsTab(QWidget):
         )
         self.global_config["global_settings"]["yolo_mode"] = (
             self.yolo_mode_checkbox.isChecked() if self.yolo_mode_checkbox else False
+        )
+        self.global_config["global_settings"]["voice_enabled"] = (
+            self.voice_enabled_checkbox.isChecked() if self.voice_enabled_checkbox else False
+        )
+        self.global_config["global_settings"]["voice_id"] = (
+            self.voice_id_input.text().strip() if self.voice_id_input else "kHhWB9Fw3aF6ly7JvltC"
         )
 
         try:

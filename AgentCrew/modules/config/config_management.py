@@ -232,7 +232,12 @@ class ConfigManagement:
         default_config = {
             "api_keys": {},
             "auto_approval_tools": [],
-            "global_settings": {"theme": "dark", "yolo_mode": False},
+            "global_settings": {
+                "theme": "dark", 
+                "yolo_mode": False,
+                "voice_enabled": False,
+                "voice_id": "kHhWB9Fw3aF6ly7JvltC"  # Default ElevenLabs voice ID
+            },
         }
         try:
             if not os.path.exists(config_path):

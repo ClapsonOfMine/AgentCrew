@@ -318,6 +318,24 @@ class VoiceService:
         """Set the default voice for TTS."""
         self.default_voice_id = voice_id
 
+    def get_configured_voice_id(self) -> str:
+        """Get the voice ID from global config or return default."""
+        try:
+            from AgentCrew.modules.config import ConfigManagement
+            config_management = ConfigManagement()
+            global_config = config_management.read_global_config_data()
+            voice_id = global_config.get("global_settings", {}).get("voice_id", self.default_voice_id)
+            
+            # Validate voice_id is not empty and has reasonable length
+            if voice_id and voice_id.strip() and len(voice_id.strip()) >= 10:
+                return voice_id.strip()
+            else:
+                logger.warning(f"Invalid voice_id in config: '{voice_id}', using default")
+                return self.default_voice_id
+        except Exception as e:
+            logger.warning(f"Failed to read voice_id from config: {e}")
+            return self.default_voice_id
+
     def set_voice_settings(self, **kwargs):
         """Update voice settings."""
         for key, value in kwargs.items():

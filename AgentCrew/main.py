@@ -91,6 +91,7 @@ def load_api_keys_from_config():
         "GITHUB_COPILOT_API_KEY",
         "TAVILY_API_KEY",
         "VOYAGE_API_KEY",
+        "ELEVENLABS_API_KEY",
     ]
 
     for key_name in keys_to_check:

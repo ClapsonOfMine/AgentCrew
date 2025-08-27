@@ -10,7 +10,7 @@ class TextCleaner:
         # Patterns to remove completely
         self.remove_patterns = [
             r"```[\s\S]*?```",  # Code blocks
-            r"`([^`]+)`",  # Inline code
+            r"`[^`]+`",  # Inline code
             r"\*\*([^*]+)\*\*",  # Bold (keep content)
             r"\*([^*]+)\*",  # Italic (keep content)
             r"#{1,6}\s*",  # Headers
@@ -25,8 +25,8 @@ class TextCleaner:
 
         # Replacements for better speech
         self.replacements = [
-            (r"\.{3,}", ", "),  # Ellipsis
-            (r"\n{2,}", ". "),  # Multiple newlines
+            # (r"\.{3,}", ", "),  # Ellipsis
+            # (r"\n{2,}", ". "),  # Multiple newlines
             (r"\s+", " "),  # Multiple spaces
             (r"&", " and "),  # Ampersand
             (r"%", " percent"),  # Percent
@@ -95,7 +95,7 @@ class TextCleaner:
         text = re.sub(r"\[\s*\]", "", text)
 
         # Ensure proper sentence ending
-        if text and text[-1] not in ".!?":
+        if text and text[-1] not in ".!?:":
             text += "."
 
         return text

@@ -198,6 +198,10 @@ class MessageHandler(Observable):
         start_thinking = False
         end_thinking = False
         has_stop_interupted = False
+        voice_sentence = "" if self._is_voice_enabled() else None
+        voice_id = (
+            self.voice_service.get_configured_voice_id() if self.voice_service else None
+        )
 
         # Create a reference to the streaming generator
         self.stream_generator = None
@@ -251,17 +255,28 @@ class MessageHandler(Observable):
                         # Delays it a bit when using without stream
                         time.sleep(0.5)
                     self._notify("response_chunk", (chunk_text, assistant_response))
+                    if voice_sentence is not None:
+                        voice_sentence += chunk_text
+                    if (
+                        voice_sentence
+                        and "\n" in voice_sentence.strip()
+                        and self.voice_service
+                    ):
+                        self.voice_service.text_to_speech_stream(
+                            voice_sentence.strip().partition("\n")[0], voice_id=voice_id
+                        )
+                        voice_sentence = None
 
             # End thinking when break the response stream
             if not end_thinking and start_thinking:
                 self._notify("thinking_completed", thinking_content)
                 end_thinking = True
 
-            # Handle tool use if needed
-            if assistant_response.strip() and self.voice_service:
+            if voice_sentence and voice_sentence.strip() and self.voice_service:
                 self.voice_service.text_to_speech_stream(
-                    assistant_response.strip().partition("\n")[0]
+                    voice_sentence.strip().partition("\n")[0], voice_id=voice_id
                 )
+            # Handle tool use if needed
             if not has_stop_interupted and tool_uses and len(tool_uses) > 0:
                 # Add thinking content as a separate message if available
                 thinking_data = (
@@ -453,3 +468,13 @@ class MessageHandler(Observable):
     def delete_conversation_by_id(self, conversation_id: str) -> bool:
         """Deletes a conversation by its ID."""
         return self.conversation_manager.delete_conversation_by_id(conversation_id)
+
+    def _is_voice_enabled(self) -> bool:
+        """Check if voice is enabled in global settings."""
+        try:
+            config_management = ConfigManagement()
+            global_config = config_management.read_global_config_data()
+            return global_config.get("global_settings", {}).get("voice_enabled", False)
+        except Exception as e:
+            logger.warning(f"Failed to read voice_enabled setting: {e}")
+            return False
