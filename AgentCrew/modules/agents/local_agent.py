@@ -461,10 +461,7 @@ class LocalAgent(BaseAgent):
             adaptive_behaviors = self.services[
                 "context_persistent"
             ].get_adaptive_behaviors(self.name)
-            if (
-                len(adaptive_behaviors.keys()) > 0
-                and final_messages[-1].get("role", "assistant") == "user"
-            ):
+            if len(adaptive_behaviors.keys()) > 0:
                 # adaptive behaviors are only added if the last message is from the user
                 if isinstance(final_messages[-1]["content"], str) or (
                     isinstance(final_messages[-1]["content"], list)
@@ -488,7 +485,10 @@ END OF ADAPTABLE BEHAVIORS.""",
                             }
                         ],
                     }
-                    final_messages.insert(-1, adaptive_messages)
+                    if final_messages[-1].get("role", "assistant") == "user":
+                        final_messages.insert(-1, adaptive_messages)
+                    elif final_messages[-1].get("role", "assistant") == "tool":
+                        final_messages.append(adaptive_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 final_messages
