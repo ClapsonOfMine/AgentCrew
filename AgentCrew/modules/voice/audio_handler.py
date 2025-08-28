@@ -3,7 +3,6 @@ import threading
 import queue
 import numpy as np
 import sounddevice as sd
-import pyaudio
 from AgentCrew.modules import logger
 from .base import BaseAudioHandler
 
@@ -20,7 +19,6 @@ class AudioHandler(BaseAudioHandler):
         self.recording = False
         self.recording_thread = None
         self.audio_queue = queue.Queue()
-        self.pyaudio = pyaudio.PyAudio()
         self.current_sample_rate = 44100
 
     def start_recording(self, sample_rate: int = 44100) -> None:
@@ -112,6 +110,5 @@ class AudioHandler(BaseAudioHandler):
         try:
             if self.recording:
                 self.stop_recording()
-            self.pyaudio.terminate()
         except Exception:
             pass
