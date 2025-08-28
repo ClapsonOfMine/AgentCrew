@@ -169,6 +169,10 @@ class ChatCompleter(Completer):
                 "/jump",
                 "Jump to a previous conversation turn (usage: /jump <turn_number>)",
             ),
+            (
+                "/voice",
+                "Start with voice input",
+            ),
             ("/agent", "Switch agent or list available agents (usage: /agent [name])"),
             ("/model", "Switch model or list available models (usage: /model [id])"),
             (
