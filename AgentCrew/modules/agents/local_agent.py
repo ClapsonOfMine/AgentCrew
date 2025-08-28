@@ -254,11 +254,13 @@ class LocalAgent(BaseAgent):
             if mcp_manager.initialized:
                 mcp_manager.initialize_for_agent(self.name)
 
-        system_prompt = self.get_system_prompt()
+        system_prompt = (
+            f"<Agent_Instructions>\n{self.get_system_prompt()}\n</Agent_Instructions>"
+        )
         if self.custom_system_prompt:
-            system_prompt = system_prompt + "\n---\n\n" + self.custom_system_prompt
+            system_prompt = f"{system_prompt}\n\n{self.custom_system_prompt}"
         if self.tool_prompts:
-            system_prompt = system_prompt + "\n---\n\n" + "\n".join(self.tool_prompts)
+            system_prompt = f"{system_prompt}\n\n{'\n\n'.join(self.tool_prompts)}"
 
         self.llm.set_system_prompt(self._parse_system_prompt(system_prompt))
         self.llm.temperature = self.temperature if self.temperature is not None else 0.4

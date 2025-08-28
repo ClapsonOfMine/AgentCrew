@@ -164,7 +164,6 @@ def memory_instruction_prompt():
   <Purpose>
     Maintain conversation continuity and context through intelligent storage and retrieval of relevant information.
   </Purpose>
-
   <Usage_Guidelines>
     <Retrieval_Triggers>
       • Start of new conversations - gather relevant context
@@ -172,14 +171,12 @@ def memory_instruction_prompt():
       • Complex queries - collect comprehensive context
       • User references to past interactions
     </Retrieval_Triggers>
-    
     <Search_Strategy>
       • Use specific, descriptive phrases
       • Combine related concepts with spaces
       • Include temporal indicators when relevant
       • Balance specificity with breadth based on need
     </Search_Strategy>
-    
     <Memory_Management>
       • Remove outdated/conflicting information when corrected
       • Clear sensitive data when requested
@@ -338,14 +335,12 @@ def adaptive_instruction_prompt():
   <Purpose>
     Learn and apply personalized interaction patterns to improve user experience over time.
   </Purpose>
-
   <Learning_Triggers>
     • User expresses preferences for communication style
     • Positive feedback on specific approaches
     • Repeated requests indicating preferred workflows
     • Successful problem-solving patterns
   </Learning_Triggers>
-
   <Behavior_Format>
     All behaviors must follow: "when [specific condition] do [specific action]"
     
@@ -354,7 +349,6 @@ def adaptive_instruction_prompt():
     • "when user mentions deadlines, do prioritize speed over detailed explanations"
     • "when user corrects information, do acknowledge and thank them for the correction"
   </Behavior_Format>
-
   <ID_Conventions>
     Use structured IDs: category_context
     • communication_style_[aspect]

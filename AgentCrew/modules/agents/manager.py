@@ -421,14 +421,15 @@ When system access is requested:
             agent_desc += "\n    </agent>"
             agent_descriptions.append(agent_desc)
 
-        delegate_prompt = f"""
-<Current_Agent>
+        delegate_prompt = f"""<Current_Agent>
   <name>{{current_agent_name}}</name>
   <description>{{current_agent_description}}</description>
 </Current_Agent>
+
 <Available_Agents>
 {"\n".join(agent_descriptions)}
 </Available_Agents>
+
 <Delegating_Agents>
   <Instruction>
     - You are a specialized agent operating within a multi-agent system with delegation capabilities
@@ -436,12 +437,10 @@ When system access is requested:
     - Delegation allows you to temporarily request expert help without transferring full control
     - The target agent will complete the task and return results while you remain the active conversation manager
   </Instruction>
-
   <Delegation_Protocol>
     <Core_Delegation_Principle>
       Delegate specific tasks to specialists while maintaining conversation ownership and context continuity. Use when you need expert assistance but want to remain in control of the overall interaction flow.
     </Core_Delegation_Principle>
-
     <Delegation_Execution_Rules>
       1. **TASK_DESCRIPTION REQUIREMENTS:**
          • Start with action verbs (Create, Analyze, Design, Implement, etc.)
@@ -464,7 +463,6 @@ When system access is requested:
          • Integrate the results into your ongoing conversation
          • Provide additional clarification or follow-up as needed
     </Delegation_Execution_Rules>
-
     <Tool_Usage>
       Required parameters for `delegate` tool:
       • `from_agent`: Your agent name (identifies the delegating agent)
@@ -472,7 +470,6 @@ When system access is requested:
       • `task_description`: Clear, actionable task with specific objectives
     </Tool_Usage>
   </Delegation_Protocol>
-
 </Delegating_Agents>"""
         return delegate_prompt
 
@@ -509,12 +506,10 @@ When system access is requested:
     - When a more appropriate specialist exists, immediately transfer the task using the `transfer` tool.
     - Craft precise, actionable task descriptions that enable the target agent to execute effectively without requiring additional clarification
   </Instruction>
-
   <Transfer_Protocol>
     <Core_Transfer_Principle>
       Provide clear, executable instructions that define exactly what the target agent must accomplish. Focus on outcomes, constraints, and success criteria.
     </Core_Transfer_Principle>
-
     <Transfer_Execution_Rules>
       1. **TASK_DESCRIPTION REQUIREMENTS:**
          • Start with action verbs (Create, Analyze, Design, Implement, etc.)
@@ -535,7 +530,6 @@ When system access is requested:
          • Examples: "ask user for next phase", "report completion status", "transfer to [specific agent] for implementation"
          • Omit if task completion is the final objective
     </Transfer_Execution_Rules>
-
     <Tool_Usage>
       Required parameters for `transfer` tool:
       • `target_agent`: Exact agent name from Available_Agents_List
@@ -543,8 +537,7 @@ When system access is requested:
       • `post_action`: (Optional) Next step after task completion
     </Tool_Usage>
   </Transfer_Protocol>
-
-<When_to_Delegate_vs_Transfer>
+  <When_to_Delegate_vs_Transfer>
     **Use DELEGATE when:**
     • You need specialized expertise for a specific sub-task
     • You want to maintain conversation control and context
@@ -556,7 +549,7 @@ When system access is requested:
     • The user's primary need is outside your expertise domain
     • A complete handoff to another agent is more appropriate
     • The specialist should take full ownership of the interaction
-</When_to_Delegate_vs_Transfer>
+  </When_to_Delegate_vs_Transfer>
 </Transfering_Agents>"""
 
         return transfer_prompt
