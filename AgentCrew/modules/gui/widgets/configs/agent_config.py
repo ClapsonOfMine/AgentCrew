@@ -25,6 +25,7 @@ from PySide6.QtGui import QDoubleValidator
 
 from AgentCrew.modules.config import ConfigManagement
 from AgentCrew.modules.agents import AgentManager
+from AgentCrew.modules.memory.context_persistent import ContextPersistenceService
 
 from AgentCrew.modules.gui.themes import StyleProvider
 from AgentCrew.modules.gui.widgets.markdown_editor import MarkdownEditor
@@ -40,6 +41,7 @@ class AgentsConfigTab(QWidget):
         super().__init__()
         self.config_manager = config_manager
         self.agent_manager = AgentManager.get_instance()
+        self.persistence_service = ContextPersistenceService()
         self.available_tools = [
             "memory",
             "clipboard",
@@ -51,6 +53,7 @@ class AgentsConfigTab(QWidget):
         # Load agents configuration
         self.agents_config = self.config_manager.read_agents_config()
         self._is_dirty = False
+        self.current_agent_behaviors = {}  # Cache for current agent's behaviors
 
         self.init_ui()
         self.load_agents()
@@ -189,10 +192,80 @@ class AgentsConfigTab(QWidget):
         # Clear the default content and start empty
         self.system_prompt_input.clear()
 
+        # Adaptive Behaviors section
+        behaviors_group = QGroupBox("Adaptive Behaviors")
+        behaviors_layout = QVBoxLayout()
+
+        # Behaviors list
+        self.behaviors_list = QListWidget()
+        self.behaviors_list.setMaximumHeight(150)
+        self.behaviors_list.currentItemChanged.connect(self.on_behavior_selected)
+
+        # Behavior management buttons
+        behaviors_buttons_layout = QHBoxLayout()
+        self.add_behavior_btn = QPushButton("Add Behavior")
+        self.add_behavior_btn.setStyleSheet(style_provider.get_button_style("primary"))
+        self.add_behavior_btn.clicked.connect(self.add_new_behavior)
+
+        self.edit_behavior_btn = QPushButton("Edit")
+        self.edit_behavior_btn.setStyleSheet(style_provider.get_button_style("primary"))
+        self.edit_behavior_btn.clicked.connect(self.edit_behavior)
+        self.edit_behavior_btn.setEnabled(False)
+
+        self.remove_behavior_btn = QPushButton("Remove")
+        self.remove_behavior_btn.setStyleSheet(style_provider.get_button_style("red"))
+        self.remove_behavior_btn.clicked.connect(self.remove_behavior)
+        self.remove_behavior_btn.setEnabled(False)
+
+        behaviors_buttons_layout.addWidget(self.add_behavior_btn)
+        behaviors_buttons_layout.addWidget(self.edit_behavior_btn)
+        behaviors_buttons_layout.addWidget(self.remove_behavior_btn)
+        behaviors_buttons_layout.addStretch()
+
+        # Behavior editing form (initially hidden)
+        self.behavior_form_widget = QWidget()
+        behavior_form_layout = QFormLayout()
+
+        self.behavior_id_input = QLineEdit()
+        self.behavior_id_input.setPlaceholderText("e.g., communication_style_technical")
+        behavior_form_layout.addRow("Behavior ID:", self.behavior_id_input)
+
+        self.behavior_description_input = QLineEdit()
+        self.behavior_description_input.setPlaceholderText(
+            "when [condition] do [action]\n\nExample: when user asks about debugging, do provide step-by-step troubleshooting with code examples"
+        )
+        behavior_form_layout.addRow("Behavior:", self.behavior_description_input)
+
+        # Form buttons
+        behavior_form_buttons_layout = QHBoxLayout()
+        self.save_behavior_btn = QPushButton("Save")
+        self.save_behavior_btn.setStyleSheet(style_provider.get_button_style("primary"))
+        self.save_behavior_btn.clicked.connect(self.save_behavior)
+
+        self.cancel_behavior_btn = QPushButton("Cancel")
+        self.cancel_behavior_btn.setStyleSheet(
+            style_provider.get_button_style("secondary")
+        )
+        self.cancel_behavior_btn.clicked.connect(self.cancel_behavior_edit)
+
+        behavior_form_buttons_layout.addWidget(self.save_behavior_btn)
+        behavior_form_buttons_layout.addWidget(self.cancel_behavior_btn)
+        behavior_form_buttons_layout.addStretch()
+
+        behavior_form_layout.addRow("", behavior_form_buttons_layout)
+        self.behavior_form_widget.setLayout(behavior_form_layout)
+        self.behavior_form_widget.hide()
+
+        behaviors_layout.addWidget(self.behaviors_list)
+        behaviors_layout.addLayout(behaviors_buttons_layout)
+        behaviors_layout.addWidget(self.behavior_form_widget)
+        behaviors_group.setLayout(behaviors_layout)
+
         local_agent_layout.addLayout(local_form_layout)
         local_agent_layout.addWidget(tools_group)
         local_agent_layout.addWidget(QLabel("System Prompt:"))
         local_agent_layout.addWidget(self.system_prompt_input, 1)
+        local_agent_layout.addWidget(behaviors_group)
         local_agent_layout.addStretch()
 
         # Remote Agent Editor Widget
@@ -261,6 +334,11 @@ class AgentsConfigTab(QWidget):
         self.enabled_checkbox.stateChanged.connect(self._on_editor_field_changed)
         for checkbox in self.tool_checkboxes.values():
             checkbox.stateChanged.connect(self._on_editor_field_changed)
+        # Behavior editing fields
+        self.behavior_id_input.textChanged.connect(self._on_editor_field_changed)
+        self.behavior_description_input.textChanged.connect(
+            self._on_editor_field_changed
+        )
         # Remote agent fields
         self.remote_name_input.textChanged.connect(self._on_editor_field_changed)
         self.remote_base_url_input.textChanged.connect(self._on_editor_field_changed)
@@ -306,7 +384,7 @@ class AgentsConfigTab(QWidget):
         self.export_agents_btn.setEnabled(has_selection)
         self.remove_agent_btn.setEnabled(has_selection)
 
-    def on_agent_selected(self, current, previous):
+    def on_agent_selected(self, current, _):
         """Handle agent selection."""
         if current is None:
             self.set_editor_enabled(False)
@@ -342,6 +420,8 @@ class AgentsConfigTab(QWidget):
             for tool, checkbox in self.tool_checkboxes.items():
                 checkbox.setChecked(tool in tools)
             self.system_prompt_input.set_markdown(agent_data.get("system_prompt", ""))
+            # Load adaptive behaviors for this agent
+            self.load_agent_behaviors(agent_data.get("name", ""))
             # Clear remote fields just in case
             self.remote_name_input.clear()
             self.remote_base_url_input.clear()
@@ -365,6 +445,10 @@ class AgentsConfigTab(QWidget):
             self.enabled_checkbox.setChecked(True)  # Default for clearing
             for checkbox in self.tool_checkboxes.values():
                 checkbox.setChecked(False)
+            # Clear behaviors
+            self.behaviors_list.clear()
+            self.current_agent_behaviors = {}
+            self.behavior_form_widget.hide()
 
         for widget in all_editor_widgets:
             widget.blockSignals(False)
@@ -425,6 +509,18 @@ class AgentsConfigTab(QWidget):
             header_data["value_input"].setEnabled(enabled)
             header_data["remove_btn"].setEnabled(enabled)
 
+        # Enable/disable behavior management
+        self.behaviors_list.setEnabled(enabled)
+        self.add_behavior_btn.setEnabled(enabled)
+        self.edit_behavior_btn.setEnabled(
+            enabled and self.behaviors_list.currentItem() is not None
+        )
+        self.remove_behavior_btn.setEnabled(
+            enabled and self.behaviors_list.currentItem() is not None
+        )
+        if not enabled:
+            self.behavior_form_widget.hide()
+
         if not enabled:
             # Clear all fields when disabling
             self.name_input.clear()
@@ -439,6 +535,11 @@ class AgentsConfigTab(QWidget):
             self.remote_base_url_input.clear()
             self.remote_enabled_checkbox.setChecked(True)
             self.clear_remote_header_fields()
+
+            # Clear behaviors
+            self.behaviors_list.clear()
+            self.current_agent_behaviors = {}
+            self.behavior_form_widget.hide()
 
             self.save_btn.setEnabled(False)
             self._is_dirty = False
@@ -955,3 +1056,171 @@ class AgentsConfigTab(QWidget):
 
         self.config_manager.write_agents_config(self.agents_config)
         self.config_changed.emit()
+
+    def load_agent_behaviors(self, agent_name: str):
+        """Load adaptive behaviors for the selected agent."""
+        if not agent_name:
+            self.behaviors_list.clear()
+            self.current_agent_behaviors = {}
+            return
+
+        try:
+            behaviors = self.persistence_service.get_adaptive_behaviors(agent_name)
+            self.current_agent_behaviors = behaviors
+
+            self.behaviors_list.clear()
+            for behavior_id, behavior_text in behaviors.items():
+                # Create a shortened preview for the list
+                item = QListWidgetItem(f"{behavior_text}")
+                item.setData(
+                    Qt.ItemDataRole.UserRole, {"id": behavior_id, "text": behavior_text}
+                )
+                self.behaviors_list.addItem(item)
+
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Behavior Load Error",
+                f"Failed to load behaviors for {agent_name}: {str(e)}",
+            )
+            self.behaviors_list.clear()
+            self.current_agent_behaviors = {}
+
+    def on_behavior_selected(self, current, _):
+        """Handle behavior selection in the list."""
+        has_selection = current is not None
+        self.edit_behavior_btn.setEnabled(has_selection)
+        self.remove_behavior_btn.setEnabled(has_selection)
+
+    def add_new_behavior(self):
+        """Show form to add a new adaptive behavior."""
+        self.behavior_id_input.clear()
+        self.behavior_description_input.clear()
+        self.behavior_form_widget.show()
+        self.behavior_id_input.setFocus()
+
+    def edit_behavior(self):
+        """Edit the selected adaptive behavior."""
+        current_item = self.behaviors_list.currentItem()
+        if not current_item:
+            return
+
+        behavior_data = current_item.data(Qt.ItemDataRole.UserRole)
+        self.behavior_id_input.setText(behavior_data["id"])
+        self.behavior_description_input.setText(behavior_data["text"])
+        self.behavior_form_widget.show()
+        self.behavior_description_input.setFocus()
+
+    def save_behavior(self):
+        """Save the current behavior being edited."""
+        current_agent_item = self.agents_list.currentItem()
+        if not current_agent_item:
+            QMessageBox.warning(
+                self, "No Agent Selected", "Please select an agent first."
+            )
+            return
+
+        agent_data = current_agent_item.data(Qt.ItemDataRole.UserRole)
+        agent_name = agent_data.get("name", "")
+        if not agent_name:
+            QMessageBox.warning(self, "Invalid Agent", "Agent name is required.")
+            return
+
+        behavior_id = self.behavior_id_input.text().strip()
+        behavior_text = self.behavior_description_input.text().strip()
+
+        if not behavior_id:
+            QMessageBox.warning(self, "Validation Error", "Behavior ID is required.")
+            return
+
+        if not behavior_text:
+            QMessageBox.warning(
+                self, "Validation Error", "Behavior description is required."
+            )
+            return
+
+        # Validate behavior format
+        behavior_lower = behavior_text.lower()
+        if not behavior_lower.startswith("when ") or " do " not in behavior_lower:
+            QMessageBox.warning(
+                self,
+                "Format Error",
+                "Behavior must follow 'when [condition] do [action]' format.",
+            )
+            return
+
+        try:
+            success = self.persistence_service.store_adaptive_behavior(
+                agent_name, behavior_id, behavior_text
+            )
+            if success:
+                # Update the current cache and UI
+                self.current_agent_behaviors[behavior_id] = behavior_text
+                self.load_agent_behaviors(agent_name)
+                self.behavior_form_widget.hide()
+                QMessageBox.information(
+                    self, "Success", f"Behavior '{behavior_id}' saved successfully."
+                )
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Save Error",
+                    "Failed to save behavior. Please check the format.",
+                )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Save Error", f"Failed to save behavior: {str(e)}"
+            )
+
+    def remove_behavior(self):
+        """Remove the selected adaptive behavior."""
+        current_item = self.behaviors_list.currentItem()
+        if not current_item:
+            return
+
+        current_agent_item = self.agents_list.currentItem()
+        if not current_agent_item:
+            return
+
+        agent_data = current_agent_item.data(Qt.ItemDataRole.UserRole)
+        agent_name = agent_data.get("name", "")
+
+        behavior_data = current_item.data(Qt.ItemDataRole.UserRole)
+        behavior_id = behavior_data["id"]
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Are you sure you want to delete the behavior '{behavior_id}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                success = self.persistence_service.remove_adaptive_behavior(
+                    agent_name, behavior_id
+                )
+                if success:
+                    # Update cache and UI
+                    if behavior_id in self.current_agent_behaviors:
+                        del self.current_agent_behaviors[behavior_id]
+                    self.load_agent_behaviors(agent_name)
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        f"Behavior '{behavior_id}' removed successfully.",
+                    )
+                else:
+                    QMessageBox.warning(
+                        self, "Remove Error", "Failed to remove behavior."
+                    )
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "Remove Error", f"Failed to remove behavior: {str(e)}"
+                )
+
+    def cancel_behavior_edit(self):
+        """Cancel behavior editing and hide the form."""
+        self.behavior_form_widget.hide()
+        self.behavior_id_input.clear()
+        self.behavior_description_input.clear()
