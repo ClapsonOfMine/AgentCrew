@@ -895,7 +895,6 @@ QGroupBox::title {
     subcontrol-position: top left;
     padding: 0 4px 4px 4px;
     color: #6b46c1; /* Deep purple title */
-    background-color: #ffffff; /* White title background */
     left: 10px;
 }
 QScrollArea {

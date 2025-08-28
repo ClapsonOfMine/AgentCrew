@@ -480,9 +480,9 @@ class LocalAgent(BaseAgent):
                             {
                                 "type": "text",
                                 "text": f"""
-MANDATORY: Check list of adaptive behaviors before responding. When "when...do..." conditions match, execute those behaviors immediately—they override default logic.
+# MANDATORY: APPLY list of adaptive behaviors before responding. When "when...do..." conditions match, modify your behaviors immediately—they override default logic.
 Ask for clarification if uncertain which behaviors apply. 
-List of adaptive behaviors:
+## List of adaptive behaviors:
 {adaptive_text}
 END OF ADAPTABLE BEHAVIORS.""",
                             }

@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QStackedWidget,
     QFileDialog,
+    QTabWidget,
 )
 import os
 import toml
@@ -160,9 +161,13 @@ class AgentsConfigTab(QWidget):
 
         self.editor_stacked_widget = QStackedWidget()
 
-        # Local Agent Editor Widget
         self.local_agent_editor_widget = QWidget()
         local_agent_layout = QVBoxLayout(self.local_agent_editor_widget)
+
+        self.local_agent_tab_widget = QTabWidget()
+
+        self.general_tab = QWidget()
+        general_tab_layout = QVBoxLayout(self.general_tab)
         local_form_layout = QFormLayout()
 
         self.name_input = QLineEdit()  # This is for Local Agent Name
@@ -187,21 +192,32 @@ class AgentsConfigTab(QWidget):
             tools_layout.addWidget(checkbox)
         tools_group.setLayout(tools_layout)
 
+        general_tab_layout.addLayout(local_form_layout)
+        general_tab_layout.addWidget(tools_group)
+        general_tab_layout.addStretch()
+
+        self.system_prompt_tab = QWidget()
+        system_prompt_tab_layout = QVBoxLayout(self.system_prompt_tab)
+
+        system_prompt_label = QLabel("System Prompt:")
+        system_prompt_label.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
+
         self.system_prompt_input = MarkdownEditor()
-        self.system_prompt_input.setMinimumHeight(200)
-        # Clear the default content and start empty
+        self.system_prompt_input.setMinimumHeight(400)
         self.system_prompt_input.clear()
 
-        # Adaptive Behaviors section
+        system_prompt_tab_layout.addWidget(system_prompt_label)
+        system_prompt_tab_layout.addWidget(self.system_prompt_input, 1)
+
+        self.behaviors_tab = QWidget()
+        behaviors_tab_layout = QVBoxLayout(self.behaviors_tab)
+
         behaviors_group = QGroupBox("Adaptive Behaviors")
         behaviors_layout = QVBoxLayout()
 
-        # Behaviors list
         self.behaviors_list = QListWidget()
-        self.behaviors_list.setMaximumHeight(150)
         self.behaviors_list.currentItemChanged.connect(self.on_behavior_selected)
 
-        # Behavior management buttons
         behaviors_buttons_layout = QHBoxLayout()
         self.add_behavior_btn = QPushButton("Add Behavior")
         self.add_behavior_btn.setStyleSheet(style_provider.get_button_style("primary"))
@@ -222,7 +238,6 @@ class AgentsConfigTab(QWidget):
         behaviors_buttons_layout.addWidget(self.remove_behavior_btn)
         behaviors_buttons_layout.addStretch()
 
-        # Behavior editing form (initially hidden)
         self.behavior_form_widget = QWidget()
         behavior_form_layout = QFormLayout()
 
@@ -236,7 +251,6 @@ class AgentsConfigTab(QWidget):
         )
         behavior_form_layout.addRow("Behavior:", self.behavior_description_input)
 
-        # Form buttons
         behavior_form_buttons_layout = QHBoxLayout()
         self.save_behavior_btn = QPushButton("Save")
         self.save_behavior_btn.setStyleSheet(style_provider.get_button_style("primary"))
@@ -261,12 +275,15 @@ class AgentsConfigTab(QWidget):
         behaviors_layout.addWidget(self.behavior_form_widget)
         behaviors_group.setLayout(behaviors_layout)
 
-        local_agent_layout.addLayout(local_form_layout)
-        local_agent_layout.addWidget(tools_group)
-        local_agent_layout.addWidget(QLabel("System Prompt:"))
-        local_agent_layout.addWidget(self.system_prompt_input, 1)
-        local_agent_layout.addWidget(behaviors_group)
-        local_agent_layout.addStretch()
+        behaviors_tab_layout.addWidget(behaviors_group)
+
+        # Add tabs to the tab widget
+        self.local_agent_tab_widget.addTab(self.general_tab, "General")
+        self.local_agent_tab_widget.addTab(self.system_prompt_tab, "System Prompt")
+        self.local_agent_tab_widget.addTab(self.behaviors_tab, "Behaviors")
+
+        # Add tab widget to main layout
+        local_agent_layout.addWidget(self.local_agent_tab_widget)
 
         # Remote Agent Editor Widget
         self.remote_agent_editor_widget = QWidget()
@@ -472,7 +489,7 @@ class AgentsConfigTab(QWidget):
             is_editor_active = False
             if (
                 current_editor_widget == self.local_agent_editor_widget
-                and self.name_input.isEnabled()
+                and self.local_agent_tab_widget.isEnabled()
             ):
                 is_editor_active = True
             elif (
@@ -488,6 +505,9 @@ class AgentsConfigTab(QWidget):
 
     def set_editor_enabled(self, enabled: bool):
         """Enable or disable all editor form fields."""
+        # Local agent tab widget
+        self.local_agent_tab_widget.setEnabled(enabled)
+
         # Local agent fields
         self.name_input.setEnabled(enabled)
         self.description_input.setEnabled(enabled)

@@ -336,18 +336,19 @@ def adaptive_instruction_prompt():
     Learn and apply personalized interaction patterns to improve user experience over time.
   </Purpose>
   <Learning_Triggers>
-    • User expresses preferences for communication style
-    • Positive feedback on specific approaches
-    • Repeated requests indicating preferred workflows
-    • Successful problem-solving patterns
+    - User expresses preferences for communication style
+    - Positive feedback on specific approaches
+    - Repeated requests indicating preferred workflows
+    - Successful problem-solving patterns
+    - Specific "when...do..." instructions from the user
   </Learning_Triggers>
   <Behavior_Format>
     All behaviors must follow: "when [specific condition] do [specific action]"
     
     Examples:
-    • "when user asks about code, do provide complete examples with explanations"
-    • "when user mentions deadlines, do prioritize speed over detailed explanations"
-    • "when user corrects information, do acknowledge and thank them for the correction"
+    - "when user asks about code, do provide complete examples with explanations"
+    - "when user mentions deadlines, do prioritize speed over detailed explanations"
+    - "when user corrects information, do acknowledge and thank them for the correction"
   </Behavior_Format>
   <ID_Conventions>
     Use structured IDs: category_context
