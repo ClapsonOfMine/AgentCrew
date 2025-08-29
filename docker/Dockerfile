@@ -56,6 +56,9 @@ RUN apt-get update && apt-get install -y \
   # Basic runtime dependencies
   git \
   curl \
+  libportaudio2 \
+  portaudio19-dev \
+  libasound-dev \
   ca-certificates \
   xz-utils \
   && rm -rf /var/lib/apt/lists/*

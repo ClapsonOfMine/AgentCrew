@@ -46,6 +46,9 @@ dependencies = [
   "rapidocr-onnxruntime>=1.4.4",
   "a2a-sdk>=0.2.9",
   "xmltodict>=0.14.2",
+  "elevenlabs>=2.12.1",
+  "sounddevice>=0.5.2",
+  "soundfile>=0.13.1",
 ]
 
 [project.optional-dependencies]
