@@ -23,10 +23,6 @@ Be specific with topics to avoid over-deletion. Use IDs for precise removal when
             "items": {"type": "string"},
             "description": "Optional list of specific memory IDs for precise removal. Takes precedence over topic when provided.",
         },
-        "agent_name": {
-            "type": "string",
-            "description": "Agent name for remote server operations, ALWAYS passes current agent name when operating as remote server. If not provided, uses current active agent.",
-        },
     }
 
     tool_required = ["topic"]
@@ -62,15 +58,10 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
     def handle_memory_forget(**params) -> str:
         topic = params.get("topic", "").strip()
         ids = params.get("ids", [])
-        agent_name = params.get("agent_name", "").strip()
 
         # Use provided agent_name or fallback to current agent
-        if not agent_name:
-            try:
-                current_agent = AgentManager.get_instance().get_current_agent()
-                agent_name = current_agent.name if current_agent else "unknown"
-            except Exception as e:
-                return f"❌ Agent identification failed: {str(e)}"
+        current_agent = AgentManager.get_instance().get_current_agent()
+        agent_name = current_agent.name if current_agent else "None"
 
         # ID-based removal (preferred)
         if ids:
@@ -124,10 +115,6 @@ Search with specific, descriptive keywords for better results."""
             "type": "integer",
             "default": 5,
             "description": "Maximum results (1-15). Use 1-3 for quick facts, 4-7 for standard context, 8-15 for comprehensive background.",
-        },
-        "agent_name": {
-            "type": "string",
-            "description": "Agent name for remote server operations, ALWAYS passes current agent name when operating as remote server. If not provided, uses current active agent.",
         },
     }
 
@@ -193,7 +180,6 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
     def handle_memory_retrieve(**params) -> str:
         phrases = params.get("phrases", "").strip()
         limit = max(1, min(params.get("limit", 5), 50))
-        agent_name = params.get("agent_name", "").strip()
 
         if not phrases:
             return "❌ Phrases required for memory search."
@@ -202,12 +188,8 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
             return f"⚠️ Search term '{phrases}' too short. Use more semantica and descriptive phrases."
 
         # Use provided agent_name or fallback to current agent
-        if not agent_name:
-            try:
-                current_agent = AgentManager.get_instance().get_current_agent()
-                agent_name = current_agent.name if current_agent else ""
-            except Exception:
-                agent_name = ""
+        current_agent = AgentManager.get_instance().get_current_agent()
+        agent_name = current_agent.name if current_agent else ""
 
         try:
             result = memory_service.retrieve_memory(phrases, limit, agent_name)
@@ -241,10 +223,6 @@ All behaviors must follow 'when...do...' format for automatic activation."""
         "behavior": {
             "type": "string",
             "description": "Behavior pattern in 'when [condition] do [action]' format. Example: 'when user asks about debugging, do provide step-by-step troubleshooting with code examples'.",
-        },
-        "agent_name": {
-            "type": "string",
-            "description": "Agent name for remote server operations, ALWAYS passes current agent name when operating as remote server. If not provided, uses current active agent.",
         },
     }
 
@@ -281,7 +259,6 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
     def handle_adapt(**params) -> str:
         behavior_id = params.get("id", "").strip()
         behavior = params.get("behavior", "").strip()
-        agent_name = params.get("agent_name", "").strip()
 
         if not behavior_id:
             return "❌ Behavior ID required (e.g., 'communication_style_technical')."
@@ -304,13 +281,8 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
         if len(parts[1].strip()) < 10:
             return "⚠️ Action too brief. Provide detailed instructions for the behavior."
 
-        # Use provided agent_name or fallback to current agent
-        if not agent_name:
-            try:
-                current_agent = AgentManager.get_instance().get_current_agent()
-                agent_name = current_agent.name if current_agent else "default"
-            except Exception as e:
-                return f"❌ Agent identification failed: {str(e)}"
+        current_agent = AgentManager.get_instance().get_current_agent()
+        agent_name = current_agent.name if current_agent else "default"
 
         try:
             success = persistence_service.store_adaptive_behavior(
