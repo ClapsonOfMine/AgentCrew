@@ -485,10 +485,12 @@ END OF ADAPTABLE BEHAVIORS.""",
                             }
                         ],
                     }
-                    if final_messages[-1].get("role", "assistant") == "user":
-                        final_messages.insert(-1, adaptive_messages)
-                    elif final_messages[-1].get("role", "assistant") == "tool":
-                        final_messages.append(adaptive_messages)
+                    last_user_index = -1
+                    for i, msg in reversed(list(enumerate(final_messages))):
+                        if msg.get("role", "assistant") == "user":
+                            last_user_index = i
+                            break
+                    final_messages.insert(last_user_index, adaptive_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 final_messages
