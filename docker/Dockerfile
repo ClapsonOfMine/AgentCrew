@@ -61,6 +61,8 @@ RUN apt-get update && apt-get install -y \
   libasound-dev \
   ca-certificates \
   xz-utils \
+  libglib2.0-0 \
+  libgl1 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv
