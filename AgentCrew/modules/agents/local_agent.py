@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 import asyncio
 from typing import Dict, Any, List, Optional, Callable
-from AgentCrew.modules.llm.base import BaseLLMService
+from AgentCrew.modules.llm import BaseLLMService
 from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules import logger
@@ -76,15 +76,18 @@ class LocalAgent(BaseAgent):
         """
 
         if self.services.get("agent_manager"):
-            from AgentCrew.modules.agents.tools.delegate import (
-                register as register_delegate,
-                delegate_tool_prompt,
-            )
-
-            register_delegate(self.services["agent_manager"], self)
             self.tool_prompts.append(
-                delegate_tool_prompt(self.services["agent_manager"])
+                self.services["agent_manager"].get_agents_list_prompt()
             )
+            # from AgentCrew.modules.agents.tools.delegate import (
+            #     register as register_delegate,
+            #     delegate_tool_prompt,
+            # )
+            #
+            # register_delegate(self.services["agent_manager"], self)
+            # self.tool_prompts.append(
+            #     delegate_tool_prompt(self.services["agent_manager"])
+            # )
             if not self.is_remoting_mode:
                 from AgentCrew.modules.agents.tools.transfer import (
                     register as register_transfer,
