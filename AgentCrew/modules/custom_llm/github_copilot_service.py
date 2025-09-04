@@ -29,7 +29,7 @@ class GithubCopilotService(CustomLLMService):
                 "Editor-Version": "Neovim/0.9.0",
             },
         )
-        self.model = "gpt-4.1"
+        self.model = "gpt-5-mini"
         self.current_input_tokens = 0
         self.current_output_tokens = 0
         self._is_thinking = False
