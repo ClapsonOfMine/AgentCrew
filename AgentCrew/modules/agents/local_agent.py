@@ -527,6 +527,10 @@ END OF ADAPTABLE BEHAVIORS.""",
 
         except GeneratorExit as e:
             logger.warning(f"Stream processing interrupted: {e}")
+        except Exception as e:
+            print(final_messages)
+            logger.error(f"Error during message processing: {e}")
+            raise e
 
     def get_process_result(self):
         return (self.tool_uses, self.input_tokens_usage, self.output_tokens_usage)

@@ -120,7 +120,7 @@ class GithubCopilotService(CustomLLMService):
         message = {
             "role": "tool",
             "tool_call_id": tool_use["id"],
-            "name": tool_use["name"],
+            # "name": tool_use["name"],
             "content": tool_result,  # Groq and deepinfra expects string content
         }
         # Add error indication if needed
