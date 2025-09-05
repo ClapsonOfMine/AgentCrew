@@ -406,23 +406,16 @@ When system access is requested:
                 continue
             agent_desc = ""
             if hasattr(agent, "description") and agent.description:
-                agent_desc = f"      <agent>\n        <name>{name}</name>\n        <description>{agent.description}</description>"
+                agent_desc = f"  <agent>\n    <name>{name}</name>\n    <description>{agent.description}</description>"
             else:
-                agent_desc = f"      <agent>\n        <name>{name}</name>"
+                agent_desc = f"  <agent>\n    <name>{name}</name>"
             # if isinstance(agent, LocalAgent) and agent.tools and len(agent.tools) > 0:
             #     agent_desc += f"\n      <tools>\n        <tool>{'</tool>\n        <tool>'.join(agent.tools)}</tool>\n      </tools>\n    </agent>"
             # else:
-            agent_desc += "\n      </agent>"
+            agent_desc += "\n  </agent>"
             agent_descriptions.append(agent_desc)
         return f"""<Transferable_Agents>
-  <Current_Agent>
-    <name>{{current_agent_name}}</name>
-    <description>{{current_agent_description}}</description>
-  </Current_Agent>
-
-  <Ready_To_Transfer_Agents>
-  {"\n".join(agent_descriptions)}
-  </Ready_To_Transfer_Agents>
+{"\n".join(agent_descriptions)}
 </Transferable_Agents>"""
 
     def get_delegate_system_prompt(self):
@@ -482,12 +475,12 @@ When system access is requested:
         Returns:
             str: A formatted string containing transfer instructions and available agents
         """
-        transfer_prompt = """<Transfering_Agents>
+        transfer_prompt = """<Transfer_Tool>
   <Instruction>
     - You are a specialized agent operating within a multi-agent system
     - MANDATORY: Before any response, perform a systematic evaluation of all available agents
     - Analyze the user's message for domain keywords, technical terms, and task indicators
-    - Cross-reference these against each agent's description and capabilities
+    - Cross-reference these against each Ready_To_Transfer_Agents > agent > description and capabilities
     - When a more appropriate specialist exists, immediately transfer the task using the `transfer` tool
     - Craft precise, actionable task descriptions that enable the target agent to execute effectively without requiring additional clarification
   </Instruction>
@@ -503,18 +496,18 @@ When system access is requested:
 
     <Step_2_Agent_Matching>
       For each Ready_To_Transfer_Agent:
-      • Compare extracted keywords against agent description
-      • Identify direct matches in name or description (e.g., "React" → ReactAgent)
-      • Identify semantic matches in name or description (e.g., "testing" → ManualAgent)
+      • Compare extracted keywords against name and description tags
+      • Identify direct matches in name or description tags
+      • Identify semantic matches in name or description tags
       • Assess capability overlap with your own expertise
     </Step_2_Agent_Matching>
 
     <Step_3_Transfer_Decision>
       Transfer immediately if:
-      • Another agent has primary expertise in the requested domain
+      • Another agent has more expertise in the requested task
       • Keywords directly match an agent's specialization
       • The task falls outside your core competencies
-      • A specialist can deliver significantly better results
+      • Other agent can deliver significantly better results
 
       Stay engaged only if:
       • No better-suited specialist exists
@@ -559,6 +552,6 @@ When system access is requested:
       • `post_action`: (Optional) Next step after task completion
     </Tool_Usage>
   </Transfer_Protocol>
-</Transfering_Agents>"""
+</Transfer_Tool>"""
 
         return transfer_prompt

@@ -464,35 +464,49 @@ class LocalAgent(BaseAgent):
             adaptive_behaviors = self.services[
                 "context_persistent"
             ].get_adaptive_behaviors(self.name)
-            if len(adaptive_behaviors.keys()) > 0:
-                # adaptive behaviors are only added if the last message is from the user
-                if isinstance(final_messages[-1]["content"], str) or (
-                    isinstance(final_messages[-1]["content"], list)
-                    and final_messages[-1]["content"][0].get("type") != "tool_result"
-                ):
+            # adaptive behaviors are only added if the last message is from the user
+            if isinstance(final_messages[-1]["content"], str) or (
+                isinstance(final_messages[-1]["content"], list)
+                and final_messages[-1]["content"][0].get("type") != "tool_result"
+            ):
+                adaptive_messages = {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Before processing my request, evaluate other agents capabilities and transfer my request other agent are more suitable.",
+                        },
+                    ],
+                }
+
+                if len(adaptive_behaviors.keys()) > 0:
                     adaptive_text = ""
                     for key, value in adaptive_behaviors.items():
                         adaptive_text += f"- {value} (id:{key})\n"
-
-                    adaptive_messages = {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": f"""
-# MANDATORY: APPLY list of adaptive behaviors before responding. When "when...do..." conditions match, modify your behaviors immediately—they override default logic.
-Ask for clarification if uncertain which behaviors apply. 
+                    adaptive_messages["content"].append(
+                        {
+                            "type": "text",
+                            "text": f"""# MANDATORY: APPLY list of adaptive behaviors before responding. When "when...do..." conditions match, modify your behaviors immediately—they override default logic.
+Ask for clarification if uncertain which behaviors apply.
 ## List of adaptive behaviors:
 {adaptive_text}
 END OF ADAPTABLE BEHAVIORS.""",
-                            }
-                        ],
-                    }
-                    last_user_index = -1
-                    for i, msg in reversed(list(enumerate(final_messages))):
-                        if msg.get("role", "assistant") == "user":
-                            last_user_index = i
-                            break
+                        }
+                    )
+                last_user_index = -1
+                for i, msg in reversed(list(enumerate(final_messages))):
+                    if msg.get("role", "assistant") == "user":
+                        last_user_index = i
+                        break
+                if (
+                    len(final_messages[last_user_index].get("content", [])) > 0
+                    and final_messages[last_user_index]["content"][0]
+                    .get("text", "")
+                    .find("<transfer_tool>")
+                    == 0
+                ):
+                    adaptive_messages["content"].pop(0)
+                if len(adaptive_messages["content"]) > 0:
                     final_messages.insert(last_user_index, adaptive_messages)
         try:
             async with await self.llm.stream_assistant_response(
@@ -527,6 +541,7 @@ END OF ADAPTABLE BEHAVIORS.""",
 
         except GeneratorExit as e:
             logger.warning(f"Stream processing interrupted: {e}")
+            return
         except Exception as e:
             print(final_messages)
             logger.error(f"Error during message processing: {e}")
