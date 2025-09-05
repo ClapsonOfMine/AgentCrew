@@ -474,7 +474,7 @@ class LocalAgent(BaseAgent):
                     "content": [
                         {
                             "type": "text",
-                            "text": "Before processing my request, evaluate other agents capabilities and transfer my request other agent are more suitable.",
+                            "text": "Before processing my request, evaluate other agents capabilities and transfer my request other agent are more suitable. Keep the evaluating concise in xml format within <agent_evaluation> tags.",
                         },
                     ],
                 }
@@ -524,6 +524,29 @@ END OF ADAPTABLE BEHAVIORS.""",
                     ) = self.llm.process_stream_chunk(
                         chunk, assistant_response, _tool_uses
                     )
+                    if (
+                        "<agent_evaluation>" in assistant_response
+                        and "</agent_evaluation>" not in assistant_response
+                    ):
+                        continue
+                    transfer_index_start = assistant_response.find("<agent_evaluation>")
+                    transfer_index_end = assistant_response.find("</agent_evaluation>")
+                    if transfer_index_start >= 0 and transfer_index_end >= 0:
+                        assistant_response = (
+                            assistant_response[:transfer_index_start]
+                            + assistant_response[transfer_index_end + 19 :]
+                        )
+                    if chunk_text:
+                        chunk_transfer_index_start = chunk_text.find(
+                            "<agent_evaluation>"
+                        )
+                        if chunk_transfer_index_start >= 0:
+                            chunk_text = chunk_text[:chunk_transfer_index_start]
+                        chunk_transfer_index_end = chunk_text.find(
+                            "</agent_evaluation>"
+                        )
+                        if chunk_transfer_index_end >= 0:
+                            chunk_text = chunk_text[chunk_transfer_index_end + 19 :]
                     yield (assistant_response, chunk_text, thinking_chunk)
 
                     if tool_uses:
