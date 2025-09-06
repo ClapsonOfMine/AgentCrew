@@ -22,7 +22,7 @@ class MCPService:
         """Initialize the MCP service."""
         self.sessions: Dict[str, ClientSession] = {}
         self.connected_servers: Dict[str, bool] = {}
-        self.tools_cache: Dict[str, Dict[str, Any]] = {}
+        self.tools_cache: Dict[str, Dict[str, Tool]] = {}
         self.loop = asyncio.new_event_loop()
         self._server_connection_tasks: Dict[str, asyncio.Task] = {}
         self._server_shutdown_events: Dict[str, asyncio.Event] = {}
