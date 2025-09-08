@@ -253,8 +253,12 @@ class DisplayHandlers:
                 "🎮 Welcome to AgentCrew v" + version + " interactive chat!",
                 style=RICH_STYLE_YELLOW_BOLD,
             ),
-            Text("Press Ctrl+C twice to exit.", style=RICH_STYLE_YELLOW),
-            Text("Type 'exit' or 'quit' to end the session.", style=RICH_STYLE_YELLOW),
+            Text("Press Ctrl+C twice to exit.", style=RICH_STYLE_GRAY),
+            Text("Type '/exit' or '/quit' to end the session.", style=RICH_STYLE_GRAY),
+            Text(
+                "Use '/voice' to input message with your voice.",
+                style=RICH_STYLE_YELLOW,
+            ),
             Text(
                 "Use '/file <file_path>' to include a file in your message.",
                 style=RICH_STYLE_YELLOW,
@@ -298,12 +302,16 @@ class DisplayHandlers:
                 style=RICH_STYLE_YELLOW,
             ),
             Text(
-                "Tool calls require confirmation before execution.",
+                "Use '/unconsolidate' undo last consolidated.",
                 style=RICH_STYLE_YELLOW,
             ),
             Text(
+                "Tool calls require confirmation before execution.",
+                style=RICH_STYLE_BLUE,
+            ),
+            Text(
                 "Use 'y' to approve once, 'n' to deny, 'all' to approve future calls to the same tool.",
-                style=RICH_STYLE_YELLOW,
+                style=RICH_STYLE_BLUE,
             ),
         )
 
