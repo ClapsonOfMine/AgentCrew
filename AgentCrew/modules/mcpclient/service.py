@@ -378,44 +378,35 @@ class MCPService:
         # Create namespaced tool name
         namespaced_name = f"{server_id}_{tool.name}"
 
+        from jsonref import replace_refs
+        import json
+
+        merged_inputSchema_string = json.dumps(
+            replace_refs(
+                tool.inputSchema,
+                merge_props=True,
+                jsonschema=True,
+            ),
+            indent=2,
+        )
+        merged_inputSchema = json.loads(merged_inputSchema_string)
+        if "$defs" in merged_inputSchema:
+            del merged_inputSchema["$defs"]
+
         # Format for different providers
         if provider == "claude":
             return {
                 "name": namespaced_name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema,
+                "input_schema": merged_inputSchema,
             }
-        if provider == "github_copilot":
-            from jsonref import replace_refs
-            import json
-
-            merged_inputSchema_string = json.dumps(
-                replace_refs(
-                    tool.inputSchema,
-                    merge_props=True,
-                    jsonschema=True,
-                ),
-                indent=2,
-            )
-            merged_inputSchema = json.loads(merged_inputSchema_string)
-            if "$defs" in merged_inputSchema:
-                del merged_inputSchema["$defs"]
-            return {
-                "type": "function",
-                "function": {
-                    "name": namespaced_name,
-                    "description": tool.description,
-                    "parameters": merged_inputSchema,
-                },
-            }
-
         else:  # Default format (OpenAI-compatible)
             return {
                 "type": "function",
                 "function": {
                     "name": namespaced_name,
                     "description": tool.description,
-                    "parameters": tool.inputSchema,
+                    "parameters": merged_inputSchema,
                 },
             }
 
