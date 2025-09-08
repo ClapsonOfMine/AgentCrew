@@ -502,7 +502,6 @@ Ask for clarification if uncertain which behaviors apply.
 END OF ADAPTABLE BEHAVIORS.""",
                         }
                     )
-                print(adaptive_messages)
                 last_user_index = -1
                 for i, msg in reversed(list(enumerate(final_messages))):
                     if msg.get("role", "assistant") == "user":
