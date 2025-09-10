@@ -1021,6 +1021,8 @@ QLabel {
 """
 
     CODE_CSS = """
+table td {border: 1px solid #f8fafc; padding: 5px;}
+table { border-collapse: collapse; }
 pre { line-height: 1; background-color: #1e293b; border-radius: 8px; padding: 12px; color: #f8fafc; white-space: pre-wrap; word-wrap: break-word; } /* Card Background, Primary Text */
 td.linenos .normal { color: #94a3b8; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Secondary Text */
 span.linenos { color: #94a3b8; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Secondary Text */

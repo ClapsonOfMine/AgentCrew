@@ -1023,6 +1023,8 @@ QLabel {
 """
 
     CODE_CSS = """
+table td {border: 1px solid #e5e9f0; padding: 5px;}
+table { border-collapse: collapse; }
 pre { line-height: 1; background-color: #3b4252; border-radius: 8px; padding: 12px; color: #e5e9f0; white-space: pre-wrap; word-wrap: break-word; } /* Nord Polar Night 1, Snow Storm 1 */
 td.linenos .normal { color: #4c566a; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Nord Polar Night 3 */
 span.linenos { color: #4c566a; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Nord Polar Night 3 */

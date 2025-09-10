@@ -1062,6 +1062,8 @@ QLabel {
 """
 
     CODE_CSS = """
+table td {border: 1px solid #cdd6f4; padding: 5px;}
+table { border-collapse: collapse; }
 pre { line-height: 1; background-color: #181825; border-radius: 8px; padding: 12px; color: #cdd6f4; white-space: pre-wrap; word-wrap: break-word; } /* Mantle, Text */
 td.linenos .normal { color: #6c7086; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Overlay0 */
 span.linenos { color: #6c7086; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Overlay0 */

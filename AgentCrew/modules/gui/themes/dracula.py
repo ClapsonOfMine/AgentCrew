@@ -1030,6 +1030,8 @@ QLabel {
 """
 
     CODE_CSS = """
+table td {border: 1px solid #F8F8F2; padding: 5px;}
+table { border-collapse: collapse; }
 pre { line-height: 1; background-color: #282A36; border-radius: 8px; padding: 12px; color: #F8F8F2; white-space: pre-wrap; word-wrap: break-word; } /* Dracula Background, Foreground */
 td.linenos .normal { color: #6272A4; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Dracula Comment */
 span.linenos { color: #6272A4; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Dracula Comment */

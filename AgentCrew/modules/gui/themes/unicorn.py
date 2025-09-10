@@ -1030,6 +1030,8 @@ QLabel {
 """
 
     CODE_CSS = """
+table td {border: 1px solid #374151; padding: 5px;}
+table { border-collapse: collapse; }
 pre { line-height: 1; background-color: #ffffff; border-radius: 8px; padding: 12px; color: #374151; white-space: pre-wrap; word-wrap: break-word; border: 1px solid #e5e7eb; } /* White background, dark slate text */
 td.linenos .normal { color: #9ca3af; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Light gray line numbers */
 span.linenos { color: #9ca3af; background-color: transparent; padding-left: 5px; padding-right: 5px; } /* Light gray line numbers */
