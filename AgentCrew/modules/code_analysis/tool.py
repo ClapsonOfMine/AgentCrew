@@ -20,7 +20,12 @@ def get_code_analysis_tool_definition(provider="claude") -> Dict[str, Any]:
         "path": {
             "type": "string",
             "description": "The root directory to analyze. Use '.' to analyze all source files in the current directory, or specify a subdirectory (e.g., 'src') to analyze files within that directory. Choose the path that will provide the most relevant information for the task at hand.",
-        }
+        },
+        "exclude_patterns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of glob patterns to exclude certain files or directories from analysis. Example: ['tests/*', '*.md']",
+        },
     }
     tool_required = ["path"]
 
@@ -58,7 +63,8 @@ def get_code_analysis_tool_handler(
     def handler(**params) -> str:
         path = params.get("path", ".")
         path = os_path.expanduser(path)
-        result = code_analysis_service.analyze_code_structure(path)
+        exclude_patterns = params.get("exclude_patterns", [])
+        result = code_analysis_service.analyze_code_structure(path, exclude_patterns)
         if isinstance(result, dict) and "error" in result:
             raise Exception(f"Failed to analyze code: {result['error']}")
 

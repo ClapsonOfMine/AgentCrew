@@ -1,4 +1,5 @@
 import os
+import fnmatch
 import subprocess
 from typing import Any, Dict, List, Optional
 from tree_sitter_language_pack import get_parser
@@ -856,7 +857,9 @@ class CodeAnalysisService:
 
         return count
 
-    def analyze_code_structure(self, path: str) -> Dict[str, Any] | str:
+    def analyze_code_structure(
+        self, path: str, exclude_patterns: List[str] = []
+    ) -> Dict[str, Any] | str:
         """
         Build a tree-sitter based structural map of source code files in a git repository.
 
@@ -892,9 +895,15 @@ class CodeAnalysisService:
             # Filter for supported file types
             supported_files = []
             for file_path in files:
+                exluded = False
                 if file_path.strip():  # Skip empty lines
+                    # Check against glob exclude patterns
+                    for pattern in exclude_patterns:
+                        if fnmatch.fnmatch(file_path, pattern):
+                            exluded = True
+                            break
                     ext = os.path.splitext(file_path)[1].lower()
-                    if ext in self.LANGUAGE_MAP:
+                    if ext in self.LANGUAGE_MAP and not exluded:
                         supported_files.append(os.path.join(abs_path, file_path))
 
             # Analyze each file
@@ -1042,6 +1051,9 @@ class CodeAnalysisService:
                     node_info = node["first_line"]
                 else:
                     node_info = node_name
+
+            if len(node_info) > 500:
+                node_info = node_info[:497] + "(REDACTED due to long content)..."
 
             lines.append(f"{prefix}{branch}{node_info}")
 
