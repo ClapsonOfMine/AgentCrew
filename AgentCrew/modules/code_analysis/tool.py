@@ -19,12 +19,12 @@ def get_code_analysis_tool_definition(provider="claude") -> Dict[str, Any]:
     tool_arguments = {
         "path": {
             "type": "string",
-            "description": "The root directory to analyze. Use '.' to analyze all source files in the current directory, or specify a subdirectory (e.g., 'src') to analyze files within that directory. Choose the path that will provide the most relevant information for the task at hand.",
+            "description": "The root directory to analyze. Use './' to analyze all source files in the current directory, or specify a subdirectory (e.g., 'src') to analyze files within that directory. Choose the path that will provide the most relevant information for the task at hand.",
         },
         "exclude_patterns": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "List of glob patterns to exclude certain files or directories from analysis. Example: ['tests/*', '*.md']",
+            "description": 'List of glob patterns to exclude certain files or directories from analysis. Always use double quotes " for array string. Example: ["tests/*", "*.md"]',
         },
     }
     tool_required = ["path"]
@@ -65,9 +65,7 @@ def get_code_analysis_tool_handler(
         path = os.path.expanduser(path)
 
         if not os.path.isabs(path):
-            raise Exception(
-                f"Path must be absolute. Current working directory is {os.getcwd()}"
-            )
+            path = os.path.abspath(path)
 
         exclude_patterns = params.get("exclude_patterns", [])
         result = code_analysis_service.analyze_code_structure(path, exclude_patterns)
@@ -136,9 +134,7 @@ def get_file_content_tool_handler(
             raise Exception("File path is required")
 
         if not os.path.isabs(file_path):
-            raise Exception(
-                f"File path must be absolute. Current working directory is {os.getcwd()}"
-            )
+            file_path = os.path.abspath(file_path)
 
         results = code_analysis_service.get_file_content(file_path)
 

@@ -874,14 +874,11 @@ class CodeAnalysisService:
             if not os.path.exists(path):
                 return {"error": f"Path does not exist: {path}"}
 
-            # Get the absolute path
-            abs_path = os.path.abspath(path)
-
             # Run git ls-files to get all tracked files
             try:
                 result = subprocess.run(
                     ["git", "ls-files"],
-                    cwd=abs_path,
+                    cwd=path,
                     capture_output=True,
                     text=True,
                     check=True,
@@ -889,7 +886,7 @@ class CodeAnalysisService:
                 files = result.stdout.strip().split("\n")
             except subprocess.CalledProcessError:
                 return {
-                    "error": f"Failed to run git ls-files on {abs_path}. Make sure it's a git repository."
+                    "error": f"Failed to run git ls-files on {path}. Make sure it's a git repository."
                 }
 
             # Filter for supported file types
@@ -904,17 +901,13 @@ class CodeAnalysisService:
                             break
                     ext = os.path.splitext(file_path)[1].lower()
                     if ext in self.LANGUAGE_MAP and not excluded:
-                        supported_files.append(os.path.join(abs_path, file_path))
+                        supported_files.append(os.path.join(path, file_path))
 
             # Analyze each file
             analysis_results = []
             errors = []
             for file_path in supported_files:
-                # Skip empty paths (can happen if git ls-files returns empty lines)
-                if not file_path:
-                    continue
-
-                rel_path = os.path.join(path, os.path.relpath(file_path, abs_path))
+                rel_path = os.path.relpath(file_path, path)
                 try:
                     language = self._detect_language(file_path)
 
@@ -941,7 +934,7 @@ class CodeAnalysisService:
                     errors.append({"path": rel_path, "error": str(e)})
 
             if not analysis_results:
-                return "Analysis completed but no valid results"
+                return "Analysis completed but no valid results. This may due to excluded patterns is not correct"
             return self._format_analysis_results(
                 analysis_results, supported_files, errors
             )
