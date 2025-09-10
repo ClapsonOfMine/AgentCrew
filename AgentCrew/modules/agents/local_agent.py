@@ -576,7 +576,6 @@ END OF ADAPTABLE BEHAVIORS.""",
             logger.warning(f"Stream processing interrupted: {e}")
             return
         except Exception as e:
-            print(final_messages)
             logger.error(f"Error during message processing: {e}")
             raise e
 
