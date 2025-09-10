@@ -11,6 +11,9 @@ LOG_LEVEL = logging.ERROR
 logger = logging.getLogger("AgentCrew")
 logger.setLevel(LOG_LEVEL)  # Set default level to DEBUG
 
+httpx_logger = logging.getLogger("httpx")
+httpx_logger.setLevel(LOG_LEVEL)
+
 # Create a console handler
 ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(LOG_LEVEL)  # Set handler level

@@ -895,15 +895,15 @@ class CodeAnalysisService:
             # Filter for supported file types
             supported_files = []
             for file_path in files:
-                exluded = False
+                excluded = False
                 if file_path.strip():  # Skip empty lines
                     # Check against glob exclude patterns
                     for pattern in exclude_patterns:
                         if fnmatch.fnmatch(file_path, pattern):
-                            exluded = True
+                            excluded = True
                             break
                     ext = os.path.splitext(file_path)[1].lower()
-                    if ext in self.LANGUAGE_MAP and not exluded:
+                    if ext in self.LANGUAGE_MAP and not excluded:
                         supported_files.append(os.path.join(abs_path, file_path))
 
             # Analyze each file

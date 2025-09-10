@@ -5,6 +5,15 @@ if __name__ == "__main__":
     analyze = CodeAnalysisService()
     result = analyze.analyze_code_structure(
         "/home/quytruong/source/github.com/greyball-team/greyball-mono/apps/main-app/",
-        exclude_patterns=["public/**"],
+        exclude_patterns=[
+            "public/**",
+            "test/**",
+            "tests/**",
+            "assets/**",
+            "node_modules/**",
+            ".next/**",
+            "dist/**",
+            "build/**",
+        ],
     )
     print(result)
