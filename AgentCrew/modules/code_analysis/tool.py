@@ -1,4 +1,4 @@
-from os import path as os_path
+import os
 from typing import Dict, Any, Callable
 from .service import CodeAnalysisService
 
@@ -60,9 +60,15 @@ def get_code_analysis_tool_handler(
 ) -> Callable:
     """Return the handler function for the code analysis tool."""
 
-    def handler(**params) -> str:
+    def handler(**params):
         path = params.get("path", ".")
-        path = os_path.expanduser(path)
+        path = os.path.expanduser(path)
+
+        if not os.path.isabs(path):
+            raise Exception(
+                f"Path must be absolute. Current working directory is {os.getcwd()}"
+            )
+
         exclude_patterns = params.get("exclude_patterns", [])
         result = code_analysis_service.analyze_code_structure(path, exclude_patterns)
         if isinstance(result, dict) and "error" in result:
@@ -89,19 +95,6 @@ def get_file_content_tool_definition(provider="claude"):
         "file_path": {
             "type": "string",
             "description": "The relative path from the current directory of the agent to the local repository file. Example: 'src/my_module.py'",
-        },
-        "element_type": {
-            "type": "string",
-            "description": "The type of code element to extract. Use this when targeting a specific element.",
-            "enum": ["class", "function"],
-        },
-        "element_name": {
-            "type": "string",
-            "description": "The name of the class or function to extract. Use this when targeting a specific element. Case-sensitive.",
-        },
-        "scope_path": {
-            "type": "string",
-            "description": "A dot-separated path to resolve ambiguity when multiple elements share the same name (e.g., 'ClassName.method_name'). Required only if the element name is ambiguous. Omit if unnecessary.",
         },
     }
     tool_required = ["file_path"]
@@ -137,39 +130,24 @@ def get_file_content_tool_handler(
     """Returns a function that handles the get_file_content tool."""
 
     def handler(**params) -> str:
-        file_path = params.get("file_path")
-        element_type = params.get("element_type")
-        element_name = params.get("element_name")
-        scope_path = params.get("scope_path")
+        file_path = params.get("file_path", "./")
 
         if not file_path:
             raise Exception("File path is required")
 
-        # Validate parameters
-        if element_type and element_type not in ["class", "function"]:
-            raise Exception("Element type must be 'class' or 'function'")
-
-        if (element_type and not element_name) or (element_name and not element_type):
+        if not os.path.isabs(file_path):
             raise Exception(
-                "Both element_type and element_name must be provided together"
+                f"File path must be absolute. Current working directory is {os.getcwd()}"
             )
 
-        results = code_analysis_service.get_file_content(
-            file_path, element_type, element_name, scope_path
-        )
+        results = code_analysis_service.get_file_content(file_path)
 
         content = ""
 
         for path, code in results.items():
             content += f"{path}: {code}\n"
 
-        # If we're getting a specific element, format the output accordingly
-        if element_type and element_name:
-            scope_info = f" in {scope_path}" if scope_path else ""
-            return f"CONTENT OF {element_name} {element_type}{scope_info}: {content}"
-        else:
-            # If we're getting the whole file content
-            return content
+        return content
 
     return handler
 

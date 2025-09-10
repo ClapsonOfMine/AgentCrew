@@ -99,6 +99,9 @@ class UIEffects:
             self.start_streaming_response(self.message_handler.agent.name)
 
         updated_text = chunk
+        if self._live_text_data == updated_text:
+            # Skip if no change
+            return
         self._live_text_data = updated_text
 
         # Only show the last part that fits in the console
