@@ -106,7 +106,7 @@ def get_transfer_tool_handler(agent_manager: AgentManager) -> Callable:
         response = ""
 
         if result["success"] and result["transfer"]["from"] != "None":
-            response = f"<transfer_tool>## Task from {result['transfer']['from']} via `transfer` tool:  \n{task}  \n"
+            response = f"<transfer_tool>\n  <Task from='{result['transfer']['from']}'>\n{task}\n  </Task>\n"
 
             # response += (
             #     f"## **Disclaimer**: I only delegate task from {result['transfer']['from']}."
@@ -114,10 +114,10 @@ def get_transfer_tool_handler(agent_manager: AgentManager) -> Callable:
             # )
 
             if result["transfer"].get("included_conversations", []):
-                response += f"## Shared Context:  \n{'  \n'.join(result['transfer'].get('included_conversations', []))}  \n"
+                response += f"  <Shared_Context>    \n{'    \n'.join(result['transfer'].get('included_conversations', []))}\n  </Shared_Context>\n"
 
             if post_action:
-                response += f"## When task is completed: {post_action}"
+                response += f"  <Post_Execution Priority='high'>{post_action}</Post_Execution>\n"
 
             response += "</transfer_tool>"
 

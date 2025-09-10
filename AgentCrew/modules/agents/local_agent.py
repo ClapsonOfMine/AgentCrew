@@ -481,6 +481,7 @@ class LocalAgent(BaseAgent):
                         {
                             "type": "text",
                             "text": """Before processing my request:
+- Skip agent evaluation if user request related to when...do... adaptive behaviors.
 - Break my request into sub-tasks when applicable.
 - For each sub-task, evaluate other agents capabilities.
 - Transfer sub-task to other agent if they are more suitable. 
