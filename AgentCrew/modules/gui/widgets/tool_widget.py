@@ -1,4 +1,3 @@
-import markdown
 import json
 from typing import Dict, Any, Optional
 

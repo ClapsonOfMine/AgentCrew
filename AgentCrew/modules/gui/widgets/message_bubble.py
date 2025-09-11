@@ -18,7 +18,6 @@ from PySide6.QtCore import Qt, QFileInfo, QByteArray, QTimer
 from PySide6.QtGui import QPixmap, QTextDocument, QTextCursor
 import qtawesome as qta
 import pyperclip
-from qtpy.QtWidgets import QApplication
 
 from AgentCrew.modules.gui.themes import StyleProvider
 
