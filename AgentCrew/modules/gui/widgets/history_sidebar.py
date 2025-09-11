@@ -19,6 +19,8 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QAction
 from typing import List
 
+from qtpy.QtWidgets import QApplication
+
 from AgentCrew.modules.gui.themes import StyleProvider
 
 
@@ -236,6 +238,7 @@ class ConversationSidebar(QWidget):
             for conv_id in conversation_ids:
                 if not self.message_handler.delete_conversation_by_id(conv_id):
                     any_failed = True
+                QApplication.processEvents()
 
             if any_failed:
                 # MessageHandler already notifies specific errors.

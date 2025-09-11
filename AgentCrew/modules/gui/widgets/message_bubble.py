@@ -18,6 +18,7 @@ from PySide6.QtCore import Qt, QFileInfo, QByteArray, QTimer
 from PySide6.QtGui import QPixmap, QTextDocument, QTextCursor
 import qtawesome as qta
 import pyperclip
+from qtpy.QtWidgets import QApplication
 
 from AgentCrew.modules.gui.themes import StyleProvider
 
@@ -58,7 +59,7 @@ class MessageBubble(QFrame):
         self.raw_text_buffer = ""
         self.streaming_timer = QTimer()
         self.streaming_timer.timeout.connect(self._render_next_character)
-        self.character_queue = []
+        self.streaming_text = ""
 
         # Setup frame appearance
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -538,14 +539,14 @@ class MessageBubble(QFrame):
         """Start character-by-character streaming mode."""
         self.is_streaming = True
         self.raw_text_buffer = ""
-        self.character_queue = []
+        self.streaming_text = ""
 
         self.message_label.setTextFormat(Qt.TextFormat.MarkdownText)
         self.message_label.setText("")
 
-    def add_streaming_chunk(self, chunk_queue: list):
+    def update_streaming_text(self, streaming_text: str):
         """Add a chunk of text to the streaming queue."""
-        if not chunk_queue:  # Skip empty chunks
+        if not streaming_text:  # Skip empty chunks
             return
 
         if not self.is_streaming:
@@ -553,35 +554,18 @@ class MessageBubble(QFrame):
 
         # Start the streaming timer if not active
         if not self.streaming_timer.isActive():
-            self.streaming_timer.start(200)
+            self.streaming_timer.start(100)
 
         # Add characters to queue for smooth rendering
-        self.character_queue = chunk_queue
+        self.streaming_text = streaming_text
 
     def _render_next_character(self):
         """Render the next character(s) from the queue."""
-        if not self.character_queue:
-            # self.streaming_timer.stop()
-            # self._finalize_streaming()
+        if not self.streaming_text:
             return
 
-        # Adaptive rendering speed based on queue size
-        if len(self.character_queue) > 500:
-            chars_per_frame = 250  # Speed up for large queues
-        elif len(self.character_queue) > 300:
-            chars_per_frame = 200
-        else:
-            chars_per_frame = 100  # Slower for natural effect
-
-        # Render characters for this frame
-        new_chars = ""
-        for _ in range(min(chars_per_frame, len(self.character_queue))):
-            if self.character_queue:
-                new_chars += self.character_queue.pop(0)
-
-        if new_chars:
-            current_text = self.message_label.text()
-            self.message_label.setText(current_text + new_chars)
+        if self.streaming_text and self.streaming_text != self.message_label.text():
+            self.message_label.setText(self.streaming_text)
 
     def _finalize_streaming(self):
         """Convert to formatted text once streaming is complete."""

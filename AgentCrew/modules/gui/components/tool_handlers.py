@@ -61,8 +61,6 @@ class ToolEventHandler:
 
             # Add to chat using convenience method
             self.chat_window.chat_components.add_tool_widget(tool_widget)
-        self.chat_window.message_event_handler.chunk_buffer_queue = []
-        self.chat_window.message_event_handler.think_buffer_queue = []
         self.chat_window.current_response_bubble = None
         self.chat_window.current_response_container = None
         self.chat_window.current_thinking_bubble = None
@@ -89,8 +87,6 @@ class ToolEventHandler:
         self.chat_window.display_status_message(f"Error in tool {tool_use['name']}")
 
         # Reset the current response bubble so the next agent message starts in a new bubble
-        self.chat_window.message_event_handler.chunk_buffer_queue = []
-        self.chat_window.message_event_handler.think_buffer_queue = []
         self.chat_window.current_response_bubble = None
         self.chat_window.current_response_container = None
 
@@ -210,7 +206,5 @@ class ToolEventHandler:
             f"Tool execution rejected: {tool_use['name']}"
         )
 
-        self.chat_window.message_event_handler.chunk_buffer_queue = []
-        self.chat_window.message_event_handler.think_buffer_queue = []
         self.chat_window.current_response_bubble = None
         self.chat_window.current_response_container = None

@@ -235,34 +235,9 @@ class ToolWidget(QWidget):
         # Convert to string and render appropriately
         result_str = str(self.result_data)
 
-        # Use markdown for better formatting
-        try:
-            html_content = markdown.markdown(
-                result_str,
-                output_format="html",
-                extensions=[
-                    "tables",
-                    "fenced_code",
-                    "codehilite",
-                    "nl2br",
-                    "sane_lists",
-                ],
-            )
-            # Add styling
-            html_content = (
-                f"""<style>
-                pre {{ white-space: pre-wrap; margin-bottom: 0;}}
-                {self.style_provider.get_code_color_style()}
-            </style>"""
-                + html_content
-            )
-
-            result_text.setTextFormat(Qt.TextFormat.RichText)
-            result_text.setText(html_content)
-        except Exception:
-            # Fallback to plain text if markdown rendering fails
-            result_text.setTextFormat(Qt.TextFormat.PlainText)
-            result_text.setText(result_str)
+        # Fallback to plain text if markdown rendering fails
+        result_text.setTextFormat(Qt.TextFormat.PlainText)
+        result_text.setText(result_str)
 
         result_text.setProperty("role", "error" if self.is_error else "value")
         result_text.setStyleSheet(self.style_provider.get_tool_content_style())
