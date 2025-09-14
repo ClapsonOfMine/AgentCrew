@@ -94,7 +94,7 @@ class ConversationComponents:
                     self.chat_window.chat_components.append_file(file_path, True)
                 elif (
                     message_content.strip()
-                    and not message_content.startswith("<transfer_tool>")
+                    and not message_content.startswith("<Transfer_Tool>")
                     and not message_content.startswith(
                         "Memories related to the user request:"
                     )

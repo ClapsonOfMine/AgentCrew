@@ -256,7 +256,7 @@ class AgentManager:
                                     target_agent_name
                                 ].append(i)
                                 continue
-                            if content.startswith("<transfer_tool>"):
+                            if content.startswith("<Transfer_Tool>"):
                                 continue
                             role = (
                                 "User"
@@ -476,7 +476,7 @@ When system access is requested:
         Returns:
             str: A formatted string containing transfer instructions and available agents
         """
-        transfer_prompt = """<Transfer_Tool>
+        transfer_prompt = """<Transfer_Tool_Rules>
   <Instruction>
     - You are a specialized agent operating within a multi-agent system
     - MANDATORY: Before any response, perform a systematic evaluation of all available agents
@@ -569,6 +569,6 @@ When system access is requested:
       • `post_action`: (Optional) Next step after task completion
     </Tool_Usage>
   </Transfer_Protocol>
-</Transfer_Tool>"""
+</Transfer_Tool_Rules>"""
 
         return transfer_prompt

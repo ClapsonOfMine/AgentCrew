@@ -512,7 +512,7 @@ END OF ADAPTABLE BEHAVIORS.""",
                     len(final_messages[last_user_index].get("content", [])) > 0
                     and final_messages[last_user_index]["content"][0]
                     .get("text", "")
-                    .find("<transfer_tool>")
+                    .find("<Transfer_Tool>")
                     == 0
                 ):
                     adaptive_messages["content"].pop(0)
