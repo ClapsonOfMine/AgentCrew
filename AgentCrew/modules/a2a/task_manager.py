@@ -124,7 +124,22 @@ class AgentTaskManager(TaskManager):
                     temp_file = os.path.join(tempfile.gettempdir(), part["file_name"])
                     with open(temp_file, "wb") as f:
                         f.write(part["file_data"])
-                    new_parts.append(self.file_handler.process_file(temp_file))
+                    file_part = self.file_handler.process_file(temp_file)
+                    if not file_part:
+                        from AgentCrew.modules.agents.base import MessageType
+
+                        file_part = self.agent.format_message(
+                            MessageType.FileContent, {"file_uri": temp_file}
+                        )
+                    if file_part:
+                        new_parts.append(file_part)
+                    else:
+                        new_parts.append(
+                            {
+                                "type": "text",
+                                "text": f"[Unsupported file: {part['file_name']}]",
+                            }
+                        )
                 else:
                     new_parts.append(part)
 
