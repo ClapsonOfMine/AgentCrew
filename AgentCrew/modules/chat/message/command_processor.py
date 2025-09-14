@@ -308,16 +308,12 @@ class CommandProcessor:
                     True,
                 )
 
-            last_assistant_message = next(
-                (
-                    msg
-                    for msg in reversed(self.message_handler.streamline_messages)
-                    if msg.get("role") == "assistant"
-                ),
+            last_message = next(
+                (msg for msg in reversed(self.message_handler.streamline_messages)),
                 None,
             )
-            if last_assistant_message and last_assistant_message.get("agent", ""):
-                self._handle_agent_command(f"/agent {last_assistant_message['agent']}")
+            if last_message and last_message.get("agent", ""):
+                self._handle_agent_command(f"/agent {last_message['agent']}")
 
             self.message_handler.agent_manager.rebuild_agents_messages(
                 self.message_handler.streamline_messages
