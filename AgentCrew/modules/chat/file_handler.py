@@ -49,23 +49,24 @@ class FileHandler:
         """Initialize the file handling service."""
         self.converter = None
         if DOCLING_ENABLED:
-            from docling.datamodel.base_models import InputFormat
-            from docling.datamodel.accelerator_options import (
-                AcceleratorDevice,
-                AcceleratorOptions,
-            )
-            from docling.datamodel.pipeline_options import (
-                PdfPipelineOptions,
-                RapidOcrOptions,
-            )
-            from docling.document_converter import DocumentConverter, PdfFormatOption
-
             try:
+                from docling.datamodel.base_models import InputFormat
+                from docling.datamodel.accelerator_options import (
+                    AcceleratorDevice,
+                    AcceleratorOptions,
+                )
+                from docling.datamodel.pipeline_options import (
+                    PdfPipelineOptions,
+                )
+                from docling.document_converter import (
+                    DocumentConverter,
+                    PdfFormatOption,
+                )
+
                 pipeline_options = PdfPipelineOptions()
                 pipeline_options.do_ocr = True
                 pipeline_options.do_table_structure = True
                 pipeline_options.table_structure_options.do_cell_matching = True
-                pipeline_options.ocr_options = RapidOcrOptions()
 
                 pipeline_options.accelerator_options = AcceleratorOptions(
                     num_threads=2, device=AcceleratorDevice.MPS

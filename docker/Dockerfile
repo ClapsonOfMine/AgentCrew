@@ -33,7 +33,7 @@ COPY docker/pyproject.docker.toml pyproject.toml
 # Install Python dependencies and the package (without GUI dependencies)
 RUN uv venv /opt/venv && \
   . /opt/venv/bin/activate && \
-  uv pip install .
+  uv pip install .[cpu]
 
 # Production stage
 FROM python:3.12-slim
