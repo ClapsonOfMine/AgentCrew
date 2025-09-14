@@ -5,16 +5,24 @@ using various APIs including ElevenLabs and DeepInfra (STT only),
 built on a flexible abstract base class architecture.
 """
 
-from .elevenlabs_service import ElevenLabsVoiceService
-from .deepinfra_service import DeepInfraVoiceService
-from .base import BaseVoiceService
-from .text_cleaner import TextCleaner
-from .audio_handler import AudioHandler
+try:
+    from .elevenlabs_service import ElevenLabsVoiceService
+    from .deepinfra_service import DeepInfraVoiceService
+    from .base import BaseVoiceService
+    from .text_cleaner import TextCleaner
+    from .audio_handler import AudioHandler
 
-__all__ = [
-    "BaseVoiceService",
-    "ElevenLabsVoiceService",
-    "DeepInfraVoiceService",
-    "TextCleaner",
-    "AudioHandler",
-]
+    AUDIO_AVAILABLE = True
+
+    __all__ = [
+        "BaseVoiceService",
+        "ElevenLabsVoiceService",
+        "DeepInfraVoiceService",
+        "TextCleaner",
+        "AudioHandler",
+    ]
+except OSError as e:
+    print(f"Failed to import voice module components: {e}")
+    print("Please install PyAudio and other dependencies to enable voice features.")
+
+    AUDIO_AVAILABLE = False
