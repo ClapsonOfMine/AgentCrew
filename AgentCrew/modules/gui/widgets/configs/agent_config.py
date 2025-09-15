@@ -391,6 +391,7 @@ class AgentsConfigTab(QWidget):
             item = QListWidgetItem(item_data.get("name", "Unnamed Remote Agent"))
             item.setData(Qt.ItemDataRole.UserRole, item_data)
             self.agents_list.addItem(item)
+        self.agents_list.setCurrentRow(0)
 
     def on_selection_changed(self):
         """Handle selection changes to update button states."""

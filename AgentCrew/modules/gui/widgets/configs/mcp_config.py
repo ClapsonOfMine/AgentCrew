@@ -282,6 +282,7 @@ class MCPsConfigTab(QWidget):
             item = QListWidgetItem(server_config.get("name", server_id))
             item.setData(Qt.ItemDataRole.UserRole, (server_id, server_config))
             self.mcps_list.addItem(item)
+        self.mcps_list.setCurrentRow(0)
 
     def on_mcp_selected(self, current, previous):
         """Handle MCP server selection."""
