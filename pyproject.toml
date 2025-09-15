@@ -1,6 +1,6 @@
 [project]
 name = "agentcrew-ai"
-version = "0.6.12"
+version = "0.6.12-1"
 requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -27,7 +27,7 @@ dependencies = [
   "rich>=13.9.4",
   "pyperclip>=1.9.0",
   "tavily-python>=0.5.1",
-  "pillow>=11.1.0",
+  "pillow>=11.0.0",
   "groq>=0.18.0",
   "chromadb>=1.0.0",
   "openai>=1.65.2",

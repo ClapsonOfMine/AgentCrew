@@ -1,3 +1,5 @@
+from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import Qt
 import nest_asyncio
 from AgentCrew.modules.config import ConfigManagement
 import click
@@ -626,6 +628,7 @@ def chat(provider, agent_config, mcp_config, memory_llm, console):
 
         # Choose between GUI and console based on the --gui flag
         if not console:
+            QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_UseOpenGLES)
             app = QApplication(sys.argv)
             chat_window = ChatWindow(message_handler)
             chat_window.show()
