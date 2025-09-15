@@ -113,7 +113,7 @@ class RemoteAgent(BaseAgent):
         last_user_message = messages[-1]
 
         a2a_message = convert_agent_message_to_a2a(last_user_message)
-        a2a_message.taskId = self.current_task_id
+        a2a_message.task_id = self.current_task_id
 
         a2a_payload = MessageSendParams(
             metadata={"id": str(uuid4())},
@@ -136,7 +136,7 @@ class RemoteAgent(BaseAgent):
                 current_thinking_chunk_text = ""
 
                 if isinstance(event, TaskArtifactUpdateEvent):
-                    self.current_task_id = event.taskId
+                    self.current_task_id = event.task_id
                     for part in event.artifact.parts:
                         if isinstance(part.root, TextPart):
                             current_content_chunk_text += part.root.text
@@ -149,7 +149,7 @@ class RemoteAgent(BaseAgent):
                         )
 
                 elif isinstance(event, TaskStatusUpdateEvent):
-                    self.current_task_id = event.taskId
+                    self.current_task_id = event.task_id
                     if event.status.message and event.status.message.parts:
                         for part in event.status.message.parts:
                             if isinstance(part.root, TextPart):
