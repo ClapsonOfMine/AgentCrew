@@ -421,7 +421,7 @@ class ContextPersistenceService:
 
         behavior_lower = behavior.lower().strip()
         if not behavior_lower.startswith("when"):
-            raise ValueError("Behavior must follow 'when...do...' format")
+            raise ValueError("Behavior must follow 'when..., [action]...' format")
 
         adaptive_data = self._read_json_file(
             self.adaptive_behaviors_file_path, default_value={}

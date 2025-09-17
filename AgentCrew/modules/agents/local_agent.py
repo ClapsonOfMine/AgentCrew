@@ -454,11 +454,11 @@ class LocalAgent(BaseAgent):
                         {
                             "type": "text",
                             "text": """Before processing my request:
-- Skip agent evaluation if user request related to when...do... adaptive behaviors.
 - Break my request into sub-tasks when applicable.
 - For each sub-task, evaluate other agents capabilities.
 - Transfer sub-task to other agent if they are more suitable. 
-- Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.""",
+- Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
+- Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
                         }
                     )
                 if (
@@ -474,17 +474,15 @@ You must analyze then execute it with your available tools and give answer witho
                     )
 
                 if len(adaptive_behaviors.keys()) > 0:
-                    adaptive_text = ""
+                    adaptive_text = "\n"
                     for key, value in adaptive_behaviors.items():
-                        adaptive_text += f"- {value} (id:{key})\n"
+                        adaptive_text += f"<BEHAVIOR id='{key}'>{value}</BEHAVIOR>\n"
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": f"""# MANDATORY: APPLY list of adaptive behaviors before responding. When "when...do..." conditions match, modify your behaviors immediately—they override default logic.
-Ask for clarification if uncertain which behaviors apply.
-## List of adaptive behaviors:
-{adaptive_text}
-END OF ADAPTABLE BEHAVIORS.""",
+                            "text": f"""# MANDATORY: APPLY list of <ADAPTIVE_BEHAVIORS> before responding. 
+If `when` conditions in <BEHAVIOR> match, update your responses with behaviors immediately—they override default instruction.
+<ADAPTIVE_BEHAVIORS>{adaptive_text}</ADAPTIVE_BEHAVIORS>""",
                         }
                     )
                 last_user_index = -1

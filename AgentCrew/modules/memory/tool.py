@@ -213,7 +213,7 @@ def get_adapt_tool_definition(provider="claude") -> Dict[str, Any]:
 
 Use when you identify effective communication styles, task approaches, or user preferences that should be consistently applied.
 
-All behaviors must follow 'when...do...' format for automatic activation."""
+All behaviors must follow 'when..., [action]...' format for automatic activation."""
 
     tool_arguments = {
         "id": {
@@ -222,7 +222,7 @@ All behaviors must follow 'when...do...' format for automatic activation."""
         },
         "behavior": {
             "type": "string",
-            "description": "Behavior pattern in 'when [condition] do [action]' format. Example: 'when user asks about debugging, do provide step-by-step troubleshooting with code examples'.",
+            "description": "Behavior pattern in 'when [condition], [action] [objective]' format. Example: 'when user asks about debugging, provide step-by-step troubleshooting with code examples'.",
         },
     }
 
@@ -268,18 +268,8 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
 
         # Validate format
         behavior_lower = behavior.lower()
-        if not (behavior_lower.startswith("when ") and " do " in behavior_lower):
-            return "❌ Use format: 'when [condition] do [action]'"
-
-        # Check for meaningful content
-        parts = behavior_lower.split(" do ", 1)
-        if len(parts[0].replace("when ", "").strip()) < 5:
-            return (
-                "⚠️ Condition too vague. Be more specific about when behavior triggers."
-            )
-
-        if len(parts[1].strip()) < 10:
-            return "⚠️ Action too brief. Provide detailed instructions for the behavior."
+        if not behavior_lower.startswith("when "):
+            return "❌ Use format: 'when [condition], [action]'"
 
         current_agent = AgentManager.get_instance().get_current_agent()
         agent_name = current_agent.name if current_agent else "default"
