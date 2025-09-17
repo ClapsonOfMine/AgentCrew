@@ -63,6 +63,7 @@ class AgentManager:
             self.agents: Dict[str, BaseAgent] = {}
             self.current_agent: Optional[BaseAgent] = None
             self.enforce_transfer: bool = True  # Flag to enforce agent transfers
+            self.one_turn_process: bool = False  # Flag for one-turn processing
             self._initialized = True
 
     @classmethod

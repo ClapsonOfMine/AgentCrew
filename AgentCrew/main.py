@@ -50,7 +50,6 @@ def cli_prod():
     os.environ["PERSISTENCE_DIR"] = os.path.expanduser("~/.AgentCrew/persistents")
     os.environ["AGENTCREW_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/config.json")
 
-    check_and_update()
     cli()  # Delegate to main CLI function
 
 
@@ -543,6 +542,7 @@ def discover_and_register_tools(services=None):
 )
 def chat(provider, agent_config, mcp_config, memory_llm, console):
     """Start an interactive chat session with LLM"""
+    check_and_update()
     try:
         load_api_keys_from_config()
 
@@ -810,7 +810,8 @@ def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, f
         llm_manager = ServiceManager.get_instance()
 
         llm_service = llm_manager.get_service(provider)
-        llm_service.model = model_id
+        if model_id:
+            llm_service.model = model_id
 
         agent_manager.update_llm_service(llm_service)
 
@@ -819,6 +820,7 @@ def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, f
                 local_agent.is_remoting_mode = True
 
         agent_manager.enforce_transfer = False
+        agent_manager.one_turn_process = True
         if agent_manager.select_agent(agent):
             message_handler.agent = agent_manager.get_current_agent()
             for file_path in files:

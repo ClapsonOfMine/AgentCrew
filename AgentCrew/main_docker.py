@@ -8,6 +8,7 @@ import traceback
 import json
 import requests
 import time
+import asyncio
 from AgentCrew.modules.console import ConsoleUI
 from AgentCrew.modules.chat import MessageHandler
 from AgentCrew.modules.web_search import TavilySearchService
@@ -559,6 +560,104 @@ def a2a_server(
         from AgentCrew.modules.mcpclient import MCPSessionManager
 
         MCPSessionManager.get_instance().cleanup()
+
+
+@cli.command()
+@click.option("--agent", type=str, help="Name of the agent to run")
+@click.option(
+    "--provider",
+    type=click.Choice(
+        ["claude", "groq", "openai", "google", "github_copilot", "deepinfra"]
+    ),
+    default=None,
+    help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
+)
+@click.option("--model-id", default=None, help="Model ID from provider")
+@click.option("--agent-config", default=None, help="Path to agent configuration file")
+@click.option(
+    "--mcp-config", default=None, help="Path to the mcp servers configuration file."
+)
+@click.option(
+    "--memory-llm",
+    type=click.Choice(["claude", "groq", "openai", "google"]),
+    default=None,
+    help="LLM Model use for analyzing and processing memory",
+)
+@click.argument(
+    "task",
+    nargs=1,
+    type=str,
+)
+@click.argument(
+    "files",
+    nargs=-1,
+    type=click.Path(),
+)
+def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, files):
+    try:
+        load_api_keys_from_config()
+
+        if provider is None:
+            if os.getenv("GITHUB_COPILOT_API_KEY"):
+                provider = "github_copilot"
+            elif os.getenv("ANTHROPIC_API_KEY"):
+                provider = "claude"
+            elif os.getenv("GEMINI_API_KEY"):
+                provider = "google"
+            elif os.getenv("OPENAI_API_KEY"):
+                provider = "openai"
+            elif os.getenv("GROQ_API_KEY"):
+                provider = "groq"
+            elif os.getenv("DEEPINFRA_API_KEY"):
+                provider = "deepinfra"
+            else:
+                raise ValueError(
+                    "No LLM API key found. Please set either ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, or DEEPINFRA_API_KEY"
+                )
+
+        services = setup_services(provider, memory_llm)
+        if mcp_config:
+            os.environ["MCP_CONFIG_PATH"] = mcp_config
+        #
+        # Set up agents from configuration
+        setup_agents(services, agent_config)
+
+        message_handler = MessageHandler(
+            services["memory"], services["context_persistent"]
+        )
+        message_handler.is_non_interactive = True
+        # # Get agent manager
+        agent_manager = message_handler.agent_manager
+        llm_manager = ServiceManager.get_instance()
+
+        llm_service = llm_manager.get_service(provider)
+        if model_id:
+            llm_service.model = model_id
+
+        agent_manager.update_llm_service(llm_service)
+
+        for local_agent in agent_manager.agents:
+            if isinstance(local_agent, LocalAgent):
+                local_agent.is_remoting_mode = True
+
+        agent_manager.enforce_transfer = False
+        agent_manager.one_turn_process = True
+        if agent_manager.select_agent(agent):
+            message_handler.agent = agent_manager.get_current_agent()
+            for file_path in files:
+                asyncio.run(message_handler.process_user_input(f"/file {file_path}"))
+            asyncio.run(message_handler.process_user_input(task))
+            response, _, _ = asyncio.run(message_handler.get_assistant_response())
+            click.echo(response)
+
+            from AgentCrew.modules.mcpclient import MCPSessionManager
+
+            MCPSessionManager.get_instance().cleanup()
+            sys.exit(0)
+            # message_handler.process_user_input()
+    except Exception as e:
+        print(traceback.format_exc())
+        click.echo(f"❌ Error: {str(e)}", err=True)
 
 
 @cli.command()

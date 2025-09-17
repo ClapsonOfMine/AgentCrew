@@ -461,6 +461,17 @@ class LocalAgent(BaseAgent):
 - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.""",
                         }
                     )
+                if (
+                    self.services.get("agent_manager")
+                    and self.services["agent_manager"].one_turn_process
+                ):
+                    adaptive_messages["content"].append(
+                        {
+                            "type": "text",
+                            "text": """My next request is one-turn conversation.
+You must analyze process it with your available tools and give answer without asking for confirmation or clarification.""",
+                        }
+                    )
 
                 if len(adaptive_behaviors.keys()) > 0:
                     adaptive_text = ""
