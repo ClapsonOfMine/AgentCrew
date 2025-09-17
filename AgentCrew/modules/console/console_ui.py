@@ -89,8 +89,22 @@ class ConsoleUI(Observer):
         elif event == "user_message_created":
             self.console.print("\n")
         elif event == "response_chunk":
-            self.ui_effects.stop_loading_animation()  # Stop loading on first chunk
             _, assistant_response = data
+            if (
+                "<agent_evaluation>" in assistant_response
+                and "</agent_evaluation>" not in assistant_response
+            ):
+                # Skip incomplete evaluation tags
+                return
+            if "<agent_evaluation>" in assistant_response:
+                assistant_response = (
+                    assistant_response[: assistant_response.find("<agent_evaluation>")]
+                    + assistant_response[
+                        assistant_response.find("</agent_evaluation>") + 19 :
+                    ]
+                )
+
+            self.ui_effects.stop_loading_animation()  # Stop loading on first chunk
             self.ui_effects.update_live_display(
                 assistant_response
             )  # data is the response chunk

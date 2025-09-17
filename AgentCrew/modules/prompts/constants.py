@@ -7,6 +7,8 @@ Extract this conversation for AI memory storage. Create a comprehensive xml reco
     4. CONTEXT: Background information relevant to understanding this exchange
     5. ENTITIES: Important people, organizations, products, or concepts mentioned including essential facts, concepts, or data points discussed about that entity
     6. DOMAINS: The subject domain(s) this conversation relates to
+    7. USER_REQUEST: shortened version of the user's message (max 50 words)
+    8. ASSISTANT_RESPONSE: shortened version of the assistant's response (max 50 words)
 
     <CURRENT_CONVERSATION_CONTEXT>
         {current_conversation_context}
@@ -36,6 +38,8 @@ Extract this conversation for AI memory storage. Create a comprehensive xml reco
         <DOMAINS>
             <DOMAIN>Politics</DOMAIN>
         </DOMAINS>
+        <USER_REQUEST>Shortened user message about Donald Trump</USER_REQUEST>
+        <ASSISTANT_RESPONSE>Shortened assistant response about Donald Trump</ASSISTANT_RESPONSE>
     </MEMORY>
     Enhanced memory text:
 """

@@ -34,6 +34,18 @@ class MessageEventHandler:
         """Handle response chunks with smooth streaming."""
         _, full_response = data
 
+        if (
+            "<agent_evaluation>" in full_response
+            and "</agent_evaluation>" not in full_response
+        ):
+            # Skip incomplete evaluation tags
+            return
+        if "<agent_evaluation>" in full_response:
+            full_response = (
+                full_response[: full_response.find("<agent_evaluation>")]
+                + full_response[full_response.find("</agent_evaluation>") + 19 :]
+            )
+
         if full_response.strip():
             # Create bubble immediately if needed
             if (

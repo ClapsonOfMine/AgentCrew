@@ -468,8 +468,8 @@ class LocalAgent(BaseAgent):
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": """My next request is one-turn conversation.
-You must analyze process it with your available tools and give answer without asking for confirmation or clarification.""",
+                            "text": """My next request is single-turn conversation.
+You must analyze then execute it with your available tools and give answer without asking for confirmation or clarification.""",
                         }
                     )
 

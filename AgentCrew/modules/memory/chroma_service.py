@@ -248,17 +248,22 @@ class ChromaMemoryService(BaseMemoryService):
                         .replace("{user_message}", user_message)
                         .replace("{assistant_response}", assistant_response)
                     )
-                    start_xml = analyzed_text.find("<MEMORY>")
-                    end_xml = analyzed_text.find("</MEMORY>")
-                    if start_xml != -1 and end_xml != -1:
-                        xml_content = analyzed_text[
-                            start_xml : end_xml + len("</MEMORY>")
-                        ]
-                        memory_data = xmltodict.parse(xml_content)
+                    start_xml = analyzed_text.index("<MEMORY>")
+                    end_xml = analyzed_text.index("</MEMORY>")
+                    xml_content = analyzed_text[start_xml : end_xml + len("</MEMORY>")]
+                    memory_data = xmltodict.parse(xml_content)
                     if "MEMORY" in memory_data and "ID" in memory_data["MEMORY"]:
                         ids.append(memory_data["MEMORY"]["ID"])
-                    memory_data["MEMORY"]["USER_REQUEST"] = user_message
-                    memory_data["MEMORY"]["ASSISTANT_RESPONSE"] = assistant_response
+                    if (
+                        "MEMORY" in memory_data
+                        and "USER_REQUEST" not in memory_data["MEMORY"]
+                    ):
+                        memory_data["MEMORY"]["USER_REQUEST"] = user_message
+                    if (
+                        "MEMORY" in memory_data
+                        and "ASSISTANT_RESPONSE" not in memory_data["MEMORY"]
+                    ):
+                        memory_data["MEMORY"]["ASSISTANT_RESPONSE"] = assistant_response
 
                 except Exception as e:
                     logger.warning(f"Error processing conversation with LLM: {e}")
@@ -267,7 +272,9 @@ class ChromaMemoryService(BaseMemoryService):
                         "MEMORY": {
                             "DATE": datetime.today().strftime("%Y-%m-%d"),
                             "USER_REQUEST": user_message,
-                            "ASSISTANT_RESPONSE": assistant_response,
+                            "ASSISTANT_RESPONSE": assistant_response
+                            if len(assistant_response) < 200
+                            else assistant_response[:197] + "...",
                         }
                     }
             else:
@@ -276,7 +283,9 @@ class ChromaMemoryService(BaseMemoryService):
                     "MEMORY": {
                         "DATE": datetime.today().strftime("%Y-%m-%d"),
                         "USER_REQUEST": user_message,
-                        "ASSISTANT_RESPONSE": assistant_response,
+                        "ASSISTANT_RESPONSE": assistant_response
+                        if len(assistant_response) < 200
+                        else assistant_response[:197] + "...",
                     }
                 }
 
@@ -451,7 +460,7 @@ class ChromaMemoryService(BaseMemoryService):
                     timestamp = conv_data["timestamp"]
 
             output.append(
-                f"--- Memory from {timestamp} (Distance point: {conv_data['relevance']}) ---\n{conversation_text}\n---"
+                f"--- Memory from {timestamp} (relevance point(lower is better): {conv_data['relevance']}) ---\n{conversation_text}\n---"
             )
 
         memories = "\n\n".join(output)
