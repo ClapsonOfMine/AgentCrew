@@ -1,6 +1,6 @@
 from datetime import datetime
 import os
-import asyncio
+import time
 from typing import Dict, Any, List, Optional, Callable
 from AgentCrew.modules.llm import BaseLLMService
 from AgentCrew.modules.llm.message import MessageTransformer
@@ -48,7 +48,7 @@ class LocalAgent(BaseAgent):
         self.registered_tools = (
             set()
         )  # Set of tool names that are registered with the LLM
-        self.is_tool_ready = True
+        self.mcps_loading = []
 
     def _extract_tool_name(self, tool_def: Any) -> str:
         """
@@ -165,33 +165,6 @@ class LocalAgent(BaseAgent):
             service_instance,
         )
 
-        # If the agent is active, register the tool with the LLM immediately
-        if self.is_active and self.llm:
-            # Get provider-specific definition
-            provider = getattr(self.llm, "provider_name", None)
-            if callable(definition_func) and provider:
-                try:
-                    tool_def = definition_func(provider)
-                except TypeError:
-                    # If definition_func doesn't accept provider argument
-                    tool_def = definition_func()
-            else:
-                tool_def = definition_func
-
-            # Get handler function
-            if callable(handler_factory):
-                handler = (
-                    handler_factory(service_instance)
-                    if service_instance
-                    else handler_factory()
-                )
-            else:
-                handler = handler_factory
-
-            # Register with LLM
-            self.llm.register_tool(tool_def, handler)
-            self.registered_tools.add(tool_name)
-
     def set_system_prompt(self, prompt: str):
         """
         Set the system prompt for this agent.
@@ -247,7 +220,6 @@ class LocalAgent(BaseAgent):
             return True  # Already active
 
         self.register_tools()
-        self._register_tools_with_llm()
 
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
@@ -267,6 +239,9 @@ class LocalAgent(BaseAgent):
 
         self.llm.set_system_prompt(self._parse_system_prompt(system_prompt))
         self.llm.temperature = self.temperature if self.temperature is not None else 0.4
+        while len(self.mcps_loading) > 0:
+            time.sleep(0.2)
+        self._register_tools_with_llm()
         self.is_active = True
         return True
 
@@ -284,7 +259,7 @@ class LocalAgent(BaseAgent):
         self.tool_definitions = {}
         self.tool_prompts = []
         self.is_active = False
-        self.is_tool_ready = True
+        self.mcps_loading = []
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
             from AgentCrew.modules.mcpclient.manager import MCPSessionManager
@@ -452,8 +427,6 @@ class LocalAgent(BaseAgent):
         _input_tokens_usage = 0
         _output_tokens_usage = 0
         # Ensure the first message is a system message with the agent's prompt
-        while not self.is_tool_ready:
-            await asyncio.sleep(0.2)
         if not messages:
             final_messages = list(self.history)
         else:

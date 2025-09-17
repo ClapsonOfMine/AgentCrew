@@ -148,8 +148,8 @@ class MCPService:
             if agent_name:
                 agent_manager = AgentManager.get_instance()
                 agent = agent_manager.get_local_agent(agent_name)
-                if agent:
-                    agent.is_tool_ready = True
+                if agent and combined_server_id in agent.mcps_loading:
+                    agent.mcps_loading.remove(combined_server_id)
         finally:
             logger.info(f"MCPService: Cleaning up connection for {server_name}.")
             self.sessions.pop(server_name, None)
@@ -182,7 +182,7 @@ class MCPService:
             agent_manager = AgentManager.get_instance()
             agent = agent_manager.get_local_agent(agent_name)
             if agent:
-                agent.is_tool_ready = False
+                agent.mcps_loading.append(combined_server_id)
         logger.info(
             f"MCPService: Creating task for _manage_single_connection for {combined_server_id}"
         )
@@ -315,8 +315,11 @@ class MCPService:
                     registry.register_tool(
                         tool_definition_factory(), handler_factory, self
                     )
-            if isinstance(registry, LocalAgent):
-                registry.is_tool_ready = True
+            if (
+                isinstance(registry, LocalAgent)
+                and combined_server_id in registry.mcps_loading
+            ):
+                registry.mcps_loading.remove(combined_server_id)
 
         except Exception:
             logger.exception(
