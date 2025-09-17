@@ -34,7 +34,7 @@ nest_asyncio.apply()
 
 @click.group()
 def cli():
-    """SwissKnife - AI Assistant and Agent Framework"""
+    """Agentcrew - AI Assistant and Agent Framework"""
     pass
 
 
