@@ -70,7 +70,11 @@ class ToolManager:
                 )
             return
 
-        if not self.yolo_mode and tool_name not in self._auto_approved_tools:
+        if (
+            not self.message_handler.is_non_interactive
+            and not self.yolo_mode
+            and tool_name not in self._auto_approved_tools
+        ):
             # Request confirmation from the user
             confirmation = await self._wait_for_tool_confirmation(tool_use)
             action = confirmation.get("action", "deny")

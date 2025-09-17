@@ -60,6 +60,7 @@ class MessageHandler(Observable):
         self._queued_attached_files = []
         self.stop_streaming = False
         self.streamline_messages = []
+        self.is_non_interactive = False
         self.current_conversation_id: Optional[str] = None  # ID for persistence
 
         # Initialize components
