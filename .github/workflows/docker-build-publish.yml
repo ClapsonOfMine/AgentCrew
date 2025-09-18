@@ -1,0 +1,130 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: daltonnyx/agentcrew
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image 🐳
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for proper git versioning
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Set latest tag for main branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Set version tag for git tags (e.g. v1.2.3 -> 1.2.3)
+            type=ref,event=tag
+            # Set version tag from git tag without v prefix
+            type=match,pattern=v(.+),group=1,enable={{is_tag}}
+            # Set sha tag for all pushes
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD'}},format=short
+          labels: |
+            org.opencontainers.image.title=AgentCrew AI
+            org.opencontainers.image.description=Multi-Agents Interactive Chat Tool
+            org.opencontainers.image.vendor=AgentCrew
+            org.opencontainers.image.version={{version}}
+            org.opencontainers.image.created={{date 'iso8601'}}
+            org.opencontainers.image.revision={{sha}}
+            org.opencontainers.image.url=https://github.com/saigontechnology/AgentCrew
+            org.opencontainers.image.source=https://github.com/saigontechnology/AgentCrew
+            org.opencontainers.image.documentation=https://github.com/saigontechnology/AgentCrew/blob/main/README.md
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Generate build summary
+        run: |
+          echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags built:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Context:** Docker context from repository root" >> $GITHUB_STEP_SUMMARY
+          echo "**Dockerfile:** \`docker/Dockerfile\`" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎉 **Released version:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pull Command" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${GITHUB_REF#refs/tags/v}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  security-scan:
+    name: Security Scan 🔍
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name != 'workflow_dispatch' # Skip on manual runs
+
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
