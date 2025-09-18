@@ -475,6 +475,147 @@ by ElevenLabs, enabling natural conversations with your AI agents.
 - Check your microphone settings and noise levels
 - Ensure stable internet connection for API calls
 
+## 🤖 Job Mode: Non-Interactive Task Execution
+
+AgentCrew's Job Mode enables powerful **non-interactive, single-turn task
+execution** - perfect for automation, CI/CD pipelines, scripting, and batch
+processing workflows.
+
+### 🎯 **What is Job Mode?**
+
+Job Mode allows you to execute specific tasks using AgentCrew agents without
+starting an interactive chat session. The agent processes your task, optionally
+including files as context, and returns the result directly to stdout.
+
+**Key Benefits:**
+
+- **Automation-Ready:** Perfect for scripts, CI/CD pipelines, and automated
+  workflows
+- **Agent Specialization:** Target specific agents for specialized tasks
+- **File Processing:** Include multiple files as context for comprehensive
+  analysis
+- **Scriptable Output:** Clean stdout output suitable for further processing
+- **Tool Access:** Full access to all agent tools (web search, code analysis,
+  memory, etc.)
+
+### 🚀 **Basic Usage**
+
+**Local Installation:**
+
+```bash
+# Basic task execution
+agentcrew job --agent "CodeAssistant" "Analyze this code for potential security issues"
+
+# Task with file context
+agentcrew job --agent "Architect" "Review this system architecture" ./docs/architecture.md
+
+# Multiple files with specific provider
+agentcrew job --agent "CodeAssistant" --provider claude "Refactor these components for better performance" ./src/component1.py ./src/component2.py ./src/utils.py
+
+# Custom model selection
+agentcrew job --agent "Architect" --provider openai --model-id "gpt-4" "Design a microservices architecture for this system" ./requirements.txt ./current-system.md
+```
+
+**Docker Usage:**
+
+```bash
+# Basic Docker job execution
+docker run --rm \
+  -e ANTHROPIC_API_KEY="your_key" \
+  -v $(pwd):/workspace \
+  daltonnyx/agentcrew job --agent "CodeAssistant" "Explain this code" /workspace/main.py
+
+# Multiple files with custom agent config
+docker run --rm \
+  -e OPENAI_API_KEY="your_key" \
+  -v $(pwd):/workspace \
+  -v $(pwd)/custom_agents.toml:/home/agentcrew/.AgentCrew/agents.toml:ro \
+  daltonnyx/agentcrew job \
+  --agent "Architect" \
+  --agent-config /home/agentcrew/.AgentCrew/agents.toml \
+  "Design a deployment strategy" /workspace/docker-compose.yml /workspace/README.md
+```
+
+### 🛠️ **Command Options**
+
+```bash
+agentcrew job [OPTIONS] TASK [FILES]...
+
+Options:
+  --agent TEXT                 Name of the agent to run (required)
+  --provider [claude|groq|openai|google|github_copilot|deepinfra]
+                              LLM provider to use
+  --model-id TEXT             Specific model ID from provider
+  --agent-config PATH         Path to agent configuration file
+  --mcp-config PATH           Path to MCP servers configuration file
+  --memory-llm [claude|groq|openai|google]
+                              LLM model for memory processing
+
+Arguments:
+  TASK                        The task instruction (required)
+  FILES                       Optional files to include as context
+```
+
+### 🎯 **Best Practices**
+
+**1. Task Clarity:**
+
+- Be specific about what you want analyzed or generated
+- Include context about the purpose and constraints
+- Specify output format when needed (e.g., "provide as JSON", "create markdown
+  table")
+
+**2. File Management:**
+
+- Include relevant files that provide necessary context
+- Keep file sets focused on the specific task
+- Use relative paths for better portability
+
+**3. Error Handling:**
+
+```bash
+# Check exit status
+if agentcrew job --agent "CodeAssistant" "Analyze this code" ./main.py; then
+    echo "Analysis completed successfully"
+else
+    echo "Analysis failed with exit code $?"
+fi
+
+# Capture both stdout and stderr
+output=$(agentcrew job --agent "Architect" "Review architecture" ./design.md 2>&1)
+```
+
+### 🐳 **Docker Production Setup**
+
+**Dockerfile for Custom Job Runner:**
+
+```dockerfile
+FROM daltonnyx/agentcrew:latest
+
+# Copy custom agent configurations
+COPY ./agents.toml /home/agentcrew/.AgentCrew/agents.toml
+COPY ./mcp_servers.json /home/agentcrew/.AgentCrew/mcp_servers.json
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command
+ENTRYPOINT ["agentcrew", "job"]
+```
+
+**Usage:**
+
+```bash
+# Build custom image
+docker build -t my-agentcrew-jobs .
+
+# Run jobs
+docker run --rm \
+  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+  -v $(pwd):/workspace \
+  my-agentcrew-jobs --agent "CodeAssistant" "Analyze code" /workspace/src/
+```
+
 ## 👨‍💻 Development & Customization
 
 If you are a developer, you can add to AgentCrew:
