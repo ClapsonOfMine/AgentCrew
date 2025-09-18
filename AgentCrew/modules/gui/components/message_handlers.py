@@ -1,6 +1,9 @@
 from typing import Any
 
 from PySide6.QtWidgets import QApplication
+from AgentCrew.modules.gui.utils.strings import (
+    agent_evaluation_remove,
+)
 
 
 class MessageEventHandler:
@@ -74,12 +77,9 @@ class MessageEventHandler:
             )
 
     def handle_response_completed(self, data):
-        if "<agent_evaluation>" in data and "</agent_evaluation>" in data:
-            data = (
-                data[: data.find("<agent_evaluation>")]
-                + data[data.find("</agent_evaluation>") + 19 :]
-            )
         """Handle response completion."""
+
+        data = agent_evaluation_remove(data)
         if self.chat_window.current_response_bubble:
             # Finalize streaming and ensure full content is rendered
             self.chat_window.current_response_bubble.raw_text_buffer = data

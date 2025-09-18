@@ -2,6 +2,10 @@ from typing import Any, Dict
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QMessageBox, QApplication
 from AgentCrew.modules.gui.widgets import ConversationLoader
+from AgentCrew.modules.gui.utils.strings import (
+    agent_evaluation_remove,
+    need_print_check,
+)
 
 
 class ConversationComponents:
@@ -92,16 +96,8 @@ class ConversationComponents:
                         .strip()
                     )
                     self.chat_window.chat_components.append_file(file_path, True)
-                elif (
-                    message_content.strip()
-                    and not message_content.startswith("<Transfer_Tool>")
-                    and not message_content.startswith(
-                        "Memories related to the user request:"
-                    )
-                    and not message_content.startswith(
-                        "Need to tailor response bases on this"
-                    )
-                ):
+                elif message_content.strip() and need_print_check(message_content):
+                    message_content = agent_evaluation_remove(message_content)
                     self.chat_window.chat_components.append_message(
                         message_content,
                         is_user,

@@ -18,6 +18,7 @@ except ImportError:
 import AgentCrew
 from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
 from AgentCrew.modules import logger
+from AgentCrew.modules.gui.utils import strings
 
 from .constants import (
     RICH_STYLE_GREEN,
@@ -128,11 +129,7 @@ class ConsoleUI(Observer):
                 data
             )  # data is the tool use that was denied
         elif event == "response_completed" or event == "assistant_message_added":
-            if "<agent_evaluation>" in data and "</agent_evaluation>" in data:
-                data = (
-                    data[: data.find("<agent_evaluation>")]
-                    + data[data.find("</agent_evaluation>") + 19 :]
-                )
+            data = strings.agent_evaluation_remove(data)
             self.ui_effects.finish_response(data)  # data is the complete response
             self.latest_assistant_response = data
         elif event == "error":
