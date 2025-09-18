@@ -41,7 +41,6 @@ class CommandHandler:
 
         elif (
             user_input.startswith("/mcp ")
-            or user_input.startswith("/agent ")
             or user_input.startswith("/model ")
             or user_input.startswith("/think ")
             or user_input.startswith("/toggle_transfer")
@@ -49,7 +48,7 @@ class CommandHandler:
             self.chat_window.llm_worker.process_request.emit(user_input)
             self.chat_window.ui_state_manager.set_input_controls_enabled(True)
             return True
-        elif user_input.startswith("/consolidate "):
+        elif user_input.startswith("/consolidate ") or user_input.startswith("/agent "):
             self.chat_window.llm_worker.process_request.emit(user_input)
             self.chat_window.ui_state_manager.set_input_controls_enabled(False)
             return True
@@ -105,6 +104,8 @@ class CommandHandler:
     def change_agent(self, agent_name):
         """Change the current agent"""
         # Process the agent change command
+        self.chat_window.ui_state_manager.set_input_controls_enabled(False)
+        self.chat_window.ui_state_manager._set_send_button_state(True)
         self.chat_window.llm_worker.process_request.emit(f"/agent {agent_name}")
 
     def change_model(self, model_id):
@@ -216,6 +217,8 @@ class CommandHandler:
             self.chat_window.status_indicator.setText(
                 f"Agent: {data} | Model: {self.chat_window.message_handler.agent.get_model()}"
             )
+        elif event == "agent_command_result":
+            print(data)
             self.chat_window.ui_state_manager.set_input_controls_enabled(True)
             return True
 

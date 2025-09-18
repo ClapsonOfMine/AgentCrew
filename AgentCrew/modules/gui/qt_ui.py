@@ -497,6 +497,7 @@ class ChatWindow(QMainWindow, Observer):
             "copy_requested",
             "debug_requested",
             "agent_changed",
+            "agent_command_result",
             "model_changed",
             "think_budget_set",
             "jump_performed",

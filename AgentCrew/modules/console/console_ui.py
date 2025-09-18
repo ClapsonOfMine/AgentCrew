@@ -406,6 +406,7 @@ class ConsoleUI(Observer):
                         not user_input.startswith("/")
                         or user_input.startswith("/file ")
                         or user_input.startswith("/consolidate ")
+                        or user_input.startswith("/agent ")
                     ):
                         self.start_loading_animation()
 
