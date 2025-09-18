@@ -328,14 +328,6 @@ def setup_services(provider, memory_llm=None):
         click.echo(f"⚠️ Image generation service not available: {str(e)}")
         image_gen_service = None
 
-    # Clean up old memories (older than 1 month)
-    try:
-        removed_count = memory_service.cleanup_old_memories(months=1)
-        if removed_count > 0:
-            click.echo(f"🧹 Cleaned up {removed_count} old conversation memories")
-    except Exception as e:
-        click.echo(f"⚠️ Memory cleanup failed: {str(e)}")
-
     # Register all tools with their respective services
     services = {
         "llm": llm_service,
@@ -621,6 +613,17 @@ def chat(provider, agent_config, mcp_config, memory_llm, console):
 
         # Set up the agent system
         setup_agents(services, agent_config)
+
+        if "memory" in services and services["memory"]:
+            # Clean up old memories (older than 1 month)
+            try:
+                removed_count = services["memory"].cleanup_old_memories(months=1)
+                if removed_count > 0:
+                    click.echo(
+                        f"🧹 Cleaned up {removed_count} old conversation memories"
+                    )
+            except Exception as e:
+                click.echo(f"⚠️ Memory cleanup failed: {str(e)}")
 
         # Create the message handler
         message_handler = MessageHandler(
