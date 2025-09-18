@@ -74,6 +74,11 @@ class MessageEventHandler:
             )
 
     def handle_response_completed(self, data):
+        if "<agent_evaluation>" in data and "</agent_evaluation>" in data:
+            data = (
+                data[: data.find("<agent_evaluation>")]
+                + data[data.find("</agent_evaluation>") + 19 :]
+            )
         """Handle response completion."""
         if self.chat_window.current_response_bubble:
             # Finalize streaming and ensure full content is rendered

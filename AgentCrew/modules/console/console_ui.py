@@ -128,6 +128,11 @@ class ConsoleUI(Observer):
                 data
             )  # data is the tool use that was denied
         elif event == "response_completed" or event == "assistant_message_added":
+            if "<agent_evaluation>" in data and "</agent_evaluation>" in data:
+                data = (
+                    data[: data.find("<agent_evaluation>")]
+                    + data[data.find("</agent_evaluation>") + 19 :]
+                )
             self.ui_effects.finish_response(data)  # data is the complete response
             self.latest_assistant_response = data
         elif event == "error":
