@@ -366,6 +366,10 @@ class MessageHandler(Observable):
             # Final assistant message
             self._notify("response_completed", assistant_response)
 
+            if self.is_non_interactive:
+                # No need to persist or store conversation turn since is single turn task
+                return assistant_response, input_tokens, output_tokens
+
             # --- Start of Persistence Logic ---
             if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
                 try:
