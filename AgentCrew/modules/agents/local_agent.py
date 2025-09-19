@@ -138,6 +138,12 @@ class LocalAgent(BaseAgent):
                         )
 
                         register_image_generation(service, self)
+                    elif tool_name == "browser":
+                        from AgentCrew.modules.browser_automation.tool import (
+                            register as register_browser,
+                        )
+
+                        register_browser(service, self)
                     else:
                         logger.warning(f"⚠️ Tool {tool_name} not found in services")
             else:
