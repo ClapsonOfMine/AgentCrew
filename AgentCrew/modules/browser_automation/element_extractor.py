@@ -73,11 +73,11 @@ def clean_markdown_images(markdown_content: str) -> str:
 def extract_clickable_elements(chrome_interface) -> str:
     """
     Extract all clickable elements from the current webpage in a concise format.
-    
+
     For each clickable element, extracts:
     - XPath: Unique path to locate the element
     - Text/Alt: Display text or alt text from images
-    
+
     Deduplication:
     - Elements with href: Deduplicated by href value
     - Elements without href: Deduplicated by tagName + text combination
@@ -218,7 +218,9 @@ def extract_clickable_elements(chrome_interface) -> str:
         """
 
         # Execute JavaScript to get clickable elements
-        result = chrome_interface.Runtime.evaluate(expression=js_code, returnByValue=True)
+        result = chrome_interface.Runtime.evaluate(
+            expression=js_code, returnByValue=True
+        )
         logger.debug(f"Clickable elements extraction result: {result}")
 
         if isinstance(result, tuple) and len(result) >= 2:
@@ -249,10 +251,10 @@ def extract_clickable_elements(chrome_interface) -> str:
             text = element.get("text", "").strip()
 
             # Escape pipe characters in text for markdown table
-            if text:
-                text = text.replace("|", "\\|")
-            else:
-                text = "_empty_"
+            if not text:
+                continue  # Skip empty text entries
+
+            text = text.replace("|", "\\|")
 
             # Escape pipe characters in xpath for markdown table
             xpath = xpath.replace("|", "\\|")
@@ -273,13 +275,13 @@ def extract_clickable_elements(chrome_interface) -> str:
 def extract_input_elements(chrome_interface) -> str:
     """
     Extract all input elements from the current webpage in a concise format.
-    
+
     For each input element, extracts:
     - XPath: Unique path to locate the element
     - Type: Input type (text, email, password, etc.)
     - Placeholder/Label: Placeholder text or associated label
     - Required: Whether the field is required
-    
+
     Args:
         chrome_interface: ChromeInterface object with enabled DOM
 
@@ -459,7 +461,9 @@ def extract_input_elements(chrome_interface) -> str:
         """
 
         # Execute JavaScript to get input elements
-        result = chrome_interface.Runtime.evaluate(expression=js_code, returnByValue=True)
+        result = chrome_interface.Runtime.evaluate(
+            expression=js_code, returnByValue=True
+        )
         logger.debug(f"Input elements extraction result: {result}")
 
         if isinstance(result, tuple) and len(result) >= 2:
@@ -501,7 +505,9 @@ def extract_input_elements(chrome_interface) -> str:
             xpath = xpath.replace("|", "\\|")
             element_type = element_type.replace("|", "\\|")
 
-            markdown_output.append(f"| `{xpath}` | {element_type} | {description} | {required} | {disabled} |\n")
+            markdown_output.append(
+                f"| `{xpath}` | {element_type} | {description} | {required} | {disabled} |\n"
+            )
 
         # Add summary
         total_elements = len(elements_data)
@@ -512,3 +518,4 @@ def extract_input_elements(chrome_interface) -> str:
     except Exception as e:
         logger.error(f"Error extracting input elements: {e}")
         return f"\n\n## Input Elements\n\nError extracting input elements: {str(e)}\n"
+

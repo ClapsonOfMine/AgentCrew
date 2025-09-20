@@ -206,7 +206,7 @@ class BrowserAutomationService:
                 click_result = {"success": False, "error": "No response from browser"}
 
             # Wait a moment for any page changes
-            time.sleep(1)
+            time.sleep(2)
 
             return {"xpath": xpath, **click_result}
 
@@ -307,7 +307,7 @@ class BrowserAutomationService:
                 scroll_result = {"success": False, "error": "No response from browser"}
 
             # Wait a moment for scroll to complete
-            time.sleep(0.5)
+            time.sleep(1.5)
 
             return {"direction": direction, "amount": amount, **scroll_result}
 
@@ -472,7 +472,7 @@ class BrowserAutomationService:
             self._trigger_input_events(xpath, value)
 
             # Wait a moment for any page changes
-            time.sleep(0.5)
+            time.sleep(1.5)
 
             return {
                 "success": True,
