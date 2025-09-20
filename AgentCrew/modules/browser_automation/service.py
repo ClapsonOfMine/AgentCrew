@@ -11,7 +11,11 @@ from typing import Dict, Any, Optional
 from html_to_markdown import convert_to_markdown
 
 from .chrome_manager import ChromeManager
-from .element_extractor import clean_markdown_images, extract_clickable_elements
+from .element_extractor import (
+    clean_markdown_images,
+    extract_clickable_elements,
+    extract_input_elements,
+)
 
 import PyChromeDevTools
 
@@ -116,10 +120,12 @@ class BrowserAutomationService:
             }
 
         except Exception as e:
-            logger.error(f"Navigation error: {e}")
+            logger.error(f"Navigation error: {e}.")
+            self.chrome_manager.cleanup()
+            self._is_initialized = False
             return {
                 "success": False,
-                "error": f"Navigation error: {str(e)}",
+                "error": f"Navigation error: {str(e)}. Please try again",
                 "url": url,
             }
 
@@ -175,12 +181,14 @@ class BrowserAutomationService:
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
             )
+            print(result)
 
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):
                     click_result = (
                         result[1].get("result", {}).get("result", {}).get("value", {})
                     )
+                    click_result["success"] = True
                 elif isinstance(result[1], list) and len(result[1]) > 0:
                     click_result = (
                         result[1][0]
@@ -188,6 +196,7 @@ class BrowserAutomationService:
                         .get("result", {})
                         .get("value", {})
                     )
+                    click_result["success"] = True
                 else:
                     click_result = {
                         "success": False,
@@ -357,8 +366,13 @@ class BrowserAutomationService:
             # Extract clickable elements
             clickable_elements_md = extract_clickable_elements(self.chrome_interface)
 
+            # Extract input elements
+            input_elements_md = extract_input_elements(self.chrome_interface)
+
             # Combine content
-            final_content = cleaned_markdown_content + clickable_elements_md
+            final_content = (
+                cleaned_markdown_content + clickable_elements_md + input_elements_md
+            )
 
             # Get current URL
             current_url = self._get_current_url()
@@ -370,6 +384,7 @@ class BrowserAutomationService:
                 "content_length": len(final_content),
                 "has_clickable_elements": "## Clickable Elements"
                 in clickable_elements_md,
+                "has_input_elements": "## Input Elements" in input_elements_md,
             }
 
         except Exception as e:
@@ -421,7 +436,133 @@ class BrowserAutomationService:
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
+    def input_data(self, xpath: str, value: str) -> Dict[str, Any]:
+        """
+        Input data into a form field using XPath selector.
+
+        Args:
+            xpath: XPath selector for the input element
+            value: Value to input into the field
+
+        Returns:
+            Dict containing input result
+        """
+        try:
+            self._ensure_chrome_running()
+
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            logger.info(f"Inputting data into element with XPath: {xpath}")
+
+            # JavaScript to find element and input data
+            js_code = f"""
+            (() => {{
+                const xpath = `{xpath}`;
+                const value = `{value.replace("`", "\\`")}`;
+                const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                const element = result.singleNodeValue;
+                
+                if (!element) {{
+                    return {{success: false, error: "Element not found"}};
+                }}
+                
+                // Check if element is visible and enabled
+                const style = window.getComputedStyle(element);
+                if (style.display === 'none' || style.visibility === 'hidden') {{
+                    return {{success: false, error: "Element is not visible"}};
+                }}
+                
+                if (element.disabled) {{
+                    return {{success: false, error: "Element is disabled"}};
+                }}
+                
+                // Scroll element into view
+                element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                
+                // Clear existing value and set new value
+                try {{
+                    // Focus the element
+                    element.focus();
+                    
+                    // For different input types, handle accordingly
+                    if (element.tagName.toLowerCase() === 'input' || element.tagName.toLowerCase() === 'textarea') {{
+                        // Clear existing content
+                        element.value = '';
+                        
+                        // Set new value
+                        element.value = value;
+                        
+                        // Trigger input events to notify the page of changes
+                        element.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        element.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    }} else if (element.tagName.toLowerCase() === 'select') {{
+                        // For select elements, try to select option by value or text
+                        let optionFound = false;
+                        for (let option of element.options) {{
+                            if (option.value === value || option.text === value) {{
+                                option.selected = true;
+                                optionFound = true;
+                                break;
+                            }}
+                        }}
+                        if (!optionFound) {{
+                            return {{success: false, error: "Option not found in select element"}};
+                        }}
+                        element.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    }} else if (element.hasAttribute('contenteditable')) {{
+                        // For contenteditable elements
+                        element.textContent = value;
+                        element.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    }} else {{
+                        return {{success: false, error: "Element is not an input field"}};
+                    }}
+                    
+                    return {{success: true, message: "Data input successfully", value: value}};
+                }} catch (inputError) {{
+                    return {{success: false, error: "Failed to input data: " + inputError.message}};
+                }}
+            }})();
+            """
+
+            result = self.chrome_interface.Runtime.evaluate(
+                expression=js_code, returnByValue=True
+            )
+
+            if isinstance(result, tuple) and len(result) >= 2:
+                if isinstance(result[1], dict):
+                    input_result = (
+                        result[1].get("result", {}).get("result", {}).get("value", {})
+                    )
+                elif isinstance(result[1], list) and len(result[1]) > 0:
+                    input_result = (
+                        result[1][0]
+                        .get("result", {})
+                        .get("result", {})
+                        .get("value", {})
+                    )
+                else:
+                    input_result = {
+                        "success": False,
+                        "error": "Invalid response format",
+                    }
+            else:
+                input_result = {"success": False, "error": "No response from browser"}
+
+            # Wait a moment for any page changes
+            time.sleep(0.5)
+
+            return {"xpath": xpath, "input_value": value, **input_result}
+
+        except Exception as e:
+            logger.error(f"Input error: {e}")
+            return {
+                "success": False,
+                "error": f"Input error: {str(e)}",
+                "xpath": xpath,
+                "input_value": value,
+            }
+
     def __del__(self):
         """Cleanup when service is destroyed."""
         self.cleanup()
-

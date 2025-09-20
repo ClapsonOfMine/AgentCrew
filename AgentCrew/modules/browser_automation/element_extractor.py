@@ -7,7 +7,6 @@ for browser automation operations.
 
 import re
 import logging
-from typing import Dict, List, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -269,3 +268,247 @@ def extract_clickable_elements(chrome_interface) -> str:
     except Exception as e:
         logger.error(f"Error extracting clickable elements: {e}")
         return f"\n\n## Clickable Elements\n\nError extracting clickable elements: {str(e)}\n"
+
+
+def extract_input_elements(chrome_interface) -> str:
+    """
+    Extract all input elements from the current webpage in a concise format.
+    
+    For each input element, extracts:
+    - XPath: Unique path to locate the element
+    - Type: Input type (text, email, password, etc.)
+    - Placeholder/Label: Placeholder text or associated label
+    - Required: Whether the field is required
+    
+    Args:
+        chrome_interface: ChromeInterface object with enabled DOM
+
+    Returns:
+        Concise markdown table with XPath, type, and description for each input element
+    """
+    try:
+        # JavaScript to find all input elements
+        js_code = """
+        (() => {
+            const inputElements = [];
+            const seenElements = new Set();
+            
+            // Function to generate XPath for an element
+            function getXPath(element) {
+                if (element.id) {
+                    return `//*[@id="${element.id}"]`;
+                }
+                
+                const parts = [];
+                while (element && element.nodeType === Node.ELEMENT_NODE) {
+                    let index = 0;
+                    let sibling = element.previousSibling;
+                    while (sibling) {
+                        if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === element.nodeName) {
+                            index++;
+                        }
+                        sibling = sibling.previousSibling;
+                    }
+                    
+                    const tagName = element.nodeName.toLowerCase();
+                    const pathIndex = index > 0 ? `[${index + 1}]` : '';
+                    parts.unshift(tagName + pathIndex);
+                    element = element.parentNode;
+                }
+                
+                return parts.length ? '/' + parts.join('/') : '';
+            }
+            
+            // Function to find associated label text
+            function getLabelText(element) {
+                // Check for direct label association
+                if (element.id) {
+                    const label = document.querySelector(`label[for="${element.id}"]`);
+                    if (label) {
+                        return label.textContent.trim();
+                    }
+                }
+                
+                // Check if element is inside a label
+                const parentLabel = element.closest('label');
+                if (parentLabel) {
+                    return parentLabel.textContent.trim();
+                }
+                
+                // Check for aria-label
+                if (element.getAttribute('aria-label')) {
+                    return element.getAttribute('aria-label');
+                }
+                
+                // Check for preceding label or text
+                let sibling = element.previousElementSibling;
+                while (sibling) {
+                    if (sibling.tagName === 'LABEL') {
+                        return sibling.textContent.trim();
+                    }
+                    if (sibling.textContent && sibling.textContent.trim()) {
+                        const text = sibling.textContent.trim();
+                        if (text.length < 100) { // Reasonable label length
+                            return text;
+                        }
+                    }
+                    sibling = sibling.previousElementSibling;
+                }
+                
+                return '';
+            }
+            
+            // Define selectors for input elements
+            const selectors = [
+                'input[type="text"]',
+                'input[type="email"]',
+                'input[type="password"]',
+                'input[type="number"]',
+                'input[type="tel"]',
+                'input[type="url"]',
+                'input[type="search"]',
+                'input[type="date"]',
+                'input[type="datetime-local"]',
+                'input[type="time"]',
+                'input[type="month"]',
+                'input[type="week"]',
+                'input[type="color"]',
+                'input[type="range"]',
+                'input[type="file"]',
+                'input:not([type])', // Default input type is text
+                'textarea',
+                'select',
+                '[contenteditable="true"]'
+            ];
+            
+            selectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    // Skip if element is hidden or disabled
+                    const style = window.getComputedStyle(element);
+                    if (style.display === 'none' || style.visibility === 'hidden') {
+                        return;
+                    }
+                    
+                    // Generate XPath
+                    const xpath = getXPath(element);
+                    
+                    // Get element type
+                    let elementType = element.tagName.toLowerCase();
+                    if (elementType === 'input') {
+                        elementType = element.type || 'text';
+                    } else if (elementType === 'select') {
+                        elementType = 'select';
+                    } else if (elementType === 'textarea') {
+                        elementType = 'textarea';
+                    } else if (element.hasAttribute('contenteditable')) {
+                        elementType = 'contenteditable';
+                    }
+                    
+                    // Get description (placeholder, label, or name)
+                    let description = '';
+                    
+                    // Try placeholder first
+                    if (element.placeholder) {
+                        description = element.placeholder;
+                    } else {
+                        // Try to find associated label
+                        const labelText = getLabelText(element);
+                        if (labelText) {
+                            description = labelText;
+                        } else if (element.name) {
+                            // Fall back to name attribute
+                            description = element.name;
+                        } else if (element.title) {
+                            // Fall back to title attribute
+                            description = element.title;
+                        }
+                    }
+                    
+                    // Clean up description
+                    description = description.replace(/\\s+/g, ' ').trim();
+                    if (description.length > 50) {
+                        description = description.substring(0, 50) + '...';
+                    }
+                    
+                    // Check if required
+                    const isRequired = element.required || element.hasAttribute('required');
+                    
+                    // Check if disabled
+                    const isDisabled = element.disabled || element.hasAttribute('disabled');
+                    
+                    // Create unique key for deduplication
+                    const elementKey = xpath + '|' + elementType;
+                    
+                    // Only add if not seen before and has meaningful content
+                    if (!seenElements.has(elementKey) && xpath) {
+                        seenElements.add(elementKey);
+                        inputElements.push({
+                            xpath: xpath,
+                            type: elementType,
+                            description: description || '_no description_',
+                            required: isRequired,
+                            disabled: isDisabled
+                        });
+                    }
+                });
+            });
+            
+            return inputElements;
+        })();
+        """
+
+        # Execute JavaScript to get input elements
+        result = chrome_interface.Runtime.evaluate(expression=js_code, returnByValue=True)
+        logger.debug(f"Input elements extraction result: {result}")
+
+        if isinstance(result, tuple) and len(result) >= 2:
+            if isinstance(result[1], dict):
+                elements_data = (
+                    result[1].get("result", {}).get("result", {}).get("value", [])
+                )
+            elif isinstance(result[1], list) and len(result[1]) > 0:
+                elements_data = (
+                    result[1][0].get("result", {}).get("result", {}).get("value", [])
+                )
+            else:
+                elements_data = []
+        else:
+            elements_data = []
+
+        if not elements_data:
+            return "\n\n## Input Elements\n\nNo input elements found on this page.\n"
+
+        # Format input elements into concise markdown
+        markdown_output = []
+        markdown_output.append("\n\n## Input Elements\n")
+        markdown_output.append("| XPath | Type | Description | Required | Disabled |\n")
+        markdown_output.append("|-------|------|-------------|----------|----------|\n")
+
+        for element in elements_data:
+            xpath = element.get("xpath", "")
+            element_type = element.get("type", "")
+            description = element.get("description", "").strip()
+            required = "✓" if element.get("required", False) else ""
+            disabled = "✓" if element.get("disabled", False) else ""
+
+            # Escape pipe characters for markdown table
+            if description:
+                description = description.replace("|", "\\|")
+            else:
+                description = "_no description_"
+
+            xpath = xpath.replace("|", "\\|")
+            element_type = element_type.replace("|", "\\|")
+
+            markdown_output.append(f"| `{xpath}` | {element_type} | {description} | {required} | {disabled} |\n")
+
+        # Add summary
+        total_elements = len(elements_data)
+        markdown_output.append(f"\n**Total:** {total_elements} input elements\n")
+
+        return "".join(markdown_output)
+
+    except Exception as e:
+        logger.error(f"Error extracting input elements: {e}")
+        return f"\n\n## Input Elements\n\nError extracting input elements: {str(e)}\n"
