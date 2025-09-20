@@ -438,7 +438,10 @@ class BrowserAutomationService:
 
     def input_data(self, xpath: str, value: str) -> Dict[str, Any]:
         """
-        Input data into a form field using XPath selector.
+        Input data into a form field using XPath selector by simulating keyboard typing.
+
+        This method now simulates real keyboard input instead of directly setting values,
+        making it more realistic and compatible with form validation and dynamic content.
 
         Args:
             xpath: XPath selector for the input element
@@ -453,115 +456,232 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            logger.info(f"Inputting data into element with XPath: {xpath}")
+            logger.info(f"Simulating keyboard input into element with XPath: {xpath}")
 
-            # JavaScript to find element and input data
-            js_code = f"""
-            (() => {{
-                const xpath = `{xpath}`;
-                const value = `{value.replace("`", "\\`")}`;
-                const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                const element = result.singleNodeValue;
-                
-                if (!element) {{
-                    return {{success: false, error: "Element not found"}};
-                }}
-                
-                // Check if element is visible and enabled
-                const style = window.getComputedStyle(element);
-                if (style.display === 'none' || style.visibility === 'hidden') {{
-                    return {{success: false, error: "Element is not visible"}};
-                }}
-                
-                if (element.disabled) {{
-                    return {{success: false, error: "Element is disabled"}};
-                }}
-                
-                // Scroll element into view
-                element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                
-                // Clear existing value and set new value
-                try {{
-                    // Focus the element
-                    element.focus();
-                    
-                    // For different input types, handle accordingly
-                    if (element.tagName.toLowerCase() === 'input' || element.tagName.toLowerCase() === 'textarea') {{
-                        // Clear existing content
-                        element.value = '';
-                        
-                        // Set new value
-                        element.value = value;
-                        
-                        // Trigger input events to notify the page of changes
-                        element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        element.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                    }} else if (element.tagName.toLowerCase() === 'select') {{
-                        // For select elements, try to select option by value or text
-                        let optionFound = false;
-                        for (let option of element.options) {{
-                            if (option.value === value || option.text === value) {{
-                                option.selected = true;
-                                optionFound = true;
-                                break;
-                            }}
-                        }}
-                        if (!optionFound) {{
-                            return {{success: false, error: "Option not found in select element"}};
-                        }}
-                        element.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                    }} else if (element.hasAttribute('contenteditable')) {{
-                        // For contenteditable elements
-                        element.textContent = value;
-                        element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                    }} else {{
-                        return {{success: false, error: "Element is not an input field"}};
-                    }}
-                    
-                    return {{success: true, message: "Data input successfully", value: value}};
-                }} catch (inputError) {{
-                    return {{success: false, error: "Failed to input data: " + inputError.message}};
-                }}
-            }})();
-            """
+            # First, focus the element and clear any existing content
+            focus_result = self._focus_and_clear_element(xpath)
+            if not focus_result.get("success", False):
+                return focus_result
 
-            result = self.chrome_interface.Runtime.evaluate(
-                expression=js_code, returnByValue=True
-            )
+            # Simulate typing each character
+            typing_result = self._simulate_typing(value)
+            if not typing_result.get("success", False):
+                return {**typing_result, "xpath": xpath, "input_value": value}
 
-            if isinstance(result, tuple) and len(result) >= 2:
-                if isinstance(result[1], dict):
-                    input_result = (
-                        result[1].get("result", {}).get("result", {}).get("value", {})
-                    )
-                elif isinstance(result[1], list) and len(result[1]) > 0:
-                    input_result = (
-                        result[1][0]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", {})
-                    )
-                else:
-                    input_result = {
-                        "success": False,
-                        "error": "Invalid response format",
-                    }
-            else:
-                input_result = {"success": False, "error": "No response from browser"}
+            # Trigger form events to notify the page of changes
+            self._trigger_input_events(xpath, value)
 
             # Wait a moment for any page changes
             time.sleep(0.5)
 
-            return {"xpath": xpath, "input_value": value, **input_result}
-
-        except Exception as e:
-            logger.error(f"Input error: {e}")
             return {
-                "success": False,
-                "error": f"Input error: {str(e)}",
+                "success": True,
+                "message": f"Successfully typed '{value}' using keyboard simulation",
                 "xpath": xpath,
                 "input_value": value,
+                "typing_method": "keyboard_simulation",
             }
+
+        except Exception as e:
+            logger.error(f"Keyboard input simulation error: {e}")
+            return {
+                "success": False,
+                "error": f"Keyboard input simulation error: {str(e)}",
+                "xpath": xpath,
+                "input_value": value,
+                "typing_method": "keyboard_simulation",
+            }
+
+    def _focus_and_clear_element(self, xpath: str) -> Dict[str, Any]:
+        """
+        Focus the target element and clear any existing content.
+
+        Args:
+            xpath: XPath selector for the element
+
+        Returns:
+            Dict containing focus result
+        """
+        js_code = f"""
+        (() => {{
+            const xpath = `{xpath}`;
+            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            const element = result.singleNodeValue;
+            
+            if (!element) {{
+                return {{success: false, error: "Element not found"}};
+            }}
+            
+            // Check if element is visible and enabled
+            const style = window.getComputedStyle(element);
+            if (style.display === 'none' || style.visibility === 'hidden') {{
+                return {{success: false, error: "Element is not visible"}};
+            }}
+            
+            if (element.disabled) {{
+                return {{success: false, error: "Element is disabled"}};
+            }}
+            
+            // Check if element is a valid input type
+            const tagName = element.tagName.toLowerCase();
+            if (!['input', 'textarea'].includes(tagName) && !element.hasAttribute('contenteditable')) {{
+                return {{success: false, error: "Element is not a text input field"}};
+            }}
+            
+            // Scroll element into view and focus
+            element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+            element.focus();
+            
+            // Clear existing content - select all and then we'll type over it
+            if (tagName === 'input' || tagName === 'textarea') {{
+                element.select();
+            }} else if (element.hasAttribute('contenteditable')) {{
+                // For contenteditable, select all text
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }}
+            
+            return {{success: true, message: "Element focused and selected for typing"}};
+        }})();
+        """
+
+        if self.chrome_interface is None:
+            raise RuntimeError("Chrome interface is not initialized")
+
+        result = self.chrome_interface.Runtime.evaluate(
+            expression=js_code, returnByValue=True
+        )
+
+        if isinstance(result, tuple) and len(result) >= 2:
+            if isinstance(result[1], dict):
+                focus_result = (
+                    result[1].get("result", {}).get("result", {}).get("value", {})
+                )
+            elif isinstance(result[1], list) and len(result[1]) > 0:
+                focus_result = (
+                    result[1][0].get("result", {}).get("result", {}).get("value", {})
+                )
+            else:
+                focus_result = {
+                    "success": False,
+                    "error": "Invalid response format from focus operation",
+                }
+        else:
+            focus_result = {
+                "success": False,
+                "error": "No response from focus operation",
+            }
+
+        return focus_result
+
+    def _simulate_typing(self, text: str) -> Dict[str, Any]:
+        """
+        Simulate keyboard typing character by character using Chrome DevTools Protocol.
+
+        Args:
+            text: Text to type
+
+        Returns:
+            Dict containing typing result
+        """
+        if self.chrome_interface is None:
+            raise RuntimeError("Chrome interface is not initialized")
+
+        try:
+            for char in text:
+                # Small delay between characters to simulate realistic typing speed
+                time.sleep(0.05)  # 50ms delay between characters
+
+                # Dispatch key event for each character
+                if char == "\n":
+                    # Handle Enter key
+                    self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\r")
+                elif char == "\t":
+                    # Handle Tab key
+                    self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\t")
+                else:
+                    # Handle regular characters
+                    self.chrome_interface.Input.dispatchKeyEvent(type="char", text=char)
+
+            return {
+                "success": True,
+                "message": f"Successfully typed {len(text)} characters",
+                "characters_typed": len(text),
+            }
+
+        except Exception as e:
+            logger.error(f"Error during typing simulation: {e}")
+            return {"success": False, "error": f"Typing simulation failed: {str(e)}"}
+
+    def _trigger_input_events(self, xpath: str, value: str) -> Dict[str, Any]:
+        """
+        Trigger input and change events to notify the page of input changes.
+
+        Args:
+            xpath: XPath selector for the element
+            value: The value that was typed
+
+        Returns:
+            Dict containing event trigger result
+        """
+        js_code = f"""
+        (() => {{
+            const xpath = `{xpath}`;
+            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            const element = result.singleNodeValue;
+            
+            if (!element) {{
+                return {{success: false, error: "Element not found for event triggering"}};
+            }}
+            
+            try {{
+                // Trigger input event
+                element.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                
+                // Trigger change event
+                element.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                
+                // For some forms, also trigger keyup event
+                element.dispatchEvent(new KeyboardEvent('keyup', {{ bubbles: true }}));
+                
+                return {{success: true, message: "Input events triggered successfully"}};
+            }} catch (eventError) {{
+                return {{success: false, error: "Failed to trigger events: " + eventError.message}};
+            }}
+        }})();
+        """
+
+        if self.chrome_interface is None:
+            raise RuntimeError("Chrome interface is not initialized")
+
+        result = self.chrome_interface.Runtime.evaluate(
+            expression=js_code, returnByValue=True
+        )
+
+        if isinstance(result, tuple) and len(result) >= 2:
+            if isinstance(result[1], dict):
+                event_result = (
+                    result[1].get("result", {}).get("result", {}).get("value", {})
+                )
+            elif isinstance(result[1], list) and len(result[1]) > 0:
+                event_result = (
+                    result[1][0].get("result", {}).get("result", {}).get("value", {})
+                )
+            else:
+                event_result = {
+                    "success": False,
+                    "error": "Invalid response format from event triggering",
+                }
+        else:
+            event_result = {
+                "success": False,
+                "error": "No response from event triggering",
+            }
+
+        return event_result
 
     def __del__(self):
         """Cleanup when service is destroyed."""

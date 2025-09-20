@@ -410,33 +410,11 @@ class LocalAgent(BaseAgent):
 
         return True
 
-    async def process_messages(
-        self,
-        messages: Optional[List[Dict[str, Any]]] = None,
-        callback: Optional[Callable] = None,
-    ):
-        """
-        Process messages using this agent.
-
-        Args:
-            messages: The messages to process
-
-        Returns:
-            The processed messages with the agent's response
-        """
+    def _enhance_agent_context_messages(self, final_messages: List[Dict[str, Any]]):
         from AgentCrew.modules.memory.context_persistent import (
             ContextPersistenceService,
         )
 
-        assistant_response = ""
-        _tool_uses = []
-        _input_tokens_usage = 0
-        _output_tokens_usage = 0
-        # Ensure the first message is a system message with the agent's prompt
-        if not messages:
-            final_messages = list(self.history)
-        else:
-            final_messages = list(messages)
         if "context_persistent" in self.services and isinstance(
             self.services["context_persistent"], ContextPersistenceService
         ):
@@ -506,6 +484,33 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                     adaptive_messages["content"].pop(0)
                 if len(adaptive_messages["content"]) > 0:
                     final_messages.insert(last_user_index, adaptive_messages)
+        return final_messages
+
+    async def process_messages(
+        self,
+        messages: Optional[List[Dict[str, Any]]] = None,
+        callback: Optional[Callable] = None,
+    ):
+        """
+        Process messages using this agent.
+
+        Args:
+            messages: The messages to process
+
+        Returns:
+            The processed messages with the agent's response
+        """
+
+        assistant_response = ""
+        _tool_uses = []
+        _input_tokens_usage = 0
+        _output_tokens_usage = 0
+        # Ensure the first message is a system message with the agent's prompt
+        if not messages:
+            final_messages = list(self.history)
+        else:
+            final_messages = list(messages)
+        final_messages = self._enhance_agent_context_messages(final_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 final_messages
@@ -522,29 +527,6 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                     ) = self.llm.process_stream_chunk(
                         chunk, assistant_response, _tool_uses
                     )
-                    # if (
-                    #     "<agent_evaluation>" in assistant_response
-                    #     and "</agent_evaluation>" not in assistant_response
-                    # ):
-                    #     continue
-                    # transfer_index_start = assistant_response.find("<agent_evaluation>")
-                    # transfer_index_end = assistant_response.find("</agent_evaluation>")
-                    # if transfer_index_start >= 0 and transfer_index_end >= 0:
-                    #     assistant_response = (
-                    #         assistant_response[:transfer_index_start]
-                    #         + assistant_response[transfer_index_end + 19 :]
-                    #     )
-                    # if chunk_text:
-                    #     chunk_transfer_index_start = chunk_text.find(
-                    #         "<agent_evaluation>"
-                    #     )
-                    #     if chunk_transfer_index_start >= 0:
-                    #         chunk_text = chunk_text[:chunk_transfer_index_start]
-                    #     chunk_transfer_index_end = chunk_text.find(
-                    #         "</agent_evaluation>"
-                    #     )
-                    #     if chunk_transfer_index_end >= 0:
-                    #         chunk_text = chunk_text[chunk_transfer_index_end + 19 :]
                     yield (assistant_response, chunk_text, thinking_chunk)
 
                     if tool_uses:
