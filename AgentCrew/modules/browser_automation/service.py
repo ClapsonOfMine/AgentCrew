@@ -37,6 +37,8 @@ class BrowserAutomationService:
         self.chrome_manager = ChromeManager(debug_port=debug_port)
         self.chrome_interface: Optional[Any] = None
         self._is_initialized = False
+        # UUID to XPath mapping for element identification
+        self.uuid_to_xpath_mapping: Dict[str, str] = {}
 
     def _ensure_chrome_running(self):
         """Ensure Chrome browser is running and connected."""
@@ -129,16 +131,24 @@ class BrowserAutomationService:
                 "url": url,
             }
 
-    def click_element(self, xpath: str) -> Dict[str, Any]:
+    def click_element(self, element_uuid: str) -> Dict[str, Any]:
         """
-        Click an element using XPath selector.
+        Click an element using UUID.
 
         Args:
-            xpath: XPath selector for the element to click
+            element_uuid: UUID of the element to click (from browser_get_content)
 
         Returns:
             Dict containing click result
         """
+        # Resolve UUID to XPath
+        xpath = self.uuid_to_xpath_mapping.get(element_uuid)
+        if not xpath:
+            return {
+                "success": False,
+                "error": f"Element UUID '{element_uuid}' not found. Please use browser_get_content to get current element UUIDs.",
+                "uuid": element_uuid,
+            }
         try:
             self._ensure_chrome_running()
 
@@ -208,11 +218,11 @@ class BrowserAutomationService:
             # Wait a moment for any page changes
             time.sleep(2)
 
-            return {"xpath": xpath, **click_result}
+            return {"uuid": element_uuid, "xpath": xpath, **click_result}
 
         except Exception as e:
             logger.error(f"Click error: {e}")
-            return {"success": False, "error": f"Click error: {str(e)}", "xpath": xpath}
+            return {"success": False, "error": f"Click error: {str(e)}", "uuid": element_uuid, "xpath": xpath}
 
     def scroll_page(self, direction: str, amount: int = 3) -> Dict[str, Any]:
         """
@@ -363,11 +373,14 @@ class BrowserAutomationService:
             # Clean the markdown content
             cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
 
-            # Extract clickable elements
-            clickable_elements_md = extract_clickable_elements(self.chrome_interface)
+            # Reset UUID mapping on each content extraction
+            self.uuid_to_xpath_mapping.clear()
 
-            # Extract input elements
-            input_elements_md = extract_input_elements(self.chrome_interface)
+            # Extract clickable elements with UUID mapping
+            clickable_elements_md = extract_clickable_elements(self.chrome_interface, self.uuid_to_xpath_mapping)
+
+            # Extract input elements with UUID mapping
+            input_elements_md = extract_input_elements(self.chrome_interface, self.uuid_to_xpath_mapping)
 
             # Combine content
             final_content = (
@@ -436,20 +449,29 @@ class BrowserAutomationService:
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
-    def input_data(self, xpath: str, value: str) -> Dict[str, Any]:
+    def input_data(self, element_uuid: str, value: str) -> Dict[str, Any]:
         """
-        Input data into a form field using XPath selector by simulating keyboard typing.
+        Input data into a form field using UUID by simulating keyboard typing.
 
         This method now simulates real keyboard input instead of directly setting values,
         making it more realistic and compatible with form validation and dynamic content.
 
         Args:
-            xpath: XPath selector for the input element
+            element_uuid: UUID of the input element (from browser_get_content)
             value: Value to input into the field
 
         Returns:
             Dict containing input result
         """
+        # Resolve UUID to XPath
+        xpath = self.uuid_to_xpath_mapping.get(element_uuid)
+        if not xpath:
+            return {
+                "success": False,
+                "error": f"Element UUID '{element_uuid}' not found. Please use browser_get_content to get current element UUIDs.",
+                "uuid": element_uuid,
+                "input_value": value,
+            }
         try:
             self._ensure_chrome_running()
 
@@ -466,7 +488,7 @@ class BrowserAutomationService:
             # Simulate typing each character
             typing_result = self._simulate_typing(value)
             if not typing_result.get("success", False):
-                return {**typing_result, "xpath": xpath, "input_value": value}
+                return {**typing_result, "uuid": element_uuid, "xpath": xpath, "input_value": value}
 
             # Trigger form events to notify the page of changes
             self._trigger_input_events(xpath, value)
@@ -477,6 +499,7 @@ class BrowserAutomationService:
             return {
                 "success": True,
                 "message": f"Successfully typed '{value}' using keyboard simulation",
+                "uuid": element_uuid,
                 "xpath": xpath,
                 "input_value": value,
                 "typing_method": "keyboard_simulation",
@@ -487,6 +510,7 @@ class BrowserAutomationService:
             return {
                 "success": False,
                 "error": f"Keyboard input simulation error: {str(e)}",
+                "uuid": element_uuid,
                 "xpath": xpath,
                 "input_value": value,
                 "typing_method": "keyboard_simulation",

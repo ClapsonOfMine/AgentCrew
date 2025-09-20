@@ -7,6 +7,8 @@ for browser automation operations.
 
 import re
 import logging
+import uuid
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +72,12 @@ def clean_markdown_images(markdown_content: str) -> str:
     return cleaned_content
 
 
-def extract_clickable_elements(chrome_interface) -> str:
+def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> str:
     """
     Extract all clickable elements from the current webpage in a concise format.
 
     For each clickable element, extracts:
-    - XPath: Unique path to locate the element
+    - UUID: Short unique identifier for the element
     - Text/Alt: Display text or alt text from images
 
     Deduplication:
@@ -84,9 +86,10 @@ def extract_clickable_elements(chrome_interface) -> str:
 
     Args:
         chrome_interface: ChromeInterface object with enabled DOM
+        uuid_mapping: Dictionary to store UUID to XPath mappings
 
     Returns:
-        Concise markdown table with XPath and text/alt for each unique element
+        Concise markdown table with UUID and text/alt for each unique element
     """
     try:
         # JavaScript to find all clickable elements
@@ -240,26 +243,28 @@ def extract_clickable_elements(chrome_interface) -> str:
         if not elements_data:
             return "\n\n## Clickable Elements\n\nNo clickable elements found on this page.\n"
 
-        # Format clickable elements into concise markdown
+        # Format clickable elements into concise markdown with UUID mapping
         markdown_output = []
         markdown_output.append("\n\n## Clickable Elements\n")
-        markdown_output.append("| XPath | Text/Alt |\n")
-        markdown_output.append("|-------|----------|\n")
+        markdown_output.append("| UUID | Text/Alt |\n")
+        markdown_output.append("|------|----------|\n")
 
         for element in elements_data:
             xpath = element.get("xpath", "")
             text = element.get("text", "").strip()
 
-            # Escape pipe characters in text for markdown table
+            # Skip empty text entries
             if not text:
-                continue  # Skip empty text entries
+                continue
 
+            # Generate UUID and store mapping
+            element_uuid = str(uuid.uuid4())[:8]  # Use first 8 characters for brevity
+            uuid_mapping[element_uuid] = xpath
+
+            # Escape pipe characters in text for markdown table
             text = text.replace("|", "\\|")
 
-            # Escape pipe characters in xpath for markdown table
-            xpath = xpath.replace("|", "\\|")
-
-            markdown_output.append(f"| `{xpath}` | {text} |\n")
+            markdown_output.append(f"| `{element_uuid}` | {text} |\n")
 
         # Add summary
         total_elements = len(elements_data)
@@ -272,21 +277,22 @@ def extract_clickable_elements(chrome_interface) -> str:
         return f"\n\n## Clickable Elements\n\nError extracting clickable elements: {str(e)}\n"
 
 
-def extract_input_elements(chrome_interface) -> str:
+def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> str:
     """
     Extract all input elements from the current webpage in a concise format.
 
     For each input element, extracts:
-    - XPath: Unique path to locate the element
+    - UUID: Short unique identifier for the element
     - Type: Input type (text, email, password, etc.)
     - Placeholder/Label: Placeholder text or associated label
     - Required: Whether the field is required
 
     Args:
         chrome_interface: ChromeInterface object with enabled DOM
+        uuid_mapping: Dictionary to store UUID to XPath mappings
 
     Returns:
-        Concise markdown table with XPath, type, and description for each input element
+        Concise markdown table with UUID, type, and description for each input element
     """
     try:
         # JavaScript to find all input elements
@@ -483,11 +489,11 @@ def extract_input_elements(chrome_interface) -> str:
         if not elements_data:
             return "\n\n## Input Elements\n\nNo input elements found on this page.\n"
 
-        # Format input elements into concise markdown
+        # Format input elements into concise markdown with UUID mapping
         markdown_output = []
         markdown_output.append("\n\n## Input Elements\n")
-        markdown_output.append("| XPath | Type | Description | Required | Disabled |\n")
-        markdown_output.append("|-------|------|-------------|----------|----------|\n")
+        markdown_output.append("| UUID | Type | Description | Required | Disabled |\n")
+        markdown_output.append("|------|------|-------------|----------|----------|\n")
 
         for element in elements_data:
             xpath = element.get("xpath", "")
@@ -496,17 +502,20 @@ def extract_input_elements(chrome_interface) -> str:
             required = "✓" if element.get("required", False) else ""
             disabled = "✓" if element.get("disabled", False) else ""
 
+            # Generate UUID and store mapping
+            element_uuid = str(uuid.uuid4())[:8]  # Use first 8 characters for brevity
+            uuid_mapping[element_uuid] = xpath
+
             # Escape pipe characters for markdown table
             if description:
                 description = description.replace("|", "\\|")
             else:
                 description = "_no description_"
 
-            xpath = xpath.replace("|", "\\|")
             element_type = element_type.replace("|", "\\|")
 
             markdown_output.append(
-                f"| `{xpath}` | {element_type} | {description} | {required} | {disabled} |\n"
+                f"| `{element_uuid}` | {element_type} | {description} | {required} | {disabled} |\n"
             )
 
         # Add summary

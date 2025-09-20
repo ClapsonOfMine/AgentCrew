@@ -67,14 +67,14 @@ def get_browser_click_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Click on a specific element in the browser using an XPath selector. Use this to interact with buttons, links, form inputs, and other clickable elements. The element must be visible and enabled. Use browser_get_content first to identify available clickable elements and their XPath selectors."
+    tool_description = "Click on a specific element in the browser using a UUID identifier. Use this to interact with buttons, links, form inputs, and other clickable elements. The element must be visible and enabled. Use browser_get_content first to identify available clickable elements and their UUID identifiers."
     tool_arguments = {
-        "xpath": {
+        "element_uuid": {
             "type": "string",
-            "description": "The XPath selector for the element to click. Must be a valid XPath expression that uniquely identifies the target element (e.g., '//button[@id=\"submit\"]' or '/html/body/div[1]/button[2]'). Use the XPath values from browser_get_content output.",
+            "description": "The UUID identifier for the element to click. Must be a valid UUID from the clickable elements table returned by browser_get_content (e.g., 'a1b2c3d4'). Use the UUID values from browser_get_content output.",
         }
     }
-    tool_required = ["xpath"]
+    tool_required = ["element_uuid"]
 
     if provider == "claude":
         return {
@@ -163,7 +163,7 @@ def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Extract the current page content and identify all clickable and input elements. Returns the page content converted to markdown format along with tables of clickable elements and input elements with their XPath selectors. Use this to understand what's currently visible on the page and to identify elements you can interact with using browser_click or browser_input."
+    tool_description = "Extract the current page content and identify all clickable and input elements. Returns the page content converted to markdown format along with tables of clickable elements and input elements with their UUID identifiers. Use this to understand what's currently visible on the page and to identify elements you can interact with using browser_click or browser_input. Element UUIDs are reset on each call."
     tool_arguments = {}
     tool_required = []
 
@@ -235,18 +235,18 @@ def get_browser_click_tool_handler(
     """
 
     def handle_browser_click(**params) -> str:
-        xpath = params.get("xpath")
+        element_uuid = params.get("element_uuid")
 
-        if not xpath:
-            return "Error: No XPath provided for element clicking."
+        if not element_uuid:
+            return "Error: No element UUID provided for element clicking."
 
-        result = browser_service.click_element(xpath)
+        result = browser_service.click_element(element_uuid)
         print(result)
 
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\nXPath: {xpath}"
+            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\nUUID: {element_uuid}"
         else:
-            return f"❌ Click failed: {result['error']}\nXPath: {xpath}"
+            return f"❌ Click failed: {result['error']}\nUUID: {element_uuid}"
 
     return handle_browser_click
 
@@ -296,18 +296,18 @@ def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Input data into a form field or input element using an XPath selector. Use this to fill out forms, enter text into search boxes, select options from dropdowns, or input data into any editable field. The element must be visible and enabled. Use browser_get_content first to identify available input elements and their XPath selectors."
+    tool_description = "Input data into a form field or input element using a UUID identifier. Use this to fill out forms, enter text into search boxes, select options from dropdowns, or input data into any editable field. The element must be visible and enabled. Use browser_get_content first to identify available input elements and their UUID identifiers."
     tool_arguments = {
-        "xpath": {
+        "element_uuid": {
             "type": "string",
-            "description": "The XPath selector for the input element to fill. Must be a valid XPath expression that uniquely identifies the target input field (e.g., '//input[@id=\"username\"]' or '/html/body/form/input[1]'). Use the XPath values from browser_get_content output.",
+            "description": "The UUID identifier for the input element to fill. Must be a valid UUID from the input elements table returned by browser_get_content (e.g., 'a1b2c3d4'). Use the UUID values from browser_get_content output.",
         },
         "value": {
             "type": "string",
             "description": "The value to input into the field. For text inputs, this will be the text to enter. For select elements, this should be either the option value or option text. For checkboxes, use 'true' or 'false'.",
         },
     }
-    tool_required = ["xpath", "value"]
+    tool_required = ["element_uuid", "value"]
 
     if provider == "claude":
         return {
@@ -391,23 +391,23 @@ def get_browser_input_tool_handler(
     """
 
     def handle_browser_input(**params) -> str:
-        xpath = params.get("xpath")
+        element_uuid = params.get("element_uuid")
         value = params.get("value")
 
-        if not xpath:
-            return "Error: No XPath provided for input element."
+        if not element_uuid:
+            return "Error: No element UUID provided for input element."
 
         if value is None:
             return "Error: No value provided for input."
 
-        result = browser_service.input_data(xpath, str(value))
+        result = browser_service.input_data(element_uuid, str(value))
 
         if result.get("success", True):
             return (
-                f"✅ {result.get('message', 'Success')}\nXPath: {xpath}\nValue: {value}"
+                f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}"
             )
         else:
-            return f"❌ Input failed: {result['error']}\nXPath: {xpath}\nValue: {value}"
+            return f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}"
 
     return handle_browser_input
 
