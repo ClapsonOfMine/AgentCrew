@@ -13,6 +13,47 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 
 
+def remove_duplicate_lines(content: str) -> str:
+    """
+    Remove consecutive duplicate lines from content while preserving structure.
+
+    This function:
+    1. Splits content into lines
+    2. Removes consecutive duplicate lines (keeps first occurrence)
+    3. Preserves empty lines and markdown structure
+    4. Handles whitespace variations by stripping for comparison
+
+    Args:
+        content: The content to deduplicate
+
+    Returns:
+        Content with consecutive duplicate lines removed
+    """
+    if not content:
+        return content
+
+    lines = content.split("\n")
+    if len(lines) <= 1:
+        return content
+
+    deduplicated_lines = []
+    previous_line_stripped = None
+
+    for line in lines:
+        # Strip whitespace for comparison but keep original for output
+        current_line_stripped = line.strip()
+        if not current_line_stripped:
+            continue  # Skip adding multiple empty lines
+
+        # Always keep empty lines and lines that differ from previous
+        if not current_line_stripped or current_line_stripped != previous_line_stripped:
+            deduplicated_lines.append(line)
+            previous_line_stripped = current_line_stripped
+        # Skip lines that are exact duplicates of the previous line
+
+    return "\n".join(deduplicated_lines)
+
+
 def clean_markdown_images(markdown_content: str) -> str:
     """
     Clean markdown output by:
@@ -62,7 +103,7 @@ def clean_markdown_images(markdown_content: str) -> str:
 
         # Replace img tag with alt text if available, otherwise remove it
         if alt:
-            return f"{alt}#img "
+            return f"An Image Of {alt} "
         else:
             return ""
 
@@ -101,28 +142,22 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
             
             // Function to generate XPath for an element
             function getXPath(element) {
-                if (element.id) {
+                if (element.id !== '') {
                     return `//*[@id="${element.id}"]`;
                 }
-                
-                const parts = [];
-                while (element && element.nodeType === Node.ELEMENT_NODE) {
-                    let index = 0;
-                    let sibling = element.previousSibling;
-                    while (sibling) {
-                        if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === element.nodeName) {
-                            index++;
-                        }
-                        sibling = sibling.previousSibling;
-                    }
-                    
-                    const tagName = element.nodeName.toLowerCase();
-                    const pathIndex = index > 0 ? `[${index + 1}]` : '';
-                    parts.unshift(tagName + pathIndex);
-                    element = element.parentNode;
+                if (element === document.body) {
+                    return element.tagName;
                 }
-                
-                return parts.length ? '/' + parts.join('/') : '';
+
+                var ix = 0;
+                var siblings = element.parentNode.childNodes;
+                for (var i = 0; i < siblings.length; i++) {
+                    var sibling = siblings[i];
+                    if (sibling === element)
+                        return getXPath(element.parentNode) + '/' + element.tagName + '[' + (ix + 1) + ']';
+                    if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
+                        ix++;
+                }
             }
             
             // Define selectors for clickable elements
@@ -245,7 +280,9 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
 
         # Format clickable elements into concise markdown with UUID mapping
         markdown_output = []
-        markdown_output.append("\n\n## Clickable Elements\n")
+        markdown_output.append(
+            "\n\n## Clickable Elements\nUse browser_click with UUID to click elements.\n"
+        )
         markdown_output.append("| UUID | Text/Alt |\n")
         markdown_output.append("|------|----------|\n")
 
@@ -265,10 +302,6 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
             text = text.replace("|", "\\|")
 
             markdown_output.append(f"| `{element_uuid}` | {text} |\n")
-
-        # Add summary
-        total_elements = len(elements_data)
-        markdown_output.append(f"\n**Total:** {total_elements} clickable elements\n")
 
         return "".join(markdown_output)
 
@@ -303,28 +336,22 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
             
             // Function to generate XPath for an element
             function getXPath(element) {
-                if (element.id) {
+                if (element.id !== '') {
                     return `//*[@id="${element.id}"]`;
                 }
-                
-                const parts = [];
-                while (element && element.nodeType === Node.ELEMENT_NODE) {
-                    let index = 0;
-                    let sibling = element.previousSibling;
-                    while (sibling) {
-                        if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === element.nodeName) {
-                            index++;
-                        }
-                        sibling = sibling.previousSibling;
-                    }
-                    
-                    const tagName = element.nodeName.toLowerCase();
-                    const pathIndex = index > 0 ? `[${index + 1}]` : '';
-                    parts.unshift(tagName + pathIndex);
-                    element = element.parentNode;
+                if (element === document.body) {
+                    return element.tagName;
                 }
-                
-                return parts.length ? '/' + parts.join('/') : '';
+
+                var ix = 0;
+                var siblings = element.parentNode.childNodes;
+                for (var i = 0; i < siblings.length; i++) {
+                    var sibling = siblings[i];
+                    if (sibling === element)
+                        return getXPath(element.parentNode) + '/' + element.tagName + '[' + (ix + 1) + ']';
+                    if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
+                        ix++;
+                }
             }
             
             // Function to find associated label text
@@ -491,7 +518,9 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
 
         # Format input elements into concise markdown with UUID mapping
         markdown_output = []
-        markdown_output.append("\n\n## Input Elements\n")
+        markdown_output.append(
+            "\n\n## Input Elements\nUse browser_input with UUID and value to fill inputs.\n"
+        )
         markdown_output.append("| UUID | Type | Description | Required | Disabled |\n")
         markdown_output.append("|------|------|-------------|----------|----------|\n")
 
@@ -518,13 +547,8 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
                 f"| `{element_uuid}` | {element_type} | {description} | {required} | {disabled} |\n"
             )
 
-        # Add summary
-        total_elements = len(elements_data)
-        markdown_output.append(f"\n**Total:** {total_elements} input elements\n")
-
         return "".join(markdown_output)
 
     except Exception as e:
         logger.error(f"Error extracting input elements: {e}")
         return f"\n\n## Input Elements\n\nError extracting input elements: {str(e)}\n"
-

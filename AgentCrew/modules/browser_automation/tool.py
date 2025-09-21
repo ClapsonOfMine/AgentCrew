@@ -246,7 +246,7 @@ def get_browser_click_tool_handler(
         if result.get("success", True):
             return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\nUUID: {element_uuid}"
         else:
-            return f"❌ Click failed: {result['error']}\nUUID: {element_uuid}"
+            return f"❌ Click failed: {result['error']}\nUUID: {element_uuid}.\nUse `browser_get_content` to get the updated UUID"
 
     return handle_browser_click
 
@@ -351,26 +351,7 @@ def get_browser_get_content_tool_handler(
         result = browser_service.get_page_content()
 
         if result["success"]:
-            content_info = "📄 Page content extracted successfully\n"
-            content_info += f"URL: {result.get('url', 'Unknown')}\n"
-            content_info += (
-                f"Content length: {result.get('content_length', 0)} characters\n"
-            )
-
-            status_messages = []
-            if result.get("has_clickable_elements"):
-                status_messages.append("✅ Clickable elements found")
-            else:
-                status_messages.append("ℹ️ No clickable elements found")
-
-            if result.get("has_input_elements"):
-                status_messages.append("✅ Input elements found")
-            else:
-                status_messages.append("ℹ️ No input elements found")
-
-            content_info += " | ".join(status_messages) + "\n\n"
-
-            return content_info + "---\n\n" + result["content"]
+            return result.get("content", "Cannot get page content. Please try again.")
         else:
             return f"❌ Content extraction failed: {result['error']}"
 
@@ -403,11 +384,9 @@ def get_browser_input_tool_handler(
         result = browser_service.input_data(element_uuid, str(value))
 
         if result.get("success", True):
-            return (
-                f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}"
-            )
+            return f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}"
         else:
-            return f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}"
+            return f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
 
     return handle_browser_input
 

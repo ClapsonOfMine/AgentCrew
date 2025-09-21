@@ -13,6 +13,7 @@ from html_to_markdown import convert_to_markdown
 from .chrome_manager import ChromeManager
 from .element_extractor import (
     clean_markdown_images,
+    remove_duplicate_lines,
     extract_clickable_elements,
     extract_input_elements,
 )
@@ -222,7 +223,12 @@ class BrowserAutomationService:
 
         except Exception as e:
             logger.error(f"Click error: {e}")
-            return {"success": False, "error": f"Click error: {str(e)}", "uuid": element_uuid, "xpath": xpath}
+            return {
+                "success": False,
+                "error": f"Click error: {str(e)}",
+                "uuid": element_uuid,
+                "xpath": xpath,
+            }
 
     def scroll_page(self, direction: str, amount: int = 3) -> Dict[str, Any]:
         """
@@ -372,19 +378,26 @@ class BrowserAutomationService:
 
             # Clean the markdown content
             cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
+            
+            # Remove consecutive duplicate lines
+            deduplicated_content = remove_duplicate_lines(cleaned_markdown_content)
 
             # Reset UUID mapping on each content extraction
             self.uuid_to_xpath_mapping.clear()
 
             # Extract clickable elements with UUID mapping
-            clickable_elements_md = extract_clickable_elements(self.chrome_interface, self.uuid_to_xpath_mapping)
+            clickable_elements_md = extract_clickable_elements(
+                self.chrome_interface, self.uuid_to_xpath_mapping
+            )
 
             # Extract input elements with UUID mapping
-            input_elements_md = extract_input_elements(self.chrome_interface, self.uuid_to_xpath_mapping)
+            input_elements_md = extract_input_elements(
+                self.chrome_interface, self.uuid_to_xpath_mapping
+            )
 
             # Combine content
             final_content = (
-                cleaned_markdown_content + clickable_elements_md + input_elements_md
+                deduplicated_content + clickable_elements_md + input_elements_md
             )
 
             # Get current URL
@@ -394,10 +407,6 @@ class BrowserAutomationService:
                 "success": True,
                 "content": final_content,
                 "url": current_url,
-                "content_length": len(final_content),
-                "has_clickable_elements": "## Clickable Elements"
-                in clickable_elements_md,
-                "has_input_elements": "## Input Elements" in input_elements_md,
             }
 
         except Exception as e:
@@ -488,7 +497,12 @@ class BrowserAutomationService:
             # Simulate typing each character
             typing_result = self._simulate_typing(value)
             if not typing_result.get("success", False):
-                return {**typing_result, "uuid": element_uuid, "xpath": xpath, "input_value": value}
+                return {
+                    **typing_result,
+                    "uuid": element_uuid,
+                    "xpath": xpath,
+                    "input_value": value,
+                }
 
             # Trigger form events to notify the page of changes
             self._trigger_input_events(xpath, value)
