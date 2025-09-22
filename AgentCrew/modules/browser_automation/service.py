@@ -311,7 +311,9 @@ class BrowserAutomationService:
                 return {"success": False, "error": "Could not extract HTML content"}
 
             # Convert HTML to markdown
-            raw_markdown_content = convert_to_markdown(raw_html)
+            raw_markdown_content = convert_to_markdown(
+                raw_html, strip_newlines=True, remove_forms=True
+            )
 
             # Clean the markdown content
             cleaned_markdown_content = clean_markdown_images(raw_markdown_content)

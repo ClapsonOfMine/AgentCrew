@@ -3,11 +3,41 @@
  * 
  * Returns an array of objects with xpath and text properties for each unique clickable element.
  * Deduplicates elements by href (for links) or by tagName + text combination.
+ * Uses comprehensive visibility checking including parent element chain.
  */
 (() => {
     const clickableElements = [];
     const seenHrefs = new Set();
     const seenElements = new Set();
+    
+    // Utility function to check if element is truly visible (including parent chain)
+    function isElementVisible(element) {
+        if (!element || !element.nodeType === 1) {
+            return false;
+        }
+        
+        // Check if the element is disabled (for form elements)
+        if (element.disabled) {
+            return false;
+        }
+        
+        // Walk up the parent chain checking visibility
+        let currentElement = element;
+        
+        while (currentElement && currentElement !== document.body && currentElement !== document.documentElement) {
+            const style = window.getComputedStyle(currentElement);
+            
+            // Check if current element is hidden
+            if (style.display === 'none' || style.visibility === 'hidden') {
+                return false;
+            }
+            
+            // Move to parent element
+            currentElement = currentElement.parentElement;
+        }
+        
+        return true;
+    }
     
     // Function to generate XPath for an element
     function getXPath(element) {
@@ -47,9 +77,8 @@
     selectors.forEach(selector => {
         const elements = document.querySelectorAll(selector);
         elements.forEach(element => {
-            // Skip if element is hidden or disabled
-            const style = window.getComputedStyle(element);
-            if (style.display === 'none' || style.visibility === 'hidden' || element.disabled) {
+            // Skip if element is hidden (checks entire parent chain)
+            if (!isElementVisible(element)) {
                 return;
             }
             

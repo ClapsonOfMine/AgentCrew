@@ -1,11 +1,36 @@
 /**
  * Extract elements containing specified text using XPath.
+ * Uses comprehensive visibility checking including parent element chain.
  * 
  * @param {string} text - The text to search for
  * @returns {Array} Array of elements containing the text
  */
 function extractElementsByText(text) {
     const elementsFound = [];
+    
+    // Utility function to check if element is truly visible (including parent chain)
+    function isElementVisible(element) {
+        if (!element || !element.nodeType === 1) {
+            return false;
+        }
+        
+        // Walk up the parent chain checking visibility
+        let currentElement = element;
+        
+        while (currentElement && currentElement !== document.body && currentElement !== document.documentElement) {
+            const style = window.getComputedStyle(currentElement);
+            
+            // Check if current element is hidden
+            if (style.display === 'none' || style.visibility === 'hidden') {
+                return false;
+            }
+            
+            // Move to parent element
+            currentElement = currentElement.parentElement;
+        }
+        
+        return true;
+    }
     
     function getXPath(element) {
         if (element.id !== '') {
@@ -34,8 +59,8 @@ function extractElementsByText(text) {
         const seenElements = new Set();
         
         while (element) {
-            const style = window.getComputedStyle(element);
-            if (style.display !== 'none' && style.visibility !== 'hidden') {
+            // Check if element is truly visible (including parent chain)
+            if (isElementVisible(element)) {
                 const elementXPath = getXPath(element);
                 
                 if (!seenElements.has(elementXPath)) {
