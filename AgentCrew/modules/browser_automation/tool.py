@@ -24,7 +24,12 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Navigate to a specific URL in the controlled browser. Use this to visit web pages, follow links, or load specific websites. The browser will load the page and wait for content to be ready. Always check the result to confirm successful navigation before proceeding with other browser actions."
+    tool_description = (
+        "Navigate to a specific URL in the controlled browser. "
+        "Use this to visit web pages, follow links, or load specific websites. "
+        "The browser will load the page and wait for content to be ready. "
+        "Always check the result to confirm successful navigation before proceeding with other browser actions."
+    )
     tool_arguments = {
         "url": {
             "type": "string",
@@ -68,7 +73,11 @@ def get_browser_click_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Click on a specific element in the browser using a UUID identifier. Use this to interact with buttons, links, form inputs, and other clickable elements. The element must be visible and enabled. Use browser_get_content first to identify available clickable elements and their UUID identifiers."
+    tool_description = (
+        "Click on a specific element in the browser using a UUID identifier. "
+        "Use this to interact with buttons, links, form inputs, and other clickable elements. "
+        "The element must be visible and enabled. Use browser_get_content first to identify available clickable elements and their UUID identifiers."
+    )
     tool_arguments = {
         "element_uuid": {
             "type": "string",
@@ -112,12 +121,17 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Scroll the page content in a specified direction. Use this to reveal more content, navigate to different sections of a page, or bring specific elements into view. Each scroll unit moves approximately 300 pixels. Useful when content extends beyond the current viewport."
+    tool_description = (
+        "Scroll the page content or a specific element in a specified direction using realistic wheel events. "
+        "Use this to reveal more content, navigate to different sections of a page, or bring specific elements into view. "
+        "Each scroll unit moves approximately 300 pixels. If element_uuid is provided, scrolls that specific element; otherwise scrolls the document. "
+        "Mimics true user scroll behavior using dispatchEvent with WheelEvent."
+    )
     tool_arguments = {
         "direction": {
             "type": "string",
             "enum": ["up", "down", "left", "right"],
-            "description": "The direction to scroll the page. 'up' and 'down' are most commonly used for vertical scrolling, while 'left' and 'right' are for horizontal scrolling.",
+            "description": "The direction to scroll the page or element. 'up' and 'down' are most commonly used for vertical scrolling, while 'left' and 'right' are for horizontal scrolling.",
         },
         "amount": {
             "type": "integer",
@@ -125,6 +139,10 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
             "default": 3,
             "minimum": 1,
             "maximum": 10,
+        },
+        "element_uuid": {
+            "type": "string",
+            "description": "Optional UUID identifier for a specific element to scroll. If not provided, scrolls the document. Must be a valid UUID from browser_get_content or browser_get_elements_by_text output. Only scrollable elements (with overflow properties) will actually scroll.",
         },
     }
     tool_required = ["direction"]
@@ -164,7 +182,7 @@ def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Extract the current page content and identify all clickable and input elements. Returns the page content converted to markdown format along with tables of clickable elements and input elements with their UUID identifiers. Use this to understand what's currently visible on the page and to identify elements you can interact with using browser_click or browser_input. Element UUIDs are reset on each call."
+    tool_description = "Extract the current page content and identify all clickable, input, and scrollable elements. Returns the page content converted to markdown format along with tables of clickable elements, input elements, and scrollable elements with their UUID identifiers. Use this to understand what's currently visible on the page and to identify elements you can interact with using browser_click, browser_input, or browser_scroll. Element UUIDs are reset on each call."
     tool_arguments = {}
     tool_required = []
 
@@ -267,6 +285,7 @@ def get_browser_scroll_tool_handler(
     def handle_browser_scroll(**params) -> str:
         direction = params.get("direction")
         amount = params.get("amount", 3)
+        element_uuid = params.get("element_uuid")
 
         if not direction:
             return "Error: No scroll direction provided."
@@ -276,12 +295,13 @@ def get_browser_scroll_tool_handler(
                 "Error: Invalid scroll direction. Use 'up', 'down', 'left', or 'right'."
             )
 
-        result = browser_service.scroll_page(direction, amount)
+        result = browser_service.scroll_page(direction, amount, element_uuid)
 
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content."
+            return f"✅ {result.get('message', 'Success')}, Use `browser_get_content` to get the updated content."
         else:
-            return f"❌ Scroll failed: {result['error']}"
+            uuid_info = f"\nUUID: {element_uuid}" if element_uuid else ""
+            return f"❌ Scroll failed: {result['error']}{uuid_info}"
 
     return handle_browser_scroll
 
@@ -296,7 +316,11 @@ def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Input data into a form field or input element using a UUID identifier. Use this to fill out forms, enter text into search boxes, select options from dropdowns, or input data into any editable field. The element must be visible and enabled. Use browser_get_content first to identify available input elements and their UUID identifiers."
+    tool_description = (
+        "Input data into a form field or input element using a UUID identifier. "
+        "Use this to fill out forms, enter text into search boxes, select options from dropdowns, or input data into any editable field. "
+        "The element must be visible and enabled. Use browser_get_content first to identify available input elements and their UUID identifiers."
+    )
     tool_arguments = {
         "element_uuid": {
             "type": "string",
@@ -391,9 +415,16 @@ def get_browser_input_tool_handler(
     return handle_browser_input
 
 
-def get_browser_get_elements_by_text_tool_definition(provider="claude") -> Dict[str, Any]:
+def get_browser_get_elements_by_text_tool_definition(
+    provider="claude",
+) -> Dict[str, Any]:
     """Get tool definition for browser elements by text search."""
-    tool_description = "Find elements containing specific text using XPath search. Returns table with UUID identifiers for use with other browser tools."
+    tool_description = (
+        "Find elements containing specific text using XPath search. "
+        "Returns table with UUID identifiers for use with other browser tools. "
+        "Useful for locating potential clickable or scrolling when browser_get_content does not found them. "
+        "The search is case-insensitive and matches any element containing the specified text. Only div elements are searched."
+    )
     tool_arguments = {
         "text": {
             "type": "string",
@@ -427,7 +458,9 @@ def get_browser_get_elements_by_text_tool_definition(provider="claude") -> Dict[
         }
 
 
-def get_browser_get_elements_by_text_tool_handler(browser_service: BrowserAutomationService) -> Callable:
+def get_browser_get_elements_by_text_tool_handler(
+    browser_service: BrowserAutomationService,
+) -> Callable:
     """Get handler function for browser get elements by text tool."""
 
     def handle_browser_get_elements_by_text(**params) -> str:
@@ -441,9 +474,12 @@ def get_browser_get_elements_by_text_tool_handler(browser_service: BrowserAutoma
             elements_found = result.get("elements_found", 0)
             if elements_found == 0:
                 return f"✅ No elements found containing text: '{text}'"
-            
+
             content = result.get("content", "")
-            return f"✅ Found {elements_found} elements containing text: '{text}'\n" + content
+            return (
+                f"✅ Found {elements_found} elements containing text: '{text}'\n"
+                + content
+            )
         else:
             return f"❌ Search failed: {result.get('error', 'Unknown error')}\nSearch text: '{text}'"
 

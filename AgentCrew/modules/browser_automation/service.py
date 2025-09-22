@@ -17,6 +17,7 @@ from .element_extractor import (
     extract_clickable_elements,
     extract_input_elements,
     extract_elements_by_text,
+    extract_scrollable_elements,
 )
 
 import PyChromeDevTools
@@ -146,7 +147,7 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            # JavaScript to find and click element by XPath using realistic mouse events
+            # JavaScript to find and click element by XPath
             js_code = f"""
             (() => {{
                 const xpath = `{xpath}`;
@@ -170,12 +171,11 @@ class BrowserAutomationService:
                 // Scroll element into view
                 element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
                 
-                // Get element's bounding rect for realistic mouse coordinates
+                // Get element's bounding rect for mouse coordinates
                 const rect = element.getBoundingClientRect();
                 const centerX = rect.left + rect.width / 2;
                 const centerY = rect.top + rect.height / 2;
                 
-                // Create realistic mouse event options
                 const mouseEventOptions = {{
                     view: window,
                     bubbles: true,
@@ -193,21 +193,16 @@ class BrowserAutomationService:
                 }};
                 
                 try {{
-                    // Simulate the full sequence of mouse events like a real user click
-                    // 1. Mouse down event
                     const mouseDownEvent = new MouseEvent('mousedown', mouseEventOptions);
                     element.dispatchEvent(mouseDownEvent);
                     
-                    // 2. Focus the element (realistic behavior)
                     if (element.focus) {{
                         element.focus();
                     }}
                     
-                    // 3. Mouse up event
                     const mouseUpEvent = new MouseEvent('mouseup', mouseEventOptions);
                     element.dispatchEvent(mouseUpEvent);
                     
-                    // 4. Click event (this is the main event that triggers handlers)
                     const clickEvent = new MouseEvent('click', mouseEventOptions);
                     element.dispatchEvent(clickEvent);
                     
@@ -263,13 +258,16 @@ class BrowserAutomationService:
                 "xpath": xpath,
             }
 
-    def scroll_page(self, direction: str, amount: int = 3) -> Dict[str, Any]:
+    def scroll_page(
+        self, direction: str, amount: int = 3, element_uuid: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Scroll the page in specified direction.
+        Scroll the page or a specific element in specified direction.
 
         Args:
             direction: Direction to scroll ('up', 'down', 'left', 'right')
             amount: Number of scroll units (default: 3)
+            element_uuid: Optional UUID of element to scroll (defaults to document)
 
         Returns:
             Dict containing scroll result
@@ -282,11 +280,26 @@ class BrowserAutomationService:
 
             scroll_distance = amount * 300
 
-            # JavaScript to scroll the page
+            # Resolve UUID to XPath if provided
+            xpath = None
+            if element_uuid:
+                xpath = self.uuid_to_xpath_mapping.get(element_uuid)
+                if not xpath:
+                    return {
+                        "success": False,
+                        "error": f"Element UUID '{element_uuid}' not found. Please use browser_get_content to get current element UUIDs.",
+                        "uuid": element_uuid,
+                        "direction": direction,
+                        "amount": amount,
+                    }
+
+            print(xpath)
             js_code = f"""
             (() => {{
                 const direction = '{direction}';
                 const distance = {scroll_distance};
+                const xpath = `{xpath or ""}`;
+                const elementUuid = `{element_uuid or ""}`;
                 
                 let scrollX = 0;
                 let scrollY = 0;
@@ -308,25 +321,89 @@ class BrowserAutomationService:
                         return {{success: false, error: "Invalid direction. Use 'up', 'down', 'left', or 'right'"}};
                 }}
                 
-                // Get current scroll position
-                const currentX = window.pageXOffset || document.documentElement.scrollLeft;
-                const currentY = window.pageYOffset || document.documentElement.scrollTop;
+                // Determine scroll target (specific element or document)
+                let scrollTarget = document.documentElement || document.body;
+                let targetDescription = "the whole document";
                 
-                // Scroll the page
-                window.scrollBy(scrollX, scrollY);
+                if (xpath && elementUuid) {{
+                    const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                    const element = result.singleNodeValue;
+                    
+                    if (!element) {{
+                        return {{success: false, error: "Element not found"}};
+                    }}
+                    
+                    // Check if element is scrollable
+                    const style = window.getComputedStyle(element);
+                    const hasScrollableOverflow = ['auto', 'scroll'].includes(style.overflow) || 
+                                                ['auto', 'scroll'].includes(style.overflowY) || 
+                                                ['auto', 'scroll'].includes(style.overflowX);
+                    
+                    if (hasScrollableOverflow || element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {{
+                        scrollTarget = element;
+                        targetDescription = "element " + elementUuid;
+                    }}
+                }}
+                
+                // Get current scroll position
+                const currentX = scrollTarget === document.documentElement ? 
+                    (window.pageXOffset || document.documentElement.scrollLeft) : scrollTarget.scrollLeft;
+                const currentY = scrollTarget === document.documentElement ? 
+                    (window.pageYOffset || document.documentElement.scrollTop) : scrollTarget.scrollTop;
+                
+                // Create wheel event for smooth scrolling
+                const wheelEventOptions = {{
+                    view: window,
+                    bubbles: true,
+                    cancelable: true,
+                    deltaX: scrollX,
+                    deltaY: scrollY,
+                    deltaMode: WheelEvent.DOM_DELTA_PIXEL
+                }};
+                
+                try {{
+                    // Dispatch wheel event to mimic true user scroll
+                    const wheelEvent = new WheelEvent('wheel', wheelEventOptions);
+                    
+                    if (scrollTarget === document.documentElement) {{
+                        document.dispatchEvent(wheelEvent);
+                        // Also perform actual scroll for fallback
+                        window.scrollBy(scrollX, scrollY);
+                    }} else {{
+                        scrollTarget.dispatchEvent(wheelEvent);
+                        // Perform actual scroll on the element
+                        scrollTarget.scrollBy(scrollX, scrollY);
+                    }}
+                    
+                    // Small delay to allow scroll to complete
+                    setTimeout(() => {{}}, 100);
+                    
+                }} catch (eventError) {{
+                    // Fallback to direct scrolling if wheel event fails
+                    if (scrollTarget === document.documentElement) {{
+                        window.scrollBy(scrollX, scrollY);
+                    }} else {{
+                        scrollTarget.scrollBy(scrollX, scrollY);
+                    }}
+                }}
                 
                 // Get new scroll position
-                const newX = window.pageXOffset || document.documentElement.scrollLeft;
-                const newY = window.pageYOffset || document.documentElement.scrollTop;
+                const newX = scrollTarget === document.documentElement ? 
+                    (window.pageXOffset || document.documentElement.scrollLeft) : scrollTarget.scrollLeft;
+                const newY = scrollTarget === document.documentElement ? 
+                    (window.pageYOffset || document.documentElement.scrollTop) : scrollTarget.scrollTop;
                 
                 return {{
                     success: true,
-                    message: "Scrolled " + direction + " by " + Math.abs(scrollX || scrollY) + "px",
+                    message: "Scrolled " + targetDescription + " " + direction + " by " + Math.abs(scrollX || scrollY) + "px using dispatchEvent",
                     previous_position: {{x: currentX, y: currentY}},
-                    new_position: {{x: newX, y: newY}}
+                    new_position: {{x: newX, y: newY}},
+                    target: targetDescription,
+                    scroll_method: "wheel_event_with_fallback"
                 }};
             }})();
             """
+            print(js_code)
 
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
@@ -354,16 +431,21 @@ class BrowserAutomationService:
 
             time.sleep(1.5)
 
-            return {"direction": direction, "amount": amount, **scroll_result}
+            result_data = {"direction": direction, "amount": amount, **scroll_result}
+            if element_uuid:
+                result_data["uuid"] = element_uuid
+                result_data["xpath"] = xpath
+            return result_data
 
         except Exception as e:
             logger.error(f"Scroll error: {e}")
-            return {
+            error_data = {
                 "success": False,
                 "error": f"Scroll error: {str(e)}",
                 "direction": direction,
                 "amount": amount,
             }
+            return error_data
 
     def get_page_content(self) -> Dict[str, Any]:
         """
@@ -378,6 +460,7 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
+            time.sleep(1)
             # Get page document
             _, dom_data = self.chrome_interface.DOM.getDocument(depth=1)
 
@@ -395,7 +478,7 @@ class BrowserAutomationService:
             html_content, _ = self.chrome_interface.DOM.getOuterHTML(
                 nodeId=html_node["nodeId"]
             )
-            raw_html = html_content["result"].get("outerHTML", "")
+            raw_html = html_content.get("result", {}).get("outerHTML", "")
 
             if not raw_html:
                 return {"success": False, "error": "Could not extract HTML content"}
@@ -419,8 +502,15 @@ class BrowserAutomationService:
                 self.chrome_interface, self.uuid_to_xpath_mapping
             )
 
+            scrollable_elements_md = extract_scrollable_elements(
+                self.chrome_interface, self.uuid_to_xpath_mapping
+            )
+
             final_content = (
-                deduplicated_content + clickable_elements_md + input_elements_md
+                deduplicated_content
+                + clickable_elements_md
+                + input_elements_md
+                + scrollable_elements_md
             )
 
             current_url = self._get_current_url()

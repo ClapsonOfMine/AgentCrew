@@ -668,3 +668,219 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
     except Exception as e:
         logger.error(f"Error extracting input elements: {e}")
         return f"\n\n## Input Elements\n\nError extracting input elements: {str(e)}\n"
+
+
+def extract_scrollable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> str:
+    """
+    Extract all scrollable elements from the current webpage.
+    
+    Finds elements that have overflow: auto, scroll, or hidden and either:
+    - scrollHeight > clientHeight (vertically scrollable)
+    - scrollWidth > clientWidth (horizontally scrollable)
+    
+    For each scrollable element, extracts:
+    - UUID: Short unique identifier for the element
+    - Tag: HTML tag name
+    - Scroll Info: Scrolling direction capabilities
+    - Description: Element content or class/id info
+    
+    Args:
+        chrome_interface: ChromeInterface object with enabled DOM
+        uuid_mapping: Dictionary to store UUID to XPath mappings
+        
+    Returns:
+        Markdown table with UUID and scrollable element details
+    """
+    try:
+        # JavaScript to find all scrollable elements
+        js_code = """
+        (() => {
+            const scrollableElements = [];
+            const seenElements = new Set();
+            
+            // Function to generate XPath for an element
+            function getXPath(element) {
+                if (element.id !== '') {
+                    return `//*[@id="${element.id}"]`;
+                }
+                if (element === document.body) {
+                    return '//' + element.tagName.toLowerCase();
+                }
+
+                var ix = 0;
+                var siblings = element.parentNode.childNodes;
+                for (var i = 0; i < siblings.length; i++) {
+                    var sibling = siblings[i];
+                    if (sibling === element)
+                        return getXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
+                    if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
+                        ix++;
+                }
+            }
+            
+            // Get all elements on the page
+            const allElements = document.querySelectorAll('*');
+            
+            allElements.forEach(element => {
+                try {
+                    // Skip if element is hidden
+                    const style = window.getComputedStyle(element);
+                    if (style.display === 'none' || style.visibility === 'hidden') {
+                        return;
+                    }
+                    
+                    // Check if element has scrollable overflow
+                    const overflow = style.overflow;
+                    const overflowX = style.overflowX;
+                    const overflowY = style.overflowY;
+                    
+                    // Check if any overflow property indicates scrollability
+                    const hasScrollableOverflow = ['auto', 'scroll'].includes(overflow) || 
+                                                ['auto', 'scroll'].includes(overflowX) || 
+                                                ['auto', 'scroll'].includes(overflowY);
+                    
+                    // Also check if content actually overflows (even with overflow: hidden)
+                    const hasVerticalScroll = element.scrollHeight > element.clientHeight;
+                    const hasHorizontalScroll = element.scrollWidth > element.clientWidth;
+                    
+                    // Element is scrollable if it has scrollable overflow AND actual overflow
+                    const isScrollable = hasScrollableOverflow && (hasVerticalScroll || hasHorizontalScroll);
+                    
+                    if (!isScrollable) {
+                        return;
+                    }
+                    
+                    // Generate XPath
+                    const xpath = getXPath(element);
+                    if (!xpath) {
+                        return;
+                    }
+                    
+                    // Avoid duplicates
+                    if (seenElements.has(xpath)) {
+                        return;
+                    }
+                    seenElements.add(xpath);
+                    
+                    // Get element description
+                    let description = '';
+                    
+                    // Try to get meaningful text content (limited)
+                    const textContent = element.textContent || element.innerText || '';
+                    const cleanText = textContent.trim().replace(/\\s+/g, ' ');
+                    
+                    if (cleanText && cleanText.length > 0) {
+                        // Limit text length for description
+                        if (cleanText.length > 60) {
+                            description = cleanText.substring(0, 60) + '...';
+                        } else {
+                            description = cleanText;
+                        }
+                    }
+                    
+                    // If no meaningful text, use class or id
+                    if (!description || description.length < 3) {
+                        if (element.className) {
+                            description = `class: ${element.className}`;
+                        } else if (element.id) {
+                            description = `id: ${element.id}`;
+                        } else {
+                            description = `${element.tagName.toLowerCase()} element`;
+                        }
+                    }
+                    
+                    // Determine scroll directions
+                    const scrollDirections = [];
+                    if (hasVerticalScroll) {
+                        scrollDirections.push('vertical');
+                    }
+                    if (hasHorizontalScroll) {
+                        scrollDirections.push('horizontal');
+                    }
+                    
+                    scrollableElements.push({
+                        xpath: xpath,
+                        tagName: element.tagName.toLowerCase(),
+                        description: description,
+                        scrollDirections: scrollDirections.join(', '),
+                        scrollHeight: element.scrollHeight,
+                        clientHeight: element.clientHeight,
+                        scrollWidth: element.scrollWidth,
+                        clientWidth: element.clientWidth,
+                        overflow: overflow,
+                        overflowX: overflowX,
+                        overflowY: overflowY
+                    });
+                    
+                } catch (elementError) {
+                    // Skip problematic elements
+                    console.warn('Error processing element for scrollability:', elementError);
+                }
+            });
+            
+            return scrollableElements;
+        })();
+        """
+        
+        # Execute JavaScript to get scrollable elements
+        result = chrome_interface.Runtime.evaluate(
+            expression=js_code, returnByValue=True
+        )
+        
+        if isinstance(result, tuple) and len(result) >= 2:
+            if isinstance(result[1], dict):
+                elements_data = (
+                    result[1].get("result", {}).get("result", {}).get("value", [])
+                )
+            elif isinstance(result[1], list) and len(result[1]) > 0:
+                elements_data = (
+                    result[1][0].get("result", {}).get("result", {}).get("value", [])
+                )
+            else:
+                elements_data = []
+        else:
+            elements_data = []
+            
+        if not elements_data:
+            return "\n\n## Scrollable Elements\n\nNo scrollable elements found on this page.\n"
+            
+        # Format scrollable elements into markdown with UUID mapping
+        markdown_output = []
+        markdown_output.append(
+            "\n\n## Scrollable Elements\nUse browser_scroll with UUID and direction to scroll specific elements.\n"
+        )
+        markdown_output.append("| UUID | Tag | Scroll Direction | Description |\n")
+        markdown_output.append("|------|-----|------------------|-------------|\n")
+        
+        for element in elements_data:
+            xpath = element.get("xpath", "")
+            tag_name = element.get("tagName", "")
+            scroll_directions = element.get("scrollDirections", "")
+            description = element.get("description", "").strip()
+            
+            # Skip elements without xpath
+            if not xpath:
+                continue
+                
+            # Generate UUID and store mapping
+            element_uuid = str(uuid.uuid4())[:8]  # Use first 8 characters for brevity
+            uuid_mapping[element_uuid] = xpath
+            
+            # Escape pipe characters for markdown table
+            if description:
+                description = description.replace("|", "\\|")
+            else:
+                description = "_no description_"
+                
+            tag_name = tag_name.replace("|", "\\|")
+            scroll_directions = scroll_directions.replace("|", "\\|")
+            
+            markdown_output.append(
+                f"| `{element_uuid}` | {tag_name} | {scroll_directions} | {description} |\n"
+            )
+            
+        return "".join(markdown_output)
+        
+    except Exception as e:
+        logger.error(f"Error extracting scrollable elements: {e}")
+        return f"\n\n## Scrollable Elements\n\nError extracting scrollable elements: {str(e)}\n"
