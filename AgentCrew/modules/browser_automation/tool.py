@@ -1,12 +1,13 @@
 """
 Browser automation tool definitions and handlers.
 
-Provides five tools for browser automation:
+Provides six tools for browser automation:
 - browser_navigate: Navigate to URLs
 - browser_click: Click elements using XPath selectors
 - browser_scroll: Scroll page content in specified directions
 - browser_get_content: Extract page content, clickable elements, and input elements as markdown
 - browser_input: Input data into form fields using XPath selectors
+- browser_get_elements_by_text: Find elements containing specific text and return UUID mappings
 """
 
 from typing import Dict, Any, Callable
@@ -390,6 +391,65 @@ def get_browser_input_tool_handler(
     return handle_browser_input
 
 
+def get_browser_get_elements_by_text_tool_definition(provider="claude") -> Dict[str, Any]:
+    """Get tool definition for browser elements by text search."""
+    tool_description = "Find elements containing specific text using XPath search. Returns table with UUID identifiers for use with other browser tools."
+    tool_arguments = {
+        "text": {
+            "type": "string",
+            "description": "Text to search for within page elements. Finds div elements containing this text.",
+        }
+    }
+    tool_required = ["text"]
+
+    if provider == "claude":
+        return {
+            "name": "browser_get_elements_by_text",
+            "description": tool_description,
+            "input_schema": {
+                "type": "object",
+                "properties": tool_arguments,
+                "required": tool_required,
+            },
+        }
+    else:
+        return {
+            "type": "function",
+            "function": {
+                "name": "browser_get_elements_by_text",
+                "description": tool_description,
+                "parameters": {
+                    "type": "object",
+                    "properties": tool_arguments,
+                    "required": tool_required,
+                },
+            },
+        }
+
+
+def get_browser_get_elements_by_text_tool_handler(browser_service: BrowserAutomationService) -> Callable:
+    """Get handler function for browser get elements by text tool."""
+
+    def handle_browser_get_elements_by_text(**params) -> str:
+        text = params.get("text")
+        if not text:
+            return "Error: No text provided for element search."
+
+        result = browser_service.get_elements_by_text(text)
+
+        if result.get("success", False):
+            elements_found = result.get("elements_found", 0)
+            if elements_found == 0:
+                return f"✅ No elements found containing text: '{text}'"
+            
+            content = result.get("content", "")
+            return f"✅ Found {elements_found} elements containing text: '{text}'\n" + content
+        else:
+            return f"❌ Search failed: {result.get('error', 'Unknown error')}\nSearch text: '{text}'"
+
+    return handle_browser_get_elements_by_text
+
+
 def register(service_instance=None, agent=None):
     """
     Register browser automation tools with the central registry or directly with an agent.
@@ -400,7 +460,7 @@ def register(service_instance=None, agent=None):
     """
     from AgentCrew.modules.tools.registration import register_tool
 
-    # Register all five browser automation tools
+    # Register all six browser automation tools
     register_tool(
         get_browser_navigate_tool_definition,
         get_browser_navigate_tool_handler,
@@ -428,6 +488,12 @@ def register(service_instance=None, agent=None):
     register_tool(
         get_browser_input_tool_definition,
         get_browser_input_tool_handler,
+        service_instance,
+        agent,
+    )
+    register_tool(
+        get_browser_get_elements_by_text_tool_definition,
+        get_browser_get_elements_by_text_tool_handler,
         service_instance,
         agent,
     )

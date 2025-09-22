@@ -307,6 +307,126 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
         return f"\n\n## Clickable Elements\n\nError extracting clickable elements: {str(e)}\n"
 
 
+def extract_elements_by_text(chrome_interface, uuid_mapping: Dict[str, str], text: str) -> str:
+    """Extract elements containing specified text using XPath."""
+    try:
+        escaped_text = text.replace("'", "\\'")
+
+        js_code = f"""
+        (() => {{
+            const text = `{escaped_text}`;
+            const elementsFound = [];
+            
+            function getXPath(element) {{
+                if (element.id !== '') {{
+                    return `//*[@id="${{element.id}}"]`;
+                }}
+                if (element === document.body) {{
+                    return '//' + element.tagName.toLowerCase();
+                }}
+
+                var ix = 0;
+                var siblings = element.parentNode.childNodes;
+                for (var i = 0; i < siblings.length; i++) {{
+                    var sibling = siblings[i];
+                    if (sibling === element)
+                        return getXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
+                    if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
+                        ix++;
+                }}
+            }}
+            
+            try {{
+                const xpath = `//div[contains(., '${{text}}')]`;
+                const result = document.evaluate(xpath, document, null, XPathResult.ANY_TYPE, null);
+                
+                let element = result.iterateNext();
+                const seenElements = new Set();
+                
+                while (element) {{
+                    const style = window.getComputedStyle(element);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {{
+                        const elementXPath = getXPath(element);
+                        
+                        if (!seenElements.has(elementXPath)) {{
+                            seenElements.add(elementXPath);
+                            
+                            let elementText = element.textContent || element.innerText || '';
+                            elementText = elementText.trim().replace(/\\s+/g, ' ');
+                            if (elementText.length > 100) {{
+                                elementText = elementText.substring(0, 100) + '...';
+                            }}
+                            
+                            elementsFound.push({{
+                                xpath: elementXPath,
+                                text: elementText,
+                                tagName: element.tagName.toLowerCase(),
+                                className: element.className || '',
+                                id: element.id || ''
+                            }});
+                        }}
+                    }}
+                    
+                    element = result.iterateNext();
+                }}
+                
+                return elementsFound;
+            }} catch (error) {{
+                return [];
+            }}
+        }})();
+        """
+
+        result = chrome_interface.Runtime.evaluate(expression=js_code, returnByValue=True)
+
+        if isinstance(result, tuple) and len(result) >= 2:
+            if isinstance(result[1], dict):
+                elements_data = result[1].get("result", {}).get("result", {}).get("value", [])
+            elif isinstance(result[1], list) and len(result[1]) > 0:
+                elements_data = result[1][0].get("result", {}).get("result", {}).get("value", [])
+            else:
+                elements_data = []
+        else:
+            elements_data = []
+
+        if not elements_data:
+            return f"\n\n## Elements Containing Text: '{text}'\n\nNo elements found.\n"
+
+        markdown_output = [
+            f"\n\n## Elements Containing Text: '{text}'\n",
+            "| UUID | Tag | Text | Class | ID |\n",
+            "|------|-----|------|-------|----|\n"
+        ]
+
+        for element in elements_data:
+            xpath = element.get("xpath", "")
+            if not xpath:
+                continue
+
+            element_uuid = str(uuid.uuid4())[:8]
+            uuid_mapping[element_uuid] = xpath
+
+            tag_name = element.get("tagName", "")
+            element_text = element.get("text", "").replace("|", "\\|")[:50]
+            class_name = element.get("className", "").replace("|", "\\|")[:30]
+            element_id = element.get("id", "").replace("|", "\\|")[:20]
+            
+            if len(element.get("text", "")) > 50:
+                element_text += "..."
+            if len(element.get("className", "")) > 30:
+                class_name += "..."
+            if len(element.get("id", "")) > 20:
+                element_id += "..."
+
+            markdown_output.append(f"| `{element_uuid}` | {tag_name} | {element_text} | {class_name} | {element_id} |\n")
+
+        return "".join(markdown_output)
+
+    except Exception as e:
+        logger.error(f"Error extracting elements by text: {e}")
+        return f"\n\n## Elements Containing Text: '{text}'\n\nError: {str(e)}\n"
+
+
 def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> str:
     """
     Extract all input elements from the current webpage in a concise format.

@@ -16,6 +16,7 @@ from .element_extractor import (
     remove_duplicate_lines,
     extract_clickable_elements,
     extract_input_elements,
+    extract_elements_by_text,
 )
 
 import PyChromeDevTools
@@ -117,7 +118,7 @@ class BrowserAutomationService:
             self._is_initialized = False
             return {
                 "success": False,
-                "error": f"Navigation error: {str(e)}. Please try again",
+                "error": f"Navigation error: {str(e)}. Reset the chrome, Please try to navigate again",
                 "url": url,
             }
 
@@ -144,7 +145,6 @@ class BrowserAutomationService:
 
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
-
 
             # JavaScript to find and click element by XPath using realistic mouse events
             js_code = f"""
@@ -377,7 +377,6 @@ class BrowserAutomationService:
 
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
-
 
             # Get page document
             _, dom_data = self.chrome_interface.DOM.getDocument(depth=1)
@@ -712,6 +711,33 @@ class BrowserAutomationService:
             }
 
         return event_result
+
+    def get_elements_by_text(self, text: str) -> Dict[str, Any]:
+        """Find elements containing specified text using XPath."""
+        try:
+            self._ensure_chrome_running()
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            initial_mapping_count = len(self.uuid_to_xpath_mapping)
+            elements_md = extract_elements_by_text(
+                self.chrome_interface, self.uuid_to_xpath_mapping, text
+            )
+            new_mapping_count = len(self.uuid_to_xpath_mapping) - initial_mapping_count
+
+            return {
+                "success": True,
+                "content": elements_md,
+                "text": text,
+                "elements_found": new_mapping_count,
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Get elements by text error: {str(e)}",
+                "text": text,
+            }
 
     def __del__(self):
         """Cleanup when service is destroyed."""
