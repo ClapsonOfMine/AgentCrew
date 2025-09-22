@@ -146,7 +146,7 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
                     return `//*[@id="${element.id}"]`;
                 }
                 if (element === document.body) {
-                    return element.tagName;
+                    return '//' + element.tagName.toLowerCase();
                 }
 
                 var ix = 0;
@@ -154,7 +154,7 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
                 for (var i = 0; i < siblings.length; i++) {
                     var sibling = siblings[i];
                     if (sibling === element)
-                        return getXPath(element.parentNode) + '/' + element.tagName + '[' + (ix + 1) + ']';
+                        return getXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
                     if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
                         ix++;
                 }
@@ -340,7 +340,7 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
                     return `//*[@id="${element.id}"]`;
                 }
                 if (element === document.body) {
-                    return element.tagName;
+                    return '//' + element.tagName.toLowerCase();
                 }
 
                 var ix = 0;
@@ -348,7 +348,7 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
                 for (var i = 0; i < siblings.length; i++) {
                     var sibling = siblings[i];
                     if (sibling === element)
-                        return getXPath(element.parentNode) + '/' + element.tagName + '[' + (ix + 1) + ']';
+                        return getXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
                     if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
                         ix++;
                 }
