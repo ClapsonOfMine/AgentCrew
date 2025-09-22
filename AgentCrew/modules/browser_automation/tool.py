@@ -170,6 +170,22 @@ def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]
         }
 
 
+def get_browser_get_content_tool_handler(
+    browser_service: BrowserAutomationService,
+) -> Callable:
+    """Get the handler function for the browser content extraction tool."""
+
+    def handle_browser_get_content(**params) -> str:
+        result = browser_service.get_page_content()
+
+        if result["success"]:
+            return f"[UNIQUE]{result.get('content', 'Cannot get page content. Please try again.')}[/UNIQUE]"
+        else:
+            return f"❌ Content extraction failed: {result['error']}"
+
+    return handle_browser_get_content
+
+
 def get_browser_navigate_tool_handler(
     browser_service: BrowserAutomationService,
 ) -> Callable:
@@ -279,22 +295,6 @@ def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
                 },
             },
         }
-
-
-def get_browser_get_content_tool_handler(
-    browser_service: BrowserAutomationService,
-) -> Callable:
-    """Get the handler function for the browser content extraction tool."""
-
-    def handle_browser_get_content(**params) -> str:
-        result = browser_service.get_page_content()
-
-        if result["success"]:
-            return result.get("content", "Cannot get page content. Please try again.")
-        else:
-            return f"❌ Content extraction failed: {result['error']}"
-
-    return handle_browser_get_content
 
 
 def get_browser_input_tool_handler(
@@ -521,4 +521,3 @@ def register(service_instance=None, agent=None):
         service_instance,
         agent,
     )
-

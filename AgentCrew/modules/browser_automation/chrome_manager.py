@@ -85,7 +85,6 @@ class ChromeManager:
         try:
             chrome_executable = self._find_chrome_executable()
 
-
             chrome_args = [
                 chrome_executable,
                 f"--remote-debugging-port={self.debug_port}",
@@ -151,4 +150,3 @@ class ChromeManager:
 
             except (ProcessLookupError, OSError) as e:
                 logger.warning(f"Chrome process cleanup: {e}")
-

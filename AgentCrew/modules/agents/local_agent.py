@@ -484,7 +484,71 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                     adaptive_messages["content"].pop(0)
                 if len(adaptive_messages["content"]) > 0:
                     final_messages.insert(last_user_index, adaptive_messages)
-        return final_messages
+
+    def _clean_unique_tool_result(self, final_messages: List[Dict[str, Any]]):
+        """
+        Clean unique tool results by replacing all but the last [UNIQUE] tool result with "CLEANED".
+
+        Args:
+            final_messages: List of message dictionaries to process
+        """
+        # Find all indices of tool messages that start with [UNIQUE]
+        unique_tool_indices = []
+
+        for i, msg in enumerate(final_messages):
+            # Check different message formats for tool results
+            content = None
+
+            # Check for direct content field (OpenAI/Groq format)
+            if msg.get("role") == "tool" and "content" in msg:
+                content = msg["content"]
+
+            # Check for Claude format (content list with tool_result type)
+            elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
+                for content_item in msg["content"]:
+                    if (
+                        isinstance(content_item, dict)
+                        and content_item.get("type") == "tool_result"
+                        and "content" in content_item
+                    ):
+                        content = content_item["content"]
+                        break
+
+            # Check if content starts with [UNIQUE]
+            if content and isinstance(content, str) and content.startswith("[UNIQUE]"):
+                unique_tool_indices.append(i)
+            elif content and isinstance(content, list):
+                if (
+                    len(
+                        [
+                            d.get("text", "")
+                            for d in content
+                            if isinstance(d, dict)
+                            and d.get("text", "").startswith("[UNIQUE]")
+                        ]
+                    )
+                    > 0
+                ):
+                    unique_tool_indices.append(i)
+
+        # Replace all but the last [UNIQUE] tool result with "CLEANED"
+        if len(unique_tool_indices) > 1:
+            for i in unique_tool_indices[:-1]:  # All except the last one
+                msg = final_messages[i]
+
+                # Update content based on message format
+                if msg.get("role") == "tool" and "content" in msg:
+                    msg["content"] = "CLEANED"
+
+                elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
+                    for content_item in msg["content"]:
+                        if (
+                            isinstance(content_item, dict)
+                            and content_item.get("type") == "tool_result"
+                            and "content" in content_item
+                        ):
+                            content_item["content"] = "CLEANED"
+                            break
 
     async def process_messages(
         self,
@@ -510,7 +574,8 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
             final_messages = list(self.history)
         else:
             final_messages = list(messages)
-        final_messages = self._enhance_agent_context_messages(final_messages)
+        self._enhance_agent_context_messages(final_messages)
+        self._clean_unique_tool_result(final_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 final_messages
