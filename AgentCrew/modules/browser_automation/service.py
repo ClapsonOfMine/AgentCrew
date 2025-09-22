@@ -311,9 +311,7 @@ class BrowserAutomationService:
                 return {"success": False, "error": "Could not extract HTML content"}
 
             # Convert HTML to markdown
-            raw_markdown_content = convert_to_markdown(
-                raw_html, strip_newlines=True, remove_forms=True
-            )
+            raw_markdown_content = convert_to_markdown(raw_html, strip_newlines=True)
 
             # Clean the markdown content
             cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
@@ -590,6 +588,96 @@ class BrowserAutomationService:
                 "error": f"Get elements by text error: {str(e)}",
                 "text": text,
             }
+
+    def capture_screenshot(
+        self,
+        format: str = "png",
+        quality: Optional[int] = None,
+        clip: Optional[Dict[str, Any]] = None,
+        from_surface: bool = True,
+        capture_beyond_viewport: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Capture a screenshot of the current page.
+
+        Args:
+            format: Image format ("png", "jpeg", or "webp"). Defaults to "png"
+            quality: Compression quality from 0-100 (jpeg only). Optional
+            clip: Optional region to capture. Dict with x, y, width, height keys
+            from_surface: Capture from surface rather than view. Defaults to True
+            capture_beyond_viewport: Capture beyond viewport. Defaults to False
+
+        Returns:
+            Dict containing the screenshot as base64 image data in the specified format
+        """
+        try:
+            self._ensure_chrome_running()
+
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            # Prepare parameters for screenshot capture
+            screenshot_params = {
+                "format": format,
+                "fromSurface": from_surface,
+                "captureBeyondViewport": capture_beyond_viewport,
+            }
+
+            # Add quality parameter only for jpeg format
+            if format == "jpeg" and quality is not None:
+                screenshot_params["quality"] = quality
+
+            # Add clip parameter if provided
+            if clip is not None:
+                screenshot_params["clip"] = clip
+
+            # Capture the screenshot
+            result = self.chrome_interface.Page.captureScreenshot(**screenshot_params)
+
+            if isinstance(result, tuple) and len(result) >= 2:
+                if isinstance(result[1], dict):
+                    screenshot_data = result[1].get("result", {}).get("data", "")
+                elif isinstance(result[1], list) and len(result[1]) > 0:
+                    screenshot_data = result[1][0].get("result", {}).get("data", "")
+                else:
+                    return {
+                        "success": False,
+                        "error": "Invalid response format from screenshot capture",
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": "No response from screenshot capture",
+                }
+
+            if not screenshot_data:
+                return {"success": False, "error": "No screenshot data received"}
+
+            # Determine MIME type based on format
+            mime_type_map = {
+                "png": "image/png",
+                "jpeg": "image/jpeg",
+                "webp": "image/webp",
+            }
+            mime_type = mime_type_map.get(format, "image/png")
+
+            # Get current URL for context
+            current_url = self._get_current_url()
+
+            return {
+                "success": True,
+                "message": f"Successfully captured screenshot in {format} format",
+                "screenshot": {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{screenshot_data}"},
+                },
+                "format": format,
+                "url": current_url,
+            }
+
+        except Exception as e:
+            logger.error(f"Screenshot capture error: {e}")
+            return {"success": False, "error": f"Screenshot capture error: {str(e)}"}
 
     def __del__(self):
         """Cleanup when service is destroyed."""
