@@ -68,3 +68,4 @@ mcp_servers.json
 persistents/
 config.json
 generate
+chrome_user_data/

@@ -36,6 +36,9 @@ class ChromeManager:
         self.chrome_process: Optional[subprocess.Popen] = None
         self.chrome_thread: Optional[threading.Thread] = None
         self._shutdown = False
+        self._user_data_dir = os.path.join(
+            os.getenv("AGENTCREW_CONFIG_PATH", "./"), "chrome_user_data"
+        )
         self._is_windows = platform.system() == "Windows"
 
         # Register cleanup on exit
@@ -176,14 +179,12 @@ class ChromeManager:
                 chrome_executable,
                 f"--remote-debugging-port={self.debug_port}",
                 "--no-first-run",
-                "--disable-background-timer-throttling",
                 "--disable-backgrounding-occluded-windows",
                 "--disable-renderer-backgrounding",
                 "--disable-features=TranslateUI",
                 "-disable-new-avatar-menu",
                 "--allow-file-access-from-files",
-                "--disable-web-security",
-                "--allow-running-insecure-content",
+                f"--user-data-dir={self._user_data_dir}",
                 f"--profile-directory={profile}",
             ]
 
@@ -221,10 +222,10 @@ class ChromeManager:
             return
 
         self.chrome_thread = threading.Thread(
-            target=self._start_chrome_process, 
+            target=self._start_chrome_process,
             args=(profile,),
-            daemon=True, 
-            name="ChromeDebugProcess"
+            daemon=True,
+            name="ChromeDebugProcess",
         )
         self.chrome_thread.start()
 
