@@ -241,7 +241,6 @@ def get_browser_click_tool_handler(
             return "Error: No element UUID provided for element clicking."
 
         result = browser_service.click_element(element_uuid)
-        print(result)
 
         if result.get("success", True):
             return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\nUUID: {element_uuid}"

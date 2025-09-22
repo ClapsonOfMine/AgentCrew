@@ -85,8 +85,6 @@ class ChromeManager:
         try:
             chrome_executable = self._find_chrome_executable()
 
-            # Ensure user data directory exists
-            # self.user_data_dir.mkdir(parents=True, exist_ok=True)
 
             chrome_args = [
                 chrome_executable,
@@ -101,20 +99,16 @@ class ChromeManager:
                 "--allow-running-insecure-content",
             ]
 
-            logger.info(f"Starting Chrome with debugging port {self.debug_port}...")
             self.chrome_process = subprocess.Popen(
                 chrome_args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                preexec_fn=os.setsid,  # Create new process group
+                preexec_fn=os.setsid,
             )
 
-            # Wait a moment for Chrome to start
             time.sleep(2)
 
-            if self.chrome_process.poll() is None:
-                logger.info(f"Chrome started successfully on port {self.debug_port}")
-            else:
+            if self.chrome_process.poll() is not None:
                 stdout, stderr = self.chrome_process.communicate()
                 logger.error(f"Chrome failed to start. Error: {stderr.decode()}")
 
@@ -124,7 +118,6 @@ class ChromeManager:
     def start_chrome_thread(self):
         """Start Chrome in a separate thread."""
         if self.chrome_thread and self.chrome_thread.is_alive():
-            logger.info("Chrome thread is already running")
             return
 
         self.chrome_thread = threading.Thread(
@@ -147,20 +140,15 @@ class ChromeManager:
         self._shutdown = True
 
         if self.chrome_process and self.chrome_process.poll() is None:
-            logger.info("Shutting down Chrome...")
             try:
-                # Terminate the process group
                 os.killpg(os.getpgid(self.chrome_process.pid), signal.SIGTERM)
 
-                # Wait for graceful shutdown
                 try:
                     self.chrome_process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    # Force kill if necessary
                     os.killpg(os.getpgid(self.chrome_process.pid), signal.SIGKILL)
                     self.chrome_process.wait()
 
-                logger.info("Chrome shutdown completed")
             except (ProcessLookupError, OSError) as e:
                 logger.warning(f"Chrome process cleanup: {e}")
 

@@ -49,31 +49,24 @@ class BrowserAutomationService:
     def _initialize_chrome(self):
         """Initialize Chrome browser and DevTools connection."""
         try:
-            # Start Chrome if not running
             if not self.chrome_manager.is_chrome_running():
-                logger.info("Starting Chrome browser...")
                 self.chrome_manager.start_chrome_thread()
 
                 if not self.chrome_manager.is_chrome_running():
                     raise RuntimeError("Failed to start Chrome browser")
 
-            # Wait for Chrome DevTools to be available
-            logger.info("Connecting to Chrome DevTools...")
             time.sleep(2)
 
-            # Connect to Chrome DevTools
             self.chrome_interface = PyChromeDevTools.ChromeInterface(
                 host="localhost", port=self.debug_port, suppress_origin=True
             )
 
-            # Enable necessary domains
             self.chrome_interface.Network.enable()
             self.chrome_interface.Page.enable()
             self.chrome_interface.Runtime.enable()
             self.chrome_interface.DOM.enable()
 
             self._is_initialized = True
-            logger.info("Chrome DevTools connection established")
 
         except Exception as e:
             logger.error(f"Failed to initialize Chrome: {e}")
@@ -95,7 +88,6 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            logger.info(f"Navigating to: {url}")
             result = self.chrome_interface.Page.navigate(url=url)
 
             # Check if navigation was successful
@@ -109,10 +101,7 @@ class BrowserAutomationService:
                             "url": url,
                         }
 
-            # Wait for content to load
             time.sleep(2)
-
-            # Get current URL to verify navigation
             current_url = self._get_current_url()
 
             return {
@@ -123,7 +112,7 @@ class BrowserAutomationService:
             }
 
         except Exception as e:
-            logger.error(f"Navigation error: {e}.")
+            logger.error(f"Navigation error: {e}")
             self.chrome_manager.cleanup()
             self._is_initialized = False
             return {
@@ -156,9 +145,8 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            logger.info(f"Clicking element with XPath: {xpath}")
 
-            # JavaScript to find and click element by XPath
+            # JavaScript to find and click element by XPath using realistic mouse events
             js_code = f"""
             (() => {{
                 const xpath = `{xpath}`;
@@ -182,17 +170,63 @@ class BrowserAutomationService:
                 // Scroll element into view
                 element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
                 
-                // Click the element
-                element.click();
+                // Get element's bounding rect for realistic mouse coordinates
+                const rect = element.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
                 
-                return {{success: true, message: "Element clicked successfully"}};
+                // Create realistic mouse event options
+                const mouseEventOptions = {{
+                    view: window,
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: centerX,
+                    clientY: centerY,
+                    screenX: centerX + window.screenX,
+                    screenY: centerY + window.screenY,
+                    button: 0, // Left mouse button
+                    buttons: 1, // Left mouse button pressed
+                    ctrlKey: false,
+                    shiftKey: false,
+                    altKey: false,
+                    metaKey: false
+                }};
+                
+                try {{
+                    // Simulate the full sequence of mouse events like a real user click
+                    // 1. Mouse down event
+                    const mouseDownEvent = new MouseEvent('mousedown', mouseEventOptions);
+                    element.dispatchEvent(mouseDownEvent);
+                    
+                    // 2. Focus the element (realistic behavior)
+                    if (element.focus) {{
+                        element.focus();
+                    }}
+                    
+                    // 3. Mouse up event
+                    const mouseUpEvent = new MouseEvent('mouseup', mouseEventOptions);
+                    element.dispatchEvent(mouseUpEvent);
+                    
+                    // 4. Click event (this is the main event that triggers handlers)
+                    const clickEvent = new MouseEvent('click', mouseEventOptions);
+                    element.dispatchEvent(clickEvent);
+                    
+                    return {{success: true, message: "Element clicked successfully"}};
+                }} catch (eventError) {{
+                    // Fallback to simple click if mouse events fail
+                    try {{
+                        element.click();
+                        return {{success: true, message: "Element clicked successfully"}};
+                    }} catch (fallbackError) {{
+                        return {{success: false, error: "Failed to click element: " + eventError.message + " (fallback also failed: " + fallbackError.message + ")"}};
+                    }}
+                }}
             }})();
             """
 
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
             )
-            print(result)
 
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):
@@ -216,7 +250,6 @@ class BrowserAutomationService:
             else:
                 click_result = {"success": False, "error": "No response from browser"}
 
-            # Wait a moment for any page changes
             time.sleep(2)
 
             return {"uuid": element_uuid, "xpath": xpath, **click_result}
@@ -247,9 +280,6 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            logger.info(f"Scrolling {direction} by {amount} units")
-
-            # Calculate scroll distance (300px per unit)
             scroll_distance = amount * 300
 
             # JavaScript to scroll the page
@@ -322,7 +352,6 @@ class BrowserAutomationService:
             else:
                 scroll_result = {"success": False, "error": "No response from browser"}
 
-            # Wait a moment for scroll to complete
             time.sleep(1.5)
 
             return {"direction": direction, "amount": amount, **scroll_result}
@@ -349,7 +378,6 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            logger.info("Extracting page content...")
 
             # Get page document
             _, dom_data = self.chrome_interface.DOM.getDocument(depth=1)
@@ -378,29 +406,24 @@ class BrowserAutomationService:
 
             # Clean the markdown content
             cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
-            
+
             # Remove consecutive duplicate lines
             deduplicated_content = remove_duplicate_lines(cleaned_markdown_content)
 
-            # Reset UUID mapping on each content extraction
             self.uuid_to_xpath_mapping.clear()
 
-            # Extract clickable elements with UUID mapping
             clickable_elements_md = extract_clickable_elements(
                 self.chrome_interface, self.uuid_to_xpath_mapping
             )
 
-            # Extract input elements with UUID mapping
             input_elements_md = extract_input_elements(
                 self.chrome_interface, self.uuid_to_xpath_mapping
             )
 
-            # Combine content
             final_content = (
                 deduplicated_content + clickable_elements_md + input_elements_md
             )
 
-            # Get current URL
             current_url = self._get_current_url()
 
             return {
@@ -454,16 +477,12 @@ class BrowserAutomationService:
             if self.chrome_manager:
                 self.chrome_manager.cleanup()
             self._is_initialized = False
-            logger.info("Browser automation service cleaned up")
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
     def input_data(self, element_uuid: str, value: str) -> Dict[str, Any]:
         """
         Input data into a form field using UUID by simulating keyboard typing.
-
-        This method now simulates real keyboard input instead of directly setting values,
-        making it more realistic and compatible with form validation and dynamic content.
 
         Args:
             element_uuid: UUID of the input element (from browser_get_content)
@@ -487,9 +506,7 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            logger.info(f"Simulating keyboard input into element with XPath: {xpath}")
-
-            # First, focus the element and clear any existing content
+            # Focus the element and clear any existing content
             focus_result = self._focus_and_clear_element(xpath)
             if not focus_result.get("success", False):
                 return focus_result
@@ -504,10 +521,7 @@ class BrowserAutomationService:
                     "input_value": value,
                 }
 
-            # Trigger form events to notify the page of changes
             self._trigger_input_events(xpath, value)
-
-            # Wait a moment for any page changes
             time.sleep(1.5)
 
             return {
@@ -616,32 +630,19 @@ class BrowserAutomationService:
         return focus_result
 
     def _simulate_typing(self, text: str) -> Dict[str, Any]:
-        """
-        Simulate keyboard typing character by character using Chrome DevTools Protocol.
-
-        Args:
-            text: Text to type
-
-        Returns:
-            Dict containing typing result
-        """
+        """Simulate keyboard typing character by character."""
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")
 
         try:
             for char in text:
-                # Small delay between characters to simulate realistic typing speed
-                time.sleep(0.05)  # 50ms delay between characters
+                time.sleep(0.05)
 
-                # Dispatch key event for each character
                 if char == "\n":
-                    # Handle Enter key
                     self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\r")
                 elif char == "\t":
-                    # Handle Tab key
                     self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\t")
                 else:
-                    # Handle regular characters
                     self.chrome_interface.Input.dispatchKeyEvent(type="char", text=char)
 
             return {
@@ -655,16 +656,7 @@ class BrowserAutomationService:
             return {"success": False, "error": f"Typing simulation failed: {str(e)}"}
 
     def _trigger_input_events(self, xpath: str, value: str) -> Dict[str, Any]:
-        """
-        Trigger input and change events to notify the page of input changes.
-
-        Args:
-            xpath: XPath selector for the element
-            value: The value that was typed
-
-        Returns:
-            Dict containing event trigger result
-        """
+        """Trigger input and change events to notify the page of input changes."""
         js_code = f"""
         (() => {{
             const xpath = `{xpath}`;

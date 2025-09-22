@@ -45,11 +45,9 @@ def remove_duplicate_lines(content: str) -> str:
         if not current_line_stripped:
             continue  # Skip adding multiple empty lines
 
-        # Always keep empty lines and lines that differ from previous
         if not current_line_stripped or current_line_stripped != previous_line_stripped:
             deduplicated_lines.append(line)
             previous_line_stripped = current_line_stripped
-        # Skip lines that are exact duplicates of the previous line
 
     return "\n".join(deduplicated_lines)
 
@@ -259,7 +257,6 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
         result = chrome_interface.Runtime.evaluate(
             expression=js_code, returnByValue=True
         )
-        logger.debug(f"Clickable elements extraction result: {result}")
 
         if isinstance(result, tuple) and len(result) >= 2:
             if isinstance(result[1], dict):
@@ -497,7 +494,6 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
         result = chrome_interface.Runtime.evaluate(
             expression=js_code, returnByValue=True
         )
-        logger.debug(f"Input elements extraction result: {result}")
 
         if isinstance(result, tuple) and len(result) >= 2:
             if isinstance(result[1], dict):
