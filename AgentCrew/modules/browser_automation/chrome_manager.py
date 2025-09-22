@@ -37,7 +37,7 @@ class ChromeManager:
         self.chrome_thread: Optional[threading.Thread] = None
         self._shutdown = False
         self._user_data_dir = os.path.join(
-            os.getenv("AGENTCREW_CONFIG_PATH", "./"), "chrome_user_data"
+            os.getenv("AGENTCREW_PERSISTENCE_DIR", "./"), "chrome_user_data"
         )
         self._is_windows = platform.system() == "Windows"
 
@@ -175,14 +175,19 @@ class ChromeManager:
             chrome_executable = self._find_chrome_executable()
             logger.info(f"Starting Chrome from: {chrome_executable}")
 
+            if not os.path.exists(self._user_data_dir):
+                os.makedirs(self._user_data_dir, exist_ok=True)
+
             chrome_args = [
                 chrome_executable,
                 f"--remote-debugging-port={self.debug_port}",
                 "--no-first-run",
+                "--no-default-browser-check",
                 "--disable-backgrounding-occluded-windows",
                 "--disable-renderer-backgrounding",
                 "--disable-features=TranslateUI",
-                "-disable-new-avatar-menu",
+                "--disable-new-avatar-menu",
+                "--remote-allow-origins='*'",
                 "--allow-file-access-from-files",
                 f"--user-data-dir={self._user_data_dir}",
                 f"--profile-directory={profile}",

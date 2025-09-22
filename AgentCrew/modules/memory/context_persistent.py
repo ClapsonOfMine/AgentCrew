@@ -39,21 +39,12 @@ class ContextPersistenceService:
 
         if persistence_dir_override:
             persistence_dir = persistence_dir_override
-            # print(
-            #     f"INFO: Using provided persistence directory override: {persistence_dir}"
-            # )
         else:
-            env_dir = os.getenv("PERSISTENCE_DIR")
+            env_dir = os.getenv("AGENTCREW_PERSISTENCE_DIR")
             if env_dir:
                 persistence_dir = env_dir
-                # print(
-                #     f"INFO: Using persistence directory from PERSISTENCE_DIR environment variable: {persistence_dir}"
-                # )
             else:
                 persistence_dir = "./persistents"  # Default to current directory
-                # print(
-                #     "INFO: PERSISTENCE_DIR environment variable not set. Defaulting persistence directory to current directory ('.')"
-                # )
 
         # Expand user path (~) if present, and get absolute path for clarity
         self.base_dir = os.path.abspath(os.path.expanduser(persistence_dir))

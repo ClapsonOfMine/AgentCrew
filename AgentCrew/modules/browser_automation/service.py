@@ -99,9 +99,11 @@ class BrowserAutomationService:
                 if isinstance(result[0], dict):
                     error_text = result[0].get("result", {}).get("errorText")
                     if error_text:
+                        self.chrome_manager.cleanup()
+                        self._is_initialized = False
                         return {
                             "success": False,
-                            "error": f"Navigation failed: {error_text}",
+                            "error": f"Navigation failed: {error_text}.Please try again",
                             "url": url,
                             "profile": profile,
                         }
