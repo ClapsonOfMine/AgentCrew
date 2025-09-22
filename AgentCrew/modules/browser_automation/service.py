@@ -44,16 +44,16 @@ class BrowserAutomationService:
         # UUID to XPath mapping for element identification
         self.uuid_to_xpath_mapping: Dict[str, str] = {}
 
-    def _ensure_chrome_running(self):
+    def _ensure_chrome_running(self, profile: str = "Default"):
         """Ensure Chrome browser is running and connected."""
         if not self._is_initialized:
-            self._initialize_chrome()
+            self._initialize_chrome(profile)
 
-    def _initialize_chrome(self):
+    def _initialize_chrome(self, profile: str = "Default"):
         """Initialize Chrome browser and DevTools connection."""
         try:
             if not self.chrome_manager.is_chrome_running():
-                self.chrome_manager.start_chrome_thread()
+                self.chrome_manager.start_chrome_thread(profile)
 
                 if not self.chrome_manager.is_chrome_running():
                     raise RuntimeError("Failed to start Chrome browser")
@@ -76,18 +76,19 @@ class BrowserAutomationService:
             self._is_initialized = False
             raise
 
-    def navigate(self, url: str) -> Dict[str, Any]:
+    def navigate(self, url: str, profile: str = "Default") -> Dict[str, Any]:
         """
         Navigate to a URL.
 
         Args:
             url: The URL to navigate to
+            profile: Chrome user profile directory name (default: "Default")
 
         Returns:
             Dict containing navigation result
         """
         try:
-            self._ensure_chrome_running()
+            self._ensure_chrome_running(profile)
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
@@ -102,6 +103,7 @@ class BrowserAutomationService:
                             "success": False,
                             "error": f"Navigation failed: {error_text}",
                             "url": url,
+                            "profile": profile,
                         }
 
             time.sleep(2)
@@ -112,6 +114,7 @@ class BrowserAutomationService:
                 "message": f"Successfully navigated to {url}",
                 "current_url": current_url,
                 "url": url,
+                "profile": profile,
             }
 
         except Exception as e:
@@ -122,6 +125,7 @@ class BrowserAutomationService:
                 "success": False,
                 "error": f"Navigation error: {str(e)}. Reset the chrome, Please try to navigate again",
                 "url": url,
+                "profile": profile,
             }
 
     def click_element(self, element_uuid: str) -> Dict[str, Any]:

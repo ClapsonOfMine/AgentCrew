@@ -166,7 +166,7 @@ class ChromeManager:
 
         raise FileNotFoundError("Chrome/Chromium executable not found on Unix")
 
-    def _start_chrome_process(self):
+    def _start_chrome_process(self, profile: str = "Default"):
         """Start Chrome with remote debugging in a separate process."""
         try:
             chrome_executable = self._find_chrome_executable()
@@ -184,7 +184,7 @@ class ChromeManager:
                 "--allow-file-access-from-files",
                 "--disable-web-security",
                 "--allow-running-insecure-content",
-                "--profile-directory=Default",
+                f"--profile-directory={profile}",
             ]
 
             # Platform-specific process creation
@@ -215,13 +215,16 @@ class ChromeManager:
         except Exception as e:
             logger.error(f"Error starting Chrome: {e}")
 
-    def start_chrome_thread(self):
+    def start_chrome_thread(self, profile: str = "Default"):
         """Start Chrome in a separate thread."""
         if self.chrome_thread and self.chrome_thread.is_alive():
             return
 
         self.chrome_thread = threading.Thread(
-            target=self._start_chrome_process, daemon=True, name="ChromeDebugProcess"
+            target=self._start_chrome_process, 
+            args=(profile,),
+            daemon=True, 
+            name="ChromeDebugProcess"
         )
         self.chrome_thread.start()
 

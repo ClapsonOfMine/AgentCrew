@@ -22,6 +22,11 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
         "url": {
             "type": "string",
             "description": "Valid HTTP/HTTPS URL to navigate to (e.g., 'https://example.com').",
+        },
+        "profile": {
+            "type": "string",
+            "description": "Chrome user profile directory name (default: 'Default'). Allows agent to choose which Chrome user profile to use.",
+            "default": "Default",
         }
     }
     tool_required = ["url"]
@@ -193,14 +198,16 @@ def get_browser_navigate_tool_handler(
 
     def handle_browser_navigate(**params) -> str:
         url = params.get("url")
+        profile = params.get("profile", "Default")
 
         if not url:
             return "Error: No URL provided for navigation."
 
-        result = browser_service.navigate(url)
+        result = browser_service.navigate(url, profile=profile)
 
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}"
+            profile_info = f"\nProfile: {result.get('profile', profile)}" if result.get('profile') else ""
+            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}{profile_info}"
         else:
             return f"❌ Navigation failed: {result['error']}"
 
