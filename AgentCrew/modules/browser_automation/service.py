@@ -19,6 +19,7 @@ from .element_extractor import (
     extract_elements_by_text,
     extract_scrollable_elements,
 )
+from .js_loader import js_loader
 
 import PyChromeDevTools
 
@@ -147,77 +148,10 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            # JavaScript to find and click element by XPath
-            js_code = f"""
-            (() => {{
-                const xpath = `{xpath}`;
-                const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                const element = result.singleNodeValue;
-                
-                if (!element) {{
-                    return {{success: false, error: "Element not found"}};
-                }}
-                
-                // Check if element is visible and enabled
-                const style = window.getComputedStyle(element);
-                if (style.display === 'none' || style.visibility === 'hidden') {{
-                    return {{success: false, error: "Element is not visible"}};
-                }}
-                
-                if (element.disabled) {{
-                    return {{success: false, error: "Element is disabled"}};
-                }}
-                
-                // Scroll element into view
-                element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                
-                // Get element's bounding rect for mouse coordinates
-                const rect = element.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                
-                const mouseEventOptions = {{
-                    view: window,
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: centerX,
-                    clientY: centerY,
-                    screenX: centerX + window.screenX,
-                    screenY: centerY + window.screenY,
-                    button: 0, // Left mouse button
-                    buttons: 1, // Left mouse button pressed
-                    ctrlKey: false,
-                    shiftKey: false,
-                    altKey: false,
-                    metaKey: false
-                }};
-                
-                try {{
-                    const mouseDownEvent = new MouseEvent('mousedown', mouseEventOptions);
-                    element.dispatchEvent(mouseDownEvent);
-                    
-                    if (element.focus) {{
-                        element.focus();
-                    }}
-                    
-                    const mouseUpEvent = new MouseEvent('mouseup', mouseEventOptions);
-                    element.dispatchEvent(mouseUpEvent);
-                    
-                    const clickEvent = new MouseEvent('click', mouseEventOptions);
-                    element.dispatchEvent(clickEvent);
-                    
-                    return {{success: true, message: "Element clicked successfully"}};
-                }} catch (eventError) {{
-                    // Fallback to simple click if mouse events fail
-                    try {{
-                        element.click();
-                        return {{success: true, message: "Element clicked successfully"}};
-                    }} catch (fallbackError) {{
-                        return {{success: false, error: "Failed to click element: " + eventError.message + " (fallback also failed: " + fallbackError.message + ")"}};
-                    }}
-                }}
-            }})();
-            """
+            # Load JavaScript code from external file
+            js_code = js_loader.get_click_element_js(xpath)
+
+            print(js_code)
 
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
@@ -293,117 +227,10 @@ class BrowserAutomationService:
                         "amount": amount,
                     }
 
-            print(xpath)
-            js_code = f"""
-            (() => {{
-                const direction = '{direction}';
-                const distance = {scroll_distance};
-                const xpath = `{xpath or ""}`;
-                const elementUuid = `{element_uuid or ""}`;
-                
-                let scrollX = 0;
-                let scrollY = 0;
-                
-                switch(direction.toLowerCase()) {{
-                    case 'up':
-                        scrollY = -distance;
-                        break;
-                    case 'down':
-                        scrollY = distance;
-                        break;
-                    case 'left':
-                        scrollX = -distance;
-                        break;
-                    case 'right':
-                        scrollX = distance;
-                        break;
-                    default:
-                        return {{success: false, error: "Invalid direction. Use 'up', 'down', 'left', or 'right'"}};
-                }}
-                
-                // Determine scroll target (specific element or document)
-                let scrollTarget = document.documentElement || document.body;
-                let targetDescription = "the whole document";
-                
-                if (xpath && elementUuid) {{
-                    const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                    const element = result.singleNodeValue;
-                    
-                    if (!element) {{
-                        return {{success: false, error: "Element not found"}};
-                    }}
-                    
-                    // Check if element is scrollable
-                    const style = window.getComputedStyle(element);
-                    const hasScrollableOverflow = ['auto', 'scroll'].includes(style.overflow) || 
-                                                ['auto', 'scroll'].includes(style.overflowY) || 
-                                                ['auto', 'scroll'].includes(style.overflowX);
-                    
-                    if (hasScrollableOverflow || element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {{
-                        scrollTarget = element;
-                        targetDescription = "element " + elementUuid;
-                    }}
-                }}
-                
-                // Get current scroll position
-                const currentX = scrollTarget === document.documentElement ? 
-                    (window.pageXOffset || document.documentElement.scrollLeft) : scrollTarget.scrollLeft;
-                const currentY = scrollTarget === document.documentElement ? 
-                    (window.pageYOffset || document.documentElement.scrollTop) : scrollTarget.scrollTop;
-                
-                // Create wheel event for smooth scrolling
-                const wheelEventOptions = {{
-                    view: window,
-                    bubbles: true,
-                    cancelable: true,
-                    deltaX: scrollX,
-                    deltaY: scrollY,
-                    deltaMode: WheelEvent.DOM_DELTA_PIXEL
-                }};
-                
-                try {{
-                    // Dispatch wheel event to mimic true user scroll
-                    const wheelEvent = new WheelEvent('wheel', wheelEventOptions);
-                    
-                    if (scrollTarget === document.documentElement) {{
-                        document.dispatchEvent(wheelEvent);
-                        // Also perform actual scroll for fallback
-                        window.scrollBy(scrollX, scrollY);
-                    }} else {{
-                        scrollTarget.dispatchEvent(wheelEvent);
-                        // Perform actual scroll on the element
-                        scrollTarget.scrollBy(scrollX, scrollY);
-                    }}
-                    
-                    // Small delay to allow scroll to complete
-                    setTimeout(() => {{}}, 100);
-                    
-                }} catch (eventError) {{
-                    // Fallback to direct scrolling if wheel event fails
-                    if (scrollTarget === document.documentElement) {{
-                        window.scrollBy(scrollX, scrollY);
-                    }} else {{
-                        scrollTarget.scrollBy(scrollX, scrollY);
-                    }}
-                }}
-                
-                // Get new scroll position
-                const newX = scrollTarget === document.documentElement ? 
-                    (window.pageXOffset || document.documentElement.scrollLeft) : scrollTarget.scrollLeft;
-                const newY = scrollTarget === document.documentElement ? 
-                    (window.pageYOffset || document.documentElement.scrollTop) : scrollTarget.scrollTop;
-                
-                return {{
-                    success: true,
-                    message: "Scrolled " + targetDescription + " " + direction + " by " + Math.abs(scrollX || scrollY) + "px using dispatchEvent",
-                    previous_position: {{x: currentX, y: currentY}},
-                    new_position: {{x: newX, y: newY}},
-                    target: targetDescription,
-                    scroll_method: "wheel_event_with_fallback"
-                }};
-            }})();
-            """
-            print(js_code)
+            # Load JavaScript code from external file
+            js_code = js_loader.get_scroll_page_js(
+                direction, scroll_distance, xpath or "", element_uuid or ""
+            )
 
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
@@ -643,51 +470,8 @@ class BrowserAutomationService:
         Returns:
             Dict containing focus result
         """
-        js_code = f"""
-        (() => {{
-            const xpath = `{xpath}`;
-            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            const element = result.singleNodeValue;
-            
-            if (!element) {{
-                return {{success: false, error: "Element not found"}};
-            }}
-            
-            // Check if element is visible and enabled
-            const style = window.getComputedStyle(element);
-            if (style.display === 'none' || style.visibility === 'hidden') {{
-                return {{success: false, error: "Element is not visible"}};
-            }}
-            
-            if (element.disabled) {{
-                return {{success: false, error: "Element is disabled"}};
-            }}
-            
-            // Check if element is a valid input type
-            const tagName = element.tagName.toLowerCase();
-            if (!['input', 'textarea'].includes(tagName) && !element.hasAttribute('contenteditable')) {{
-                return {{success: false, error: "Element is not a text input field"}};
-            }}
-            
-            // Scroll element into view and focus
-            element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-            element.focus();
-            
-            // Clear existing content - select all and then we'll type over it
-            if (tagName === 'input' || tagName === 'textarea') {{
-                element.select();
-            }} else if (element.hasAttribute('contenteditable')) {{
-                // For contenteditable, select all text
-                const range = document.createRange();
-                range.selectNodeContents(element);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-            }}
-            
-            return {{success: true, message: "Element focused and selected for typing"}};
-        }})();
-        """
+        # Load JavaScript code from external file
+        js_code = js_loader.get_focus_and_clear_element_js(xpath)
 
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")
@@ -746,32 +530,8 @@ class BrowserAutomationService:
 
     def _trigger_input_events(self, xpath: str, value: str) -> Dict[str, Any]:
         """Trigger input and change events to notify the page of input changes."""
-        js_code = f"""
-        (() => {{
-            const xpath = `{xpath}`;
-            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            const element = result.singleNodeValue;
-            
-            if (!element) {{
-                return {{success: false, error: "Element not found for event triggering"}};
-            }}
-            
-            try {{
-                // Trigger input event
-                element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                
-                // Trigger change event
-                element.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                
-                // For some forms, also trigger keyup event
-                element.dispatchEvent(new KeyboardEvent('keyup', {{ bubbles: true }}));
-                
-                return {{success: true, message: "Input events triggered successfully"}};
-            }} catch (eventError) {{
-                return {{success: false, error: "Failed to trigger events: " + eventError.message}};
-            }}
-        }})();
-        """
+        # Load JavaScript code from external file
+        js_code = js_loader.get_trigger_input_events_js(xpath)
 
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")

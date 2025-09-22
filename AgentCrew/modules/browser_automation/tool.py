@@ -5,7 +5,7 @@ Provides six tools for browser automation:
 - browser_navigate: Navigate to URLs
 - browser_click: Click elements using XPath selectors
 - browser_scroll: Scroll page content in specified directions
-- browser_get_content: Extract page content, clickable elements, and input elements as markdown
+- browser_get_content: Extract page content, clickable elements, input elements, and scrollable elements as markdown
 - browser_input: Input data into form fields using XPath selectors
 - browser_get_elements_by_text: Find elements containing specific text and return UUID mappings
 """
