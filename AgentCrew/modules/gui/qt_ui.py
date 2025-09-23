@@ -436,7 +436,6 @@ class ChatWindow(QMainWindow, Observer):
             )
             return
 
-        print("Test")
         # Execute the unconsolidate command
         self.llm_worker.process_request.emit("/unconsolidate")
 

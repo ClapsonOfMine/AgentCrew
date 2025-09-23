@@ -114,7 +114,6 @@ def get_web_search_tool_handler(tavily_service: TavilySearchService):
         if not query:
             return "Error: No search query provided."
 
-        print(f"🔍 Searching the web for: {query}")
         results = tavily_service.search(
             query=query,
             topic=topic,
@@ -145,7 +144,6 @@ def get_web_extract_tool_handler(tavily_service: TavilySearchService):
         if not url:
             return "Error: No URL provided."
 
-        print(f"📄 Extracting content from URL: {url}")
         results = tavily_service.extract(url=url)
         return tavily_service.format_extract_results(results)
 

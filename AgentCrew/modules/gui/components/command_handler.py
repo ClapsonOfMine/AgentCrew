@@ -218,7 +218,6 @@ class CommandHandler:
                 f"Agent: {data} | Model: {self.chat_window.message_handler.agent.get_model()}"
             )
         elif event == "agent_command_result":
-            print(data)
             self.chat_window.ui_state_manager.set_input_controls_enabled(True)
             return True
 
