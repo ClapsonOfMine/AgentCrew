@@ -1,6 +1,6 @@
 import re
 from typing import Dict, List, Any, Union
-from anthropic.types import TextBlockParam, ToolUseBlock
+from anthropic.types import ToolUseBlock
 import json
 
 from mcp.types import TextContent
@@ -104,20 +104,25 @@ class MessageTransformer:
                             item.get("type") == "tool_result"
                             and msg.get("role") == "user"
                         ):
-                            content = ""
-                            try:
-                                if isinstance(item["content"], List):
-                                    content = [
-                                        TextBlockParam(i) for i in item["content"]
-                                    ][0]["text"]
-                                else:
-                                    content = item["content"]
-                            except Exception:
-                                pass
+                            content = item["content"]
+                            tool_content = []
                             std_msg["role"] = "tool"
+                            if isinstance(content, List):
+                                for c in content:
+                                    if isinstance(c, dict):
+                                        if c.get("type", "text") == "image":
+                                            tool_content.append(
+                                                MessageTransformer._standardize_claude_image_content(
+                                                    c
+                                                )
+                                            )
+                                        else:
+                                            tool_content.append(c)
+                                    else:
+                                        tool_content = content
                             std_msg["tool_result"] = {
                                 "tool_use_id": item.get("tool_use_id", ""),
-                                "content": content,
+                                "content": tool_content,
                                 "is_error": item.get("is_error", False),
                             }
                     elif isinstance(item, ToolUseBlock):
@@ -153,21 +158,25 @@ class MessageTransformer:
                                 }
                             )
                         elif item_type == "tool_result" and msg.get("role") == "user":
-                            item_dict = item.to_dict()
-                            content = ""
-                            try:
-                                if isinstance(item_dict["content"], List):
-                                    content = [
-                                        TextBlockParam(i) for i in item_dict["content"]
-                                    ]
-                                else:
-                                    content = item_dict["content"]
-                            except Exception:
-                                pass
-
+                            content = item["content"]
+                            tool_content = []
+                            std_msg["role"] = "tool"
+                            if isinstance(content, List):
+                                for c in content:
+                                    if isinstance(c, dict):
+                                        if c.get("type", "text") == "image":
+                                            tool_content.append(
+                                                MessageTransformer._standardize_claude_image_content(
+                                                    c
+                                                )
+                                            )
+                                        else:
+                                            tool_content.append(c)
+                                    else:
+                                        tool_content = content
                             std_msg["tool_result"] = {
                                 "tool_use_id": getattr(item, "tool_use_id", ""),
-                                "content": content,
+                                "content": tool_content,
                                 "is_error": getattr(item, "is_error", False),
                             }
 
@@ -438,7 +447,9 @@ class MessageTransformer:
                 tool_result = {
                     "type": "tool_result",
                     "tool_use_id": msg["tool_result"].get("tool_use_id", ""),
-                    "content": msg["tool_result"].get("content", ""),
+                    "content": MessageTransformer._convert_content_to_claude_format(
+                        msg["tool_result"].get("content", "")
+                    ),
                 }
 
                 if msg["tool_result"].get("is_error", False):
@@ -457,7 +468,7 @@ class MessageTransformer:
 
     @staticmethod
     def _convert_content_to_claude_format(
-        content: Union[Dict[str, Any], List[Dict[str, Any]]],
+        content: Union[Dict[str, Any], List[Dict[str, Any]], str],
     ):
         new_content = None
 
@@ -488,6 +499,8 @@ class MessageTransformer:
                     MessageTransformer._convert_content_to_claude_format(c)
                 )
             return new_content
+        else:
+            return content
         return content
 
     @staticmethod
