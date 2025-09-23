@@ -65,6 +65,8 @@ class BrowserAutomationService:
             self.chrome_interface.Network.enable()
             self.chrome_interface.Page.enable()
             self.chrome_interface.Runtime.enable()
+            self.chrome_interface.Emulation.enable()
+
             self.chrome_interface.DOM.enable()
 
             self._is_initialized = True
@@ -646,14 +648,23 @@ class BrowserAutomationService:
             if clip is not None:
                 screenshot_params["clip"] = clip
 
+            self.chrome_interface.Emulation.setDeviceMetricsOverride(
+                height=1280,
+                width=720,
+                deviceScaleFactor=1,
+                mobile=False,
+            )
+
             # Capture the screenshot
             result = self.chrome_interface.Page.captureScreenshot(**screenshot_params)
+
+            self.chrome_interface.Emulation.clearDeviceMetricsOverride()
 
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):
                     screenshot_data = result[1].get("result", {}).get("data", "")
                 elif isinstance(result[1], list) and len(result[1]) > 0:
-                    screenshot_data = result[1][0].get("result", {}).get("data", "")
+                    screenshot_data = result[1][-1].get("result", {}).get("data", "")
                 else:
                     return {
                         "success": False,

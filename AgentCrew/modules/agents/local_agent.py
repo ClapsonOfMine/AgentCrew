@@ -6,6 +6,7 @@ from AgentCrew.modules.llm import BaseLLMService
 from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules import logger
+import copy
 
 
 class LocalAgent(BaseAgent):
@@ -571,9 +572,9 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
         _output_tokens_usage = 0
         # Ensure the first message is a system message with the agent's prompt
         if not messages:
-            final_messages = list(self.history)
+            final_messages = copy.deepcopy(self.history)
         else:
-            final_messages = list(messages)
+            final_messages = copy.deepcopy(messages)
         self._enhance_agent_context_messages(final_messages)
         self._clean_unique_tool_result(final_messages)
         try:

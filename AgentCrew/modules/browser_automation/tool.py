@@ -11,7 +11,7 @@ Provides seven tools for browser automation:
 - browser_capture_screenshot: Capture page screenshots
 """
 
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Union, List
 from .service import BrowserAutomationService
 
 
@@ -180,11 +180,23 @@ def get_browser_get_content_tool_handler(
 ) -> Callable:
     """Get the handler function for the browser content extraction tool."""
 
-    def handle_browser_get_content(**params) -> str:
+    def handle_browser_get_content(**params) -> Union[List[Dict[str, Any]], str]:
         result = browser_service.get_page_content()
+        context_image = browser_service.capture_screenshot(
+            format="jpeg",
+            quality=70,
+        )
 
         if result["success"]:
-            return f"[UNIQUE]{result.get('content', 'Cannot get page content. Please try again.')}[/UNIQUE]"
+            tool_result = [
+                {
+                    "type": "text",
+                    "text": f"[UNIQUE]{result.get('content', 'Cannot get page content. Please try again.')}[/UNIQUE]",
+                },
+            ]
+            if context_image.get("success", False):
+                tool_result.append(context_image.get("screenshot", {}))
+            return tool_result
         else:
             return f"❌ Content extraction failed: {result['error']}"
 
