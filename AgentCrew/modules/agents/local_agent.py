@@ -487,7 +487,7 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
 
     def _clean_unique_tool_result(self, final_messages: List[Dict[str, Any]]):
         """
-        Clean unique tool results by replacing all but the last [UNIQUE] tool result with "CLEANED".
+        Clean unique tool results by replacing all but the last [UNIQUE] tool result with "[INVALIDATED]".
 
         Args:
             final_messages: List of message dictionaries to process
@@ -531,14 +531,14 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                 ):
                     unique_tool_indices.append(i)
 
-        # Replace all but the last [UNIQUE] tool result with "CLEANED"
+        # Replace all but the last [UNIQUE] tool result with "[INVALIDATED]"
         if len(unique_tool_indices) > 1:
             for i in unique_tool_indices[:-1]:  # All except the last one
                 msg = final_messages[i]
 
                 # Update content based on message format
                 if msg.get("role") == "tool" and "content" in msg:
-                    msg["content"] = "CLEANED"
+                    msg["content"] = "[INVALIDATED]"
 
                 elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
                     for content_item in msg["content"]:
@@ -547,7 +547,7 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                             and content_item.get("type") == "tool_result"
                             and "content" in content_item
                         ):
-                            content_item["content"] = "CLEANED"
+                            content_item["content"] = "[INVALIDATED]"
                             break
 
     async def process_messages(

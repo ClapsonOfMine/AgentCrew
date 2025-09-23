@@ -155,8 +155,6 @@ class BrowserAutomationService:
             # Load JavaScript code from external file
             js_code = js_loader.get_click_element_js(xpath)
 
-            print(js_code)
-
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
             )
@@ -326,7 +324,6 @@ class BrowserAutomationService:
             )
             if not raw_markdown_content:
                 return {"success": False, "error": "Could not convert HTML to markdown"}
-            print(raw_markdown_content)
 
             # Clean the markdown content
             # cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
@@ -424,7 +421,6 @@ class BrowserAutomationService:
         """
         # Resolve UUID to XPath
         xpath = self.uuid_to_xpath_mapping.get(element_uuid)
-        print(xpath)
         if not xpath:
             return {
                 "success": False,
@@ -443,7 +439,6 @@ class BrowserAutomationService:
             if not focus_result.get("success", False):
                 return focus_result
 
-            print(focus_result)
             can_simulate_typing = focus_result.get("canSimulateTyping", False)
             # Simulate typing each character
             if can_simulate_typing:
@@ -491,8 +486,6 @@ class BrowserAutomationService:
         """
         # Load JavaScript code from external file
         js_code = js_loader.get_focus_and_clear_element_js(xpath)
-
-        print(js_code)
 
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")
@@ -553,8 +546,6 @@ class BrowserAutomationService:
         """Trigger input and change events to notify the page of input changes."""
         # Load JavaScript code from external file
         js_code = js_loader.get_trigger_input_events_js(xpath, value)
-
-        print(js_code)
 
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")
