@@ -9,6 +9,8 @@ import time
 import logging
 from typing import Dict, Any, Optional
 from trafilatura import extract
+from html.parser import HTMLParser
+import re
 
 from .chrome_manager import ChromeManager
 from .element_extractor import (
@@ -314,10 +316,14 @@ class BrowserAutomationService:
             if not raw_html:
                 return {"success": False, "error": "Could not extract HTML content"}
 
+            # Filter out hidden elements before processing
+            filtered_html = self._filter_hidden_elements(raw_html)
+            print(filtered_html)
+
             # Convert HTML to markdown
             # raw_markdown_content = convert_to_markdown(raw_html, strip_newlines=True)
             raw_markdown_content = extract(
-                raw_html,
+                filtered_html,
                 include_comments=False,
                 output_format="markdown",
                 favor_recall=True,
@@ -366,6 +372,91 @@ class BrowserAutomationService:
         except Exception as e:
             logger.error(f"Content extraction error: {e}")
             return {"success": False, "error": f"Content extraction error: {str(e)}"}
+
+    def _filter_hidden_elements(self, html_content: str) -> str:
+        """
+        Filter out HTML elements that have style='display:none' or aria-hidden='true'.
+
+        Args:
+            html_content: Raw HTML content to filter
+
+        Returns:
+            Filtered HTML content with hidden elements removed
+        """
+
+        class HiddenElementFilter(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.filtered_html = []
+                self.skip_depth = 0
+
+            def handle_starttag(self, tag, attrs):
+                # Convert attrs to dict for easier access
+                attr_dict = dict(attrs)
+
+                # Check if element should be hidden
+                should_hide = False
+
+                # Check for style="display:none" (case insensitive, flexible matching)
+                style = attr_dict.get("style", "")
+                if style:
+                    # Remove spaces and check for display:none
+                    style_clean = re.sub(r"\s+", "", style.lower())
+                    if "display:none" in style_clean or "display=none" in style_clean:
+                        should_hide = True
+
+                # Check for aria-hidden="true"
+                aria_hidden = attr_dict.get("aria-hidden", "")
+                if aria_hidden and aria_hidden.lower() == "true":
+                    should_hide = True
+
+                if should_hide:
+                    self.skip_depth += 1
+                    return
+
+                if self.skip_depth == 0:
+                    # Reconstruct the tag with its attributes
+                    attr_string = " ".join([f'{k}="{v}"' for k, v in attrs])
+                    if attr_string:
+                        self.filtered_html.append(f"<{tag} {attr_string}>")
+                    else:
+                        self.filtered_html.append(f"<{tag}>")
+
+            def handle_endtag(self, tag):
+                if self.skip_depth > 0:
+                    self.skip_depth -= 1
+                    return
+
+                if self.skip_depth == 0:
+                    self.filtered_html.append(f"</{tag}>")
+
+            def handle_data(self, data):
+                if self.skip_depth == 0:
+                    self.filtered_html.append(data)
+
+            def handle_comment(self, data):
+                if self.skip_depth == 0:
+                    self.filtered_html.append(f"<!--{data}-->")
+
+            def handle_entityref(self, name):
+                if self.skip_depth == 0:
+                    self.filtered_html.append(f"&{name};")
+
+            def handle_charref(self, name):
+                if self.skip_depth == 0:
+                    self.filtered_html.append(f"&#{name};")
+
+            def get_filtered_html(self):
+                return "".join(self.filtered_html)
+
+        try:
+            parser = HiddenElementFilter()
+            parser.feed(html_content)
+            return parser.get_filtered_html()
+        except Exception as e:
+            logger.warning(f"Error filtering hidden elements: {e}")
+            # Return original content if filtering fails
+            return html_content
 
     def _get_current_url(self) -> str:
         """Get the current page URL."""
