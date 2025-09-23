@@ -318,6 +318,7 @@ class BrowserAutomationService:
                 raw_html,
                 include_comments=False,
                 output_format="markdown",
+                favor_recall=True,
                 include_links=True,
                 include_formatting=True,
                 include_images=True,
