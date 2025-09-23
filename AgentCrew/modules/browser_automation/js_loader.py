@@ -171,7 +171,7 @@ class JavaScriptLoader:
 
         return js_code + "\n" + wrapper
 
-    def get_trigger_input_events_js(self, xpath: str) -> str:
+    def get_trigger_input_events_js(self, xpath: str, value: str) -> str:
         """
         Get JavaScript code for triggering input events.
 
@@ -190,7 +190,8 @@ class JavaScriptLoader:
         wrapper = f"""
         (() => {{
             const xpath = `{escaped_xpath}`;
-            return triggerInputEvents(xpath);
+            const value = `{value}`;
+            return triggerInputEvents(xpath, value);
         }})();
         """
 

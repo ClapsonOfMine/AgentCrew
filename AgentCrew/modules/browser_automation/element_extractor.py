@@ -265,13 +265,16 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
     - Type: Input type (text, email, password, etc.)
     - Placeholder/Label: Placeholder text or associated label
     - Required: Whether the field is required
+    - Disabled: Whether the field is disabled
+    - Name: The name attribute of the element
+    - Value: Current value of the element
 
     Args:
         chrome_interface: ChromeInterface object with enabled DOM
         uuid_mapping: Dictionary to store UUID to XPath mappings
 
     Returns:
-        Concise markdown table with UUID, type, and description for each input element
+        Concise markdown table with UUID, type, description, status, name, and value for each input element
     """
     try:
         # Load JavaScript code from external file
@@ -304,15 +307,21 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
         markdown_output.append(
             "\n\n## Input Elements\nUse browser_input with UUID and value to fill inputs.\n"
         )
-        markdown_output.append("| UUID | Type | Description | Required | Disabled |\n")
-        markdown_output.append("|------|------|-------------|----------|----------|\n")
+        markdown_output.append(
+            "| UUID | Type | Description | Required | Disabled | Name | Value |\n"
+        )
+        markdown_output.append(
+            "|------|------|-------------|----------|----------|------|-------|\n"
+        )
 
         for element in elements_data:
             xpath = element.get("xpath", "")
             element_type = element.get("type", "")
             description = element.get("description", "").strip()
-            required = "✓" if element.get("required", False) else ""
-            disabled = "✓" if element.get("disabled", False) else ""
+            required = "yes" if element.get("required", False) else "no"
+            disabled = "yes" if element.get("disabled", False) else "no"
+            name = element.get("name", "").strip()
+            value = element.get("value", "").strip()
 
             # Generate UUID and store mapping
             element_uuid = str(uuid.uuid4())[:8]  # Use first 8 characters for brevity
@@ -325,9 +334,15 @@ def extract_input_elements(chrome_interface, uuid_mapping: Dict[str, str]) -> st
                 description = "_no description_"
 
             element_type = element_type.replace("|", "\\|")
+            name = name.replace("|", "\\|") if name else ""
+            value = value.replace("|", "\\|") if value else ""
+
+            # Truncate long values for better table readability
+            if len(value) > 30:
+                value = value[:27] + "..."
 
             markdown_output.append(
-                f"| `{element_uuid}` | {element_type} | {description} | {required} | {disabled} |\n"
+                f"| `{element_uuid}` | {element_type} | {description} | {required} | {disabled} | {name} | {value} |\n"
             )
 
         return "".join(markdown_output)

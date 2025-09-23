@@ -51,7 +51,7 @@ dependencies = [
   "soundfile>=0.13.1",
   "jsonref>=1.1.0",
   "pychromedevtools>=0.3.3",
-  "html-to-markdown>=0.4.0",
+  "trafilatura>=2.0.0",
 ]
 
 [project.optional-dependencies]

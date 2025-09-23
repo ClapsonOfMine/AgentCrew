@@ -8,12 +8,10 @@ scroll content, and extract page information using Chrome DevTools Protocol.
 import time
 import logging
 from typing import Dict, Any, Optional
-from html_to_markdown import convert_to_markdown
+from trafilatura import extract
 
 from .chrome_manager import ChromeManager
 from .element_extractor import (
-    clean_markdown_images,
-    remove_duplicate_lines,
     extract_clickable_elements,
     extract_input_elements,
     extract_elements_by_text,
@@ -317,13 +315,24 @@ class BrowserAutomationService:
                 return {"success": False, "error": "Could not extract HTML content"}
 
             # Convert HTML to markdown
-            raw_markdown_content = convert_to_markdown(raw_html, strip_newlines=True)
+            # raw_markdown_content = convert_to_markdown(raw_html, strip_newlines=True)
+            raw_markdown_content = extract(
+                raw_html,
+                include_comments=False,
+                output_format="markdown",
+                include_links=True,
+                include_formatting=True,
+                include_images=True,
+            )
+            if not raw_markdown_content:
+                return {"success": False, "error": "Could not convert HTML to markdown"}
+            print(raw_markdown_content)
 
             # Clean the markdown content
-            cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
+            # cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
 
             # Remove consecutive duplicate lines
-            deduplicated_content = remove_duplicate_lines(cleaned_markdown_content)
+            # deduplicated_content = remove_duplicate_lines(cleaned_markdown_content)
 
             self.uuid_to_xpath_mapping.clear()
 
@@ -340,7 +349,7 @@ class BrowserAutomationService:
             )
 
             final_content = (
-                deduplicated_content
+                raw_markdown_content
                 + clickable_elements_md
                 + input_elements_md
                 + scrollable_elements_md
@@ -415,6 +424,7 @@ class BrowserAutomationService:
         """
         # Resolve UUID to XPath
         xpath = self.uuid_to_xpath_mapping.get(element_uuid)
+        print(xpath)
         if not xpath:
             return {
                 "success": False,
@@ -433,15 +443,18 @@ class BrowserAutomationService:
             if not focus_result.get("success", False):
                 return focus_result
 
+            print(focus_result)
+            can_simulate_typing = focus_result.get("canSimulateTyping", False)
             # Simulate typing each character
-            typing_result = self._simulate_typing(value)
-            if not typing_result.get("success", False):
-                return {
-                    **typing_result,
-                    "uuid": element_uuid,
-                    "xpath": xpath,
-                    "input_value": value,
-                }
+            if can_simulate_typing:
+                typing_result = self._simulate_typing(value)
+                if not typing_result.get("success", False):
+                    return {
+                        **typing_result,
+                        "uuid": element_uuid,
+                        "xpath": xpath,
+                        "input_value": value,
+                    }
 
             self._trigger_input_events(xpath, value)
             time.sleep(1.5)
@@ -478,6 +491,8 @@ class BrowserAutomationService:
         """
         # Load JavaScript code from external file
         js_code = js_loader.get_focus_and_clear_element_js(xpath)
+
+        print(js_code)
 
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")
@@ -537,7 +552,9 @@ class BrowserAutomationService:
     def _trigger_input_events(self, xpath: str, value: str) -> Dict[str, Any]:
         """Trigger input and change events to notify the page of input changes."""
         # Load JavaScript code from external file
-        js_code = js_loader.get_trigger_input_events_js(xpath)
+        js_code = js_loader.get_trigger_input_events_js(xpath, value)
+
+        print(js_code)
 
         if self.chrome_interface is None:
             raise RuntimeError("Chrome interface is not initialized")
