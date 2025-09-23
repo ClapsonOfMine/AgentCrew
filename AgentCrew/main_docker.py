@@ -13,6 +13,7 @@ from AgentCrew.modules.console import ConsoleUI
 from AgentCrew.modules.chat import MessageHandler
 from AgentCrew.modules.web_search import TavilySearchService
 from AgentCrew.modules.clipboard import ClipboardService
+from AgentCrew.modules.browser_automation import BrowserAutomationService
 from AgentCrew.modules.memory import (
     ChromaMemoryService,
     ContextPersistenceService,
@@ -28,7 +29,7 @@ nest_asyncio.apply()
 
 @click.group()
 def cli():
-    """SwissKnife - AI Assistant and Agent Framework"""
+    """Agentcrew - AI Assistant and Agent Framework"""
     pass
 
 
@@ -45,6 +46,7 @@ def cli_prod():
         "~/.AgentCrew/persistents"
     )
     os.environ["AGENTCREW_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/config.json")
+    os.environ["AGENTCREW_DISABLE_GUI"] = "true"
 
     cli()  # Delegate to main CLI function
 
@@ -173,6 +175,13 @@ def setup_services(provider, memory_llm=None):
         click.echo(f"⚠️ Image generation service not available: {str(e)}")
         image_gen_service = None
 
+    # Initialize browser automation service
+    try:
+        browser_automation_service = BrowserAutomationService()
+    except Exception as e:
+        click.echo(f"⚠️ Browser automation service not available: {str(e)}")
+        browser_automation_service = None
+
     # Register all tools with their respective services
     services = {
         "llm": llm_service,
@@ -182,6 +191,7 @@ def setup_services(provider, memory_llm=None):
         "web_search": search_service,
         "context_persistent": context_service,
         "image_generation": image_gen_service,
+        "browser": browser_automation_service,
     }
     return services
 

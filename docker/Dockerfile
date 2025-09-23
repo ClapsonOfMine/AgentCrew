@@ -49,7 +49,9 @@ ENV PYTHONUNBUFFERED=1 \
   AGENTCREW_PERSISTENCE_DIR="/home/agentcrew/.AgentCrew/persistents" \
   AGENTCREW_CONFIG_PATH="/home/agentcrew/.AgentCrew/config.json" \
   AGENTCREW_DOCKER="true" \
-  AGENTCREW_DISABLE_GUI="true"
+  AGENTCREW_DISABLE_GUI="true" \
+  # Chromium headless configuration
+  CHROME_BIN=/usr/bin/chromium
 
 # Install system dependencies needed for runtime
 RUN apt-get update && apt-get install -y \
@@ -60,6 +62,19 @@ RUN apt-get update && apt-get install -y \
   xz-utils \
   libglib2.0-0 \
   libgl1 \
+  # Chromium for headless browser automation
+  chromium \
+  # Minimal dependencies for headless Chrome
+  libnss3 \
+  libatk-bridge2.0-0 \
+  libdrm2 \
+  libxkbcommon0 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxrandr2 \
+  libgbm1 \
+  libxss1 \
+  libasound2 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv
@@ -77,8 +92,8 @@ RUN groupadd -r agentcrew && useradd -r -g agentcrew -m -d /home/agentcrew agent
 # Copy virtual environment from builder stage
 COPY --from=builder /opt/venv /opt/venv
 
-# Create AgentCrew config directory
-RUN mkdir -p /home/agentcrew/.AgentCrew/{logs,memorydb,persistents} && \
+# Create AgentCrew config directory and Chrome user data directory
+RUN mkdir -p /home/agentcrew/.AgentCrew/{logs,memorydb,persistents,chrome_user_data} && \
   chown -R agentcrew:agentcrew /home/agentcrew/.AgentCrew
 
 # Create a default agents.toml if it doesn't exist

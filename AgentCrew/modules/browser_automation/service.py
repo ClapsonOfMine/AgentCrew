@@ -318,7 +318,6 @@ class BrowserAutomationService:
 
             # Filter out hidden elements before processing
             filtered_html = self._filter_hidden_elements(raw_html)
-            print(filtered_html)
 
             # Convert HTML to markdown
             # raw_markdown_content = convert_to_markdown(raw_html, strip_newlines=True)

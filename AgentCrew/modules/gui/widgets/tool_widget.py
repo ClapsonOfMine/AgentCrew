@@ -232,7 +232,11 @@ class ToolWidget(QWidget):
         )
 
         # Convert to string and render appropriately
-        result_str = str(self.result_data)
+        result_str = (
+            str(self.result_data)[:2800] + "..." + str(self.result_data)[-200:]
+            if len(str(self.result_data)) > 3000
+            else str(self.result_data)
+        )
 
         # Fallback to plain text if markdown rendering fails
         result_text.setTextFormat(Qt.TextFormat.PlainText)

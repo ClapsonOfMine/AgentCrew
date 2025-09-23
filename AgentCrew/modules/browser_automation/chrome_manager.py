@@ -178,6 +178,9 @@ class ChromeManager:
             if not os.path.exists(self._user_data_dir):
                 os.makedirs(self._user_data_dir, exist_ok=True)
 
+            is_headless = os.getenv("AGENTCREW_DISABLE_GUI", "") == "true"
+            is_docker = os.getenv("AGENTCREW_DOCKER", "") == "true"
+
             chrome_args = [
                 chrome_executable,
                 f"--remote-debugging-port={self.debug_port}",
@@ -192,6 +195,10 @@ class ChromeManager:
                 f"--user-data-dir={self._user_data_dir}",
                 f"--profile-directory={profile}",
             ]
+            if is_headless:
+                chrome_args.append("--headless")
+            if is_docker:
+                chrome_args.append("--no-sandbox")
 
             # Platform-specific process creation
             if self._is_windows:

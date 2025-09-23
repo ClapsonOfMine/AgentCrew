@@ -725,6 +725,8 @@ def a2a_server(
         if mcp_config:
             os.environ["MCP_CONFIG_PATH"] = mcp_config
 
+        os.environ["AGENTCREW_DISABLE_GUI"] = "true"
+
         # Set up agents from configuration
         setup_agents(services, agent_config, provider, model_id)
 
@@ -811,6 +813,8 @@ def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, f
         services = setup_services(provider, memory_llm)
         if mcp_config:
             os.environ["MCP_CONFIG_PATH"] = mcp_config
+
+        os.environ["AGENTCREW_DISABLE_GUI"] = "true"
         #
         # Set up agents from configuration
         setup_agents(services, agent_config)
