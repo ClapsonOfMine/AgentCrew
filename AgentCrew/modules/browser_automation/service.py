@@ -620,7 +620,30 @@ class BrowserAutomationService:
                 time.sleep(0.05)
 
                 if char == "\n":
-                    self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\r")
+                    self.chrome_interface.Input.dispatchKeyEvent(
+                        **{
+                            "type": "rawKeyDown",
+                            "windowsVirtualKeyCode": 13,
+                            "unmodifiedText": "\r",
+                            "text": "\r",
+                        }
+                    )
+                    self.chrome_interface.Input.dispatchKeyEvent(
+                        **{
+                            "type": "char",
+                            "windowsVirtualKeyCode": 13,
+                            "unmodifiedText": "\r",
+                            "text": "\r",
+                        }
+                    )
+                    self.chrome_interface.Input.dispatchKeyEvent(
+                        **{
+                            "type": "keyUp",
+                            "windowsVirtualKeyCode": 13,
+                            "unmodifiedText": "\r",
+                            "text": "\r",
+                        }
+                    )
                 elif char == "\t":
                     self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\t")
                 else:
