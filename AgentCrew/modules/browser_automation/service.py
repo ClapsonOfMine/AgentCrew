@@ -8,7 +8,9 @@ scroll content, and extract page information using Chrome DevTools Protocol.
 import time
 import logging
 from typing import Dict, Any, Optional
-from trafilatura import extract
+from html_to_markdown import convert_to_markdown
+
+# from trafilatura import extract, html2txt
 from html.parser import HTMLParser
 import re
 
@@ -18,6 +20,8 @@ from .element_extractor import (
     extract_input_elements,
     extract_elements_by_text,
     extract_scrollable_elements,
+    clean_markdown_images,
+    remove_duplicate_lines,
 )
 from .js_loader import js_loader
 
@@ -320,24 +324,30 @@ class BrowserAutomationService:
             filtered_html = self._filter_hidden_elements(raw_html)
 
             # Convert HTML to markdown
-            # raw_markdown_content = convert_to_markdown(raw_html, strip_newlines=True)
-            raw_markdown_content = extract(
+            raw_markdown_content = convert_to_markdown(
                 filtered_html,
-                include_comments=False,
-                output_format="markdown",
-                favor_recall=True,
-                include_links=True,
-                include_formatting=True,
-                include_images=True,
+                strip_newlines=True,
+                extract_metadata=False,
+                remove_forms=False,
+                remove_navigation=False,
             )
+            # raw_markdown_content = html2txt(
+            #     filtered_html,
+            #     # include_comments=False,
+            #     # output_format="markdown",
+            #     # favor_recall=True,
+            #     # include_links=True,
+            #     # include_formatting=True,
+            #     # include_images=True,
+            # )
             if not raw_markdown_content:
                 return {"success": False, "error": "Could not convert HTML to markdown"}
 
             # Clean the markdown content
-            # cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
+            cleaned_markdown_content = clean_markdown_images(raw_markdown_content)
 
             # Remove consecutive duplicate lines
-            # deduplicated_content = remove_duplicate_lines(cleaned_markdown_content)
+            deduplicated_content = remove_duplicate_lines(cleaned_markdown_content)
 
             self.uuid_to_xpath_mapping.clear()
 
@@ -354,7 +364,7 @@ class BrowserAutomationService:
             )
 
             final_content = (
-                raw_markdown_content
+                deduplicated_content
                 + clickable_elements_md
                 + input_elements_md
                 + scrollable_elements_md

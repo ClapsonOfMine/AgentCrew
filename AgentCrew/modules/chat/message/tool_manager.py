@@ -86,8 +86,7 @@ class ToolManager:
                         "tool_use": tool_use,
                         "tool_result": (
                             "This tool call has been rejected by user, "
-                            "Immediately stop current task and ask user the reason why this call has been rejected, adapt the behavior if needed. "
-                            "Suggest alternative actions if possible."
+                            "Immediately STOP any tasks or any tool calls and WAIT for user reason and adjustment, adapt new behavior if needed. "
                         ),
                         "is_error": True,
                     },

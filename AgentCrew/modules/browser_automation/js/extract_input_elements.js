@@ -72,36 +72,37 @@
     if (element.id) {
       const label = document.querySelector(`label[for="${element.id}"]`);
       if (label) {
-        return label.textContent.trim();
+        return label.getAttribute("aria-label") || label.textContent.trim();
       }
-    }
-
-    // Check if element is inside a label
-    const parentLabel = element.closest("label");
-    if (parentLabel) {
-      return parentLabel.textContent.trim();
     }
 
     // Check for aria-label
     if (element.getAttribute("aria-label")) {
       return element.getAttribute("aria-label");
     }
-
-    // Check for preceding label or text
-    let sibling = element.previousElementSibling;
-    while (sibling) {
-      if (sibling.tagName === "LABEL") {
-        return sibling.textContent.trim();
-      }
-      if (sibling.textContent && sibling.textContent.trim()) {
-        const text = sibling.textContent.trim();
-        if (text.length < 100) {
-          // Reasonable label length
-          return text;
-        }
-      }
-      sibling = sibling.previousElementSibling;
+    // Check if element is inside a label
+    const parentLabel = element.closest("label");
+    if (parentLabel) {
+      return (
+        parentLabel.getAttribute("aria-label") || parentLabel.textContent.trim()
+      );
     }
+
+    // // Check for preceding label or text
+    // let sibling = element.previousElementSibling;
+    // while (sibling) {
+    //   if (sibling.tagName === "LABEL") {
+    //     return sibling.textContent.trim();
+    //   }
+    //   if (sibling.textContent && sibling.textContent.trim()) {
+    //     const text = sibling.textContent.trim();
+    //     if (text.length < 100) {
+    //       // Reasonable label length
+    //       return text;
+    //     }
+    //   }
+    //   sibling = sibling.previousElementSibling;
+    // }
 
     return "";
   }
@@ -155,12 +156,12 @@
       }
 
       // Get description (placeholder, label, or name)
-      let description = "";
+      let description = element.getAttribute("aria-label") || "";
 
       // Try placeholder first
-      if (element.placeholder) {
+      if (!description && element.placeholder) {
         description = element.placeholder;
-      } else {
+      } else if (!description) {
         // Try to find associated label
         const labelText = getLabelText(element);
         if (labelText) {

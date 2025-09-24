@@ -104,7 +104,7 @@
       const xpath = getXPath(element);
 
       // Get display text
-      let displayText = "";
+      let displayText = element.getAttribute("aria-label");
 
       // Check if element contains images and extract alt text
       const images = element.querySelectorAll("img");
@@ -112,11 +112,14 @@
         const altTexts = [];
         images.forEach((img) => {
           const alt = img.getAttribute("alt");
+          const label = img.getAttribute("aria-label");
           if (alt) {
             altTexts.push(alt);
+          } else if (label) {
+            altTexts.push(label);
           }
         });
-        if (altTexts.length > 0) {
+        if (altTexts.length > 0 && !displayText) {
           displayText = altTexts.join(", ");
         }
       }
@@ -128,8 +131,7 @@
 
         // Try aria-label or title if no text content
         if (!displayText) {
-          displayText =
-            element.getAttribute("aria-label") || element.title || "";
+          displayText = element.title || "";
         }
 
         // Limit text length
