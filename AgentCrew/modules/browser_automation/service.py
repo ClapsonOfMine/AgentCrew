@@ -7,10 +7,10 @@ scroll content, and extract page information using Chrome DevTools Protocol.
 
 import time
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from html_to_markdown import convert_to_markdown
+import urllib.parse
 
-# from trafilatura import extract, html2txt
 from html.parser import HTMLParser
 import re
 
@@ -23,7 +23,7 @@ from .element_extractor import (
     clean_markdown_images,
     remove_duplicate_lines,
 )
-from .js_loader import js_loader
+from .js_loader import js_loader, key_codes
 
 import PyChromeDevTools
 
@@ -98,7 +98,7 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            result = self.chrome_interface.Page.navigate(url=url)
+            result = self.chrome_interface.Page.navigate(url=urllib.parse.unquote(url))
 
             # Check if navigation was successful
             if isinstance(result, tuple) and len(result) >= 2:
@@ -331,15 +331,6 @@ class BrowserAutomationService:
                 remove_forms=False,
                 remove_navigation=False,
             )
-            # raw_markdown_content = html2txt(
-            #     filtered_html,
-            #     # include_comments=False,
-            #     # output_format="markdown",
-            #     # favor_recall=True,
-            #     # include_links=True,
-            #     # include_formatting=True,
-            #     # include_images=True,
-            # )
             if not raw_markdown_content:
                 return {"success": False, "error": "Could not convert HTML to markdown"}
 
@@ -827,6 +818,101 @@ class BrowserAutomationService:
         except Exception as e:
             logger.error(f"Screenshot capture error: {e}")
             return {"success": False, "error": f"Screenshot capture error: {str(e)}"}
+
+    def dispatch_key_event(self, key: str, modifiers: List[str] = []) -> Dict[str, Any]:
+        """
+        Dispatch key events using CDP input.dispatchKeyEvent.
+
+        Args:
+            key: Key to dispatch (e.g., 'Enter', 'Up', 'Down', 'F1', 'PageUp')
+            modifiers: Optional modifiers like 'ctrl', 'alt', 'shift' (comma-separated)
+
+        Returns:
+            Dict containing dispatch result
+        """
+        try:
+            self._ensure_chrome_running()
+
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            key_name = key.lower().strip()
+            key_code = key_codes.get(key_name)
+
+            if key_code is None:
+                return {
+                    "success": False,
+                    "error": f"Unknown key '{key}'. Supported keys: {', '.join(sorted(key_codes.keys()))}",
+                    "key": key,
+                    "modifiers": modifiers,
+                }
+
+            # Parse modifiers
+            modifier_flags = 0
+            if modifiers:
+                modifier_names = [m.strip().lower() for m in modifiers]
+                for mod in modifier_names:
+                    if mod in ["alt"]:
+                        modifier_flags |= 1  # Alt = 1
+                    elif mod in ["ctrl", "control"]:
+                        modifier_flags |= 2  # Ctrl = 2
+                    elif mod in ["meta", "cmd", "command"]:
+                        modifier_flags |= 4  # Meta = 4
+                    elif mod in ["shift"]:
+                        modifier_flags |= 8  # Shift = 8
+
+            # Dispatch keyDown event
+            self.chrome_interface.Input.dispatchKeyEvent(
+                type="rawKeyDown",
+                windowsVirtualKeyCode=key_code,
+                modifiers=modifier_flags,
+            )
+
+            # For printable characters, also send char event
+            printable_keys = {"space", "spacebar", "enter", "return", "tab"}
+            if key_name in printable_keys:
+                if key_name in ["space", "spacebar"]:
+                    char_text = " "
+                elif key_name in ["enter", "return"]:
+                    char_text = "\r"
+                elif key_name == "tab":
+                    char_text = "\t"
+                else:
+                    char_text = ""
+
+                if char_text:
+                    self.chrome_interface.Input.dispatchKeyEvent(
+                        type="char",
+                        windowsVirtualKeyCode=key_code,
+                        text=char_text,
+                        unmodifiedText=char_text,
+                        modifiers=modifier_flags,
+                    )
+
+            # Dispatch keyUp event
+            self.chrome_interface.Input.dispatchKeyEvent(
+                type="keyUp", windowsVirtualKeyCode=key_code, modifiers=modifier_flags
+            )
+
+            time.sleep(0.1)  # Small delay for event processing
+
+            return {
+                "success": True,
+                "message": f"Successfully dispatched key '{key}' with modifiers '{modifiers}'",
+                "key": key,
+                "key_code": key_code,
+                "modifiers": modifiers,
+                "modifier_flags": modifier_flags,
+            }
+
+        except Exception as e:
+            logger.error(f"Key dispatch error: {e}")
+            return {
+                "success": False,
+                "error": f"Key dispatch error: {str(e)}",
+                "key": key,
+                "modifiers": modifiers,
+            }
 
     def __del__(self):
         """Cleanup when service is destroyed."""

@@ -204,3 +204,68 @@ class JavaScriptLoader:
 
 # Global instance for convenience
 js_loader = JavaScriptLoader()
+
+# Key code mapping for common keys
+key_codes = {
+    # Arrow Keys
+    "up": 38,
+    "down": 40,
+    "left": 37,
+    "right": 39,
+    # Navigation Keys
+    "home": 36,
+    "end": 35,
+    "pageup": 33,
+    "pagedown": 34,
+    # Control Keys
+    "enter": 13,
+    "escape": 27,
+    "tab": 9,
+    "backspace": 8,
+    "delete": 46,
+    "space": 32,
+    # Function Keys
+    "f1": 112,
+    "f2": 113,
+    "f3": 114,
+    "f4": 115,
+    "f5": 116,
+    "f6": 117,
+    "f7": 118,
+    "f8": 119,
+    "f9": 120,
+    "f10": 121,
+    "f11": 122,
+    "f12": 123,
+    # Numpad
+    "numpad0": 96,
+    "numpad1": 97,
+    "numpad2": 98,
+    "numpad3": 99,
+    "numpad4": 100,
+    "numpad5": 101,
+    "numpad6": 102,
+    "numpad7": 103,
+    "numpad8": 104,
+    "numpad9": 105,
+    # Media Keys
+    "volumeup": 175,
+    "volume_up": 175,
+    "volumedown": 174,
+    "volume_down": 174,
+    "volumemute": 173,
+    "volume_mute": 173,
+    # Lock Keys
+    "capslock": 20,
+    "numlock": 144,
+    "scrolllock": 145,
+    # Modifier Keys (for key events, not just modifiers)
+    "shift": 16,
+    "ctrl": 17,
+    "control": 17,
+    "alt": 18,
+    "meta": 91,
+    "cmd": 91,
+    "command": 91,
+    "windows": 91,
+}

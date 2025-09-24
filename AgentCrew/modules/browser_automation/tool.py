@@ -1,7 +1,7 @@
 """
 Browser automation tool definitions and handlers.
 
-Provides seven tools for browser automation:
+Provides eight tools for browser automation:
 - browser_navigate: Navigate to URLs
 - browser_click: Click elements using UUID selectors
 - browser_scroll: Scroll page content
@@ -9,6 +9,7 @@ Provides seven tools for browser automation:
 - browser_input: Input data into form fields using UUID selectors
 - browser_get_elements_by_text: Find elements by text content
 - browser_capture_screenshot: Capture page screenshots
+- browser_send_key: send keyboard events (arrow keys, function keys, etc.)
 """
 
 from typing import Dict, Any, Callable, Union, List
@@ -497,11 +498,131 @@ def get_browser_capture_screenshot_tool_handler(
     return handle_browser_capture_screenshot
 
 
+def get_browser_send_key_tool_definition(provider="claude") -> Dict[str, Any]:
+    """Get tool definition for browser key event send."""
+    tool_description = "Send keyboard events like arrow keys, function keys, page navigation keys, etc. using Chrome DevTools Protocol."
+    tool_arguments = {
+        "key": {
+            "type": "string",
+            "enum": [
+                "up",
+                "down",
+                "left",
+                "right",
+                "home",
+                "end",
+                "pageup",
+                "pagedown",
+                "enter",
+                "escape",
+                "tab",
+                "backspace",
+                "delete",
+                "space",
+                "f1",
+                "f2",
+                "f3",
+                "f4",
+                "f5",
+                "f6",
+                "f7",
+                "f8",
+                "f9",
+                "f10",
+                "f11",
+                "f12",
+                "numpad0",
+                "numpad1",
+                "numpad2",
+                "numpad3",
+                "numpad4",
+                "numpad5",
+                "numpad6",
+                "numpad7",
+                "numpad8",
+                "numpad9",
+                "volumeup",
+                "volumedown",
+                "volumemute",
+                "capslock",
+                "numlock",
+                "scrolllock",
+            ],
+            "description": "Key to send.",
+        },
+        "modifiers": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["ctrl", "alt", "shift", "meta"],
+            },
+            "description": "Optional modifier keys: 'ctrl', 'alt', 'shift', 'meta'. Example: 'ctrl,shift' for Ctrl+Shift+Key.",
+            "default": [],
+        },
+    }
+    tool_required = ["key"]
+
+    if provider == "claude":
+        return {
+            "name": "browser_send_key",
+            "description": tool_description,
+            "input_schema": {
+                "type": "object",
+                "properties": tool_arguments,
+                "required": tool_required,
+            },
+        }
+    else:  # provider == "groq" or other OpenAI-compatible
+        return {
+            "type": "function",
+            "function": {
+                "name": "browser_send_key",
+                "description": tool_description,
+                "parameters": {
+                    "type": "object",
+                    "properties": tool_arguments,
+                    "required": tool_required,
+                },
+            },
+        }
+
+
+def get_browser_send_key_tool_handler(
+    browser_service: BrowserAutomationService,
+) -> Callable:
+    """Get the handler function for the browser key send tool."""
+
+    def handle_browser_send_key(**params) -> str:
+        key = params.get("key")
+        modifiers = params.get("modifiers", "")
+
+        if not key:
+            return "Error: No key provided for send."
+
+        result = browser_service.dispatch_key_event(key, modifiers)
+
+        if result.get("success", False):
+            key_info = f"Key: {result.get('key')} (Code: {result.get('key_code')})"
+            modifiers_info = (
+                f"Modifiers: {result.get('modifiers')}"
+                if result.get("modifiers")
+                else ""
+            )
+            success_msg = f"✅ {result.get('message', 'Success')}. {key_info}"
+            if modifiers_info:
+                success_msg += f". {modifiers_info}"
+            return success_msg
+        else:
+            return f"❌ Key send failed: {result.get('error', 'Unknown error')}"
+
+    return handle_browser_send_key
+
+
 def register(service_instance=None, agent=None):
     """Register browser automation tools with the central registry or directly with an agent."""
     from AgentCrew.modules.tools.registration import register_tool
 
-    # Register all seven browser automation tools
+    # Register all eight browser automation tools
     register_tool(
         get_browser_navigate_tool_definition,
         get_browser_navigate_tool_handler,
@@ -541,6 +662,12 @@ def register(service_instance=None, agent=None):
     register_tool(
         get_browser_capture_screenshot_tool_definition,
         get_browser_capture_screenshot_tool_handler,
+        service_instance,
+        agent,
+    )
+    register_tool(
+        get_browser_send_key_tool_definition,
+        get_browser_send_key_tool_handler,
         service_instance,
         agent,
     )
