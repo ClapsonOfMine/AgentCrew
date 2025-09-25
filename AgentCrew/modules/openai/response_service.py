@@ -30,19 +30,12 @@ class OpenAIResponseService(BaseLLMService):
         self._extra_headers = None
 
         # Response API specific state management
-        self.previous_response_id = None
         self.conversation_state = {}
 
         logger.info("Initialized OpenAI Response Service")
 
-    def set_previous_response_id(self, response_id: Optional[str]):
-        """Set the previous response ID for stateful conversations."""
-        self.previous_response_id = response_id
-        logger.info(f"Set previous response ID: {response_id}")
-
     def clear_conversation_state(self):
         """Clear conversation state and start fresh."""
-        self.previous_response_id = None
         self.conversation_state = {}
         logger.info("Cleared conversation state")
 
@@ -134,10 +127,6 @@ class OpenAIResponseService(BaseLLMService):
                 )
             ):
                 request_params["reasoning"] = {"effort": self.reasoning_effort}
-
-            # Add previous response for conversation continuity
-            if self.previous_response_id:
-                request_params["previous_response_id"] = self.previous_response_id
 
             response = await self.client.responses.create(**request_params)
 
@@ -298,7 +287,6 @@ class OpenAIResponseService(BaseLLMService):
                 if response:
                     response_id = getattr(response, "id", None)
                     if response_id:
-                        self.previous_response_id = response_id
                         logger.debug(
                             f"Response API: New response created with ID {response_id}"
                         )
@@ -422,11 +410,6 @@ class OpenAIResponseService(BaseLLMService):
                 # Entire response completed
                 response = getattr(chunk, "response", None)
                 if response:
-                    # Store response ID for conversation continuity
-                    response_id = getattr(response, "id", None)
-                    if response_id:
-                        self.previous_response_id = response_id
-
                     # Extract final usage information
                     usage = getattr(response, "usage", None)
                     if usage:
@@ -539,13 +522,7 @@ class OpenAIResponseService(BaseLLMService):
                 "text": {"format": "json_object"},  # Response API structured output
             }
 
-            if self.previous_response_id:
-                request_params["previous_response_id"] = self.previous_response_id
-
             response = await self.client.responses.create(**request_params)
-
-            # Store response ID for conversation continuity
-            self.previous_response_id = response.id
 
             # Calculate usage and cost
             input_tokens = getattr(response, "input_tokens", 0)
@@ -612,7 +589,6 @@ class OpenAIResponseService(BaseLLMService):
     def get_conversation_state(self) -> Dict[str, Any]:
         """Get current conversation state information."""
         return {
-            "previous_response_id": self.previous_response_id,
             "conversation_state": self.conversation_state.copy(),
             "active_tools": len(self.tools),
             "model": self.model,
