@@ -404,13 +404,14 @@ _GITHUB_COPILOT_MODELS = [
     ),
     Model(
         id="gpt-5-codex",
-        provider="github_copilot",
+        provider="copilot_response",
         name="GPT 5 Codex",
         description="",
         capabilities=["tool_use", "vision", "stream"],
         default=False,
         input_token_price_1m=0.0,
         output_token_price_1m=0.0,
+        endpoint="response",
     ),
     Model(
         id="gpt-5-mini",

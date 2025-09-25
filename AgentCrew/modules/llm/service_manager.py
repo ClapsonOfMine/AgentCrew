@@ -3,15 +3,15 @@ from AgentCrew.modules.custom_llm import (
     DeepInfraService,
     CustomLLMService,
     GithubCopilotService,
+    GithubCopilotResponseService,
 )
 from AgentCrew.modules.google import GoogleAINativeService
 from AgentCrew.modules.llm.base import BaseLLMService
 from AgentCrew.modules.anthropic import AnthropicService
 from AgentCrew.modules.groq import GroqService
 
-# from AgentCrew.modules.openai import OpenAIResponseService
 from AgentCrew.modules.config import ConfigManagement
-from AgentCrew.modules.openai import OpenAIService
+from AgentCrew.modules.openai import OpenAIResponseService
 
 
 class ServiceManager:
@@ -37,10 +37,11 @@ class ServiceManager:
         self.service_classes = {
             "claude": AnthropicService,
             "groq": GroqService,
-            "openai": OpenAIService,
+            "openai": OpenAIResponseService,
             "google": GoogleAINativeService,
             "deepinfra": DeepInfraService,
             "github_copilot": GithubCopilotService,
+            "copilot_response": GithubCopilotResponseService,
         }
         # Store details for custom providers
         self.custom_provider_details: Dict[str, Dict] = {}

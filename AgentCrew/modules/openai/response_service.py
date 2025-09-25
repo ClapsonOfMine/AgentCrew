@@ -27,6 +27,7 @@ class OpenAIResponseService(BaseLLMService):
         self._provider_name = "openai"
         self.system_prompt = ""
         self.reasoning_effort = None
+        self._extra_headers = None
 
         # Response API specific state management
         self.previous_response_id = None
@@ -107,10 +108,8 @@ class OpenAIResponseService(BaseLLMService):
                     {
                         "type": "function_call",
                         "call_id": tool_call.get("id", ""),
-                        "name": tool_call.get("function", {}).get("name", ""),
-                        "arguments": json.dumps(
-                            tool_call.get("function", {}).get("arguments", "")
-                        ),
+                        "name": tool_call.get("name", ""),
+                        "arguments": json.dumps(tool_call.get("arguments", "")),
                     },
                 )
         return messages
@@ -123,6 +122,8 @@ class OpenAIResponseService(BaseLLMService):
                 "input": prompt,
                 "text": {"format": "auto"},  # Response API format
             }
+            if self._extra_headers:
+                request_params["extra_headers"] = self._extra_headers
 
             # Add reasoning configuration if supported
             if (
@@ -139,9 +140,6 @@ class OpenAIResponseService(BaseLLMService):
                 request_params["previous_response_id"] = self.previous_response_id
 
             response = await self.client.responses.create(**request_params)
-
-            # Store response ID for future requests
-            # self.previous_response_id = response.id
 
             # Extract usage information from Response API format
             input_tokens = getattr(response, "input_tokens", 0)
@@ -257,9 +255,8 @@ class OpenAIResponseService(BaseLLMService):
             if self.reasoning_effort:
                 stream_params["reasoning"] = {"effort": self.reasoning_effort}
 
-        # Add conversation continuity
-        # if self.previous_response_id:
-        #     stream_params["previous_response_id"] = self.previous_response_id
+        if self._extra_headers:
+            stream_params["extra_headers"] = self._extra_headers
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
@@ -321,13 +318,16 @@ class OpenAIResponseService(BaseLLMService):
                         logger.debug("Response API: New reasoning output started")
                     elif item_type == "function_call":
                         # Handle tool use
+                        idx = getattr(chunk, "output_index", len(tool_uses) + 1)
+                        while len(tool_uses) < idx:
+                            tool_uses.append({})
                         tool_call = {
-                            "id": getattr(item, "id", ""),
+                            "id": getattr(item, "call_id", ""),
                             "type": "function",
                             "name": getattr(item, "name", ""),
                             "input": {},
                         }
-                        tool_uses.append(tool_call)
+                        tool_uses[idx - 1] = tool_call
                         logger.debug(
                             f"Response API: New function call started: {tool_call['name']}"
                         )
@@ -366,42 +366,38 @@ class OpenAIResponseService(BaseLLMService):
             elif event_type == "response.function_call_arguments.delta":
                 # Function call arguments streaming
                 delta = getattr(chunk, "delta", "")
-                item_id = getattr(chunk, "item_id", "")
+                tool_index = getattr(chunk, "output_index", len(tool_uses))
 
                 # Find the corresponding tool use and update its arguments
-                for tool_use in tool_uses:
-                    if tool_use.get("id") == item_id:
-                        if "arguments" not in tool_use:
-                            tool_use["arguments"] = ""
-                        tool_use["arguments"] += delta
-                        logger.debug(
-                            f"Response API: Function arguments delta for {tool_use.get('name')}: {delta}"
-                        )
-                        break
+                if len(tool_uses) >= tool_index:
+                    tool_use = tool_uses[tool_index - 1]
+                    if "arguments" not in tool_use:
+                        tool_use["arguments"] = ""
+                    tool_use["arguments"] += delta
+                    logger.debug(
+                        f"Response API: Function arguments delta for {tool_use.get('name')}: {delta}"
+                    )
 
             elif event_type == "response.function_call_arguments.done":
                 # Function call arguments completed
                 arguments = getattr(chunk, "arguments", "")
-                item_id = getattr(chunk, "item_id", "")
+                tool_index = getattr(chunk, "output_index", len(tool_uses))
 
-                # Find the corresponding tool use and set final arguments
-                for tool_use in tool_uses:
-                    if tool_use.get("id") == item_id:
-                        try:
-                            tool_use["input"] = (
-                                json.loads(arguments) if arguments else {}
-                            )
-                            tool_use["arguments"] = arguments
-                            logger.debug(
-                                f"Response API: Function arguments completed for {tool_use.get('name')}"
-                            )
-                        except json.JSONDecodeError:
-                            tool_use["input"] = {}
-                            tool_use["arguments"] = arguments
-                            logger.warning(
-                                f"Response API: Invalid JSON in function arguments: {arguments}"
-                            )
-                        break
+                if len(tool_uses) >= tool_index:
+                    tool_use = tool_uses[tool_index - 1]
+
+                    try:
+                        tool_use["input"] = json.loads(arguments) if arguments else {}
+                        tool_use["arguments"] = arguments
+                        logger.debug(
+                            f"Response API: Function arguments completed for {tool_use.get('name')}"
+                        )
+                    except json.JSONDecodeError:
+                        tool_use["input"] = {}
+                        tool_use["arguments"] = arguments
+                        logger.warning(
+                            f"Response API: Invalid JSON in function arguments: {arguments}"
+                        )
 
             elif event_type == "response.output_item.done":
                 # Output item completed - may contain usage info

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Literal
 
 
 class Model(BaseModel):
@@ -13,3 +13,4 @@ class Model(BaseModel):
     default: bool = False
     input_token_price_1m: float = 0.0
     output_token_price_1m: float = 0.0
+    endpoint: Literal["completions", "response"] = "completions"
