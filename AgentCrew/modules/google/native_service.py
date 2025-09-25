@@ -14,6 +14,7 @@ from AgentCrew.modules.llm.base import (
     base64_to_bytes,
 )
 from AgentCrew.modules import logger
+import traceback
 
 
 class GoogleStreamAdapter:
@@ -46,12 +47,15 @@ class GoogleStreamAdapter:
     async def __anext__(self):
         """Get the next chunk from the stream generator."""
         try:
-            return await self.stream_generator.__anext__()
+            return self.stream_generator.__next__()
         except StopAsyncIteration:
             raise
+        except StopIteration:
+            raise StopAsyncIteration
         except Exception as e:
             # Handle any Google GenAI specific exceptions
             logger.error(f"Error in Google GenAI stream: {str(e)}")
+            traceback.print_exc()
             raise StopAsyncIteration
 
 
@@ -382,7 +386,7 @@ class GoogleAINativeService(BaseLLMService):
             GoogleStreamAdapter: A context manager compatible adapter
         """
         # Convert messages to Google GenAI format
-        google_messages = self._convert_messages_to_google_format(messages)
+        google_messages = self._convert_internal_format(messages)
 
         # Create configuration with tools
         config = types.GenerateContentConfig(
@@ -407,14 +411,14 @@ class GoogleAINativeService(BaseLLMService):
             )
 
         # Get the stream generator
-        stream_generator = await self.client.aio.models.generate_content_stream(
+        stream_generator = self.client.models.generate_content_stream(
             model=self.model, contents=google_messages, config=config
         )
 
         # Wrap in adapter that supports context manager protocol
         return GoogleStreamAdapter(stream_generator)
 
-    def _convert_messages_to_google_format(self, messages: List[Dict[str, Any]]):
+    def _convert_internal_format(self, messages: List[Dict[str, Any]]):
         """
         Convert standard messages to Google GenAI format.
 
@@ -626,73 +630,73 @@ class GoogleAINativeService(BaseLLMService):
             (thinking_content, None) if thinking_content.strip() else None,
         )
 
-    def format_tool_result(
-        self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Format a tool result for the Google GenAI API.
+    # def format_tool_result(
+    #     self, tool_use: Dict, tool_result: Any, is_error: bool = False
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Format a tool result for the Google GenAI API.
+    #
+    #     Args:
+    #         tool_use: The tool use details
+    #         tool_result: The result from the tool execution
+    #         is_error: Whether the result is an error
+    #
+    #     Returns:
+    #         A formatted message for tool response
+    #     """
+    #     if is_error:
+    #         tool_result = f"ERROR: {str(tool_result)}"
+    #
+    #     # Return in a format expected by the interactive chat
+    #     return {"role": "tool", "tool_call_id": tool_use["id"], "content": tool_result}
 
-        Args:
-            tool_use: The tool use details
-            tool_result: The result from the tool execution
-            is_error: Whether the result is an error
+    # def format_assistant_message(
+    #     self, assistant_response: str, tool_uses: Optional[List[Dict]] = None
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Format the assistant's response for the Google GenAI API.
+    #
+    #     Args:
+    #         assistant_response: The response text
+    #         tool_uses: List of tool use details
+    #
+    #     Returns:
+    #         Formatted assistant message
+    #     """
+    #     if tool_uses and any(tu.get("id") for tu in tool_uses):
+    #         # Assistant message with tool calls
+    #         return {
+    #             "role": "assistant",
+    #             "content": assistant_response,
+    #             "tool_calls": [
+    #                 {
+    #                     "id": tool_use["id"],
+    #                     "name": tool_use["name"],
+    #                     "arguments": tool_use["input"],
+    #                     "type": tool_use["type"],
+    #                 }
+    #                 for tool_use in tool_uses
+    #                 if tool_use.get("id")  # Only include tool calls with valid IDs
+    #             ],
+    #         }
+    #     else:
+    #         # Simple assistant message
+    #         return {"role": "assistant", "content": assistant_response}
 
-        Returns:
-            A formatted message for tool response
-        """
-        if is_error:
-            tool_result = f"ERROR: {str(tool_result)}"
-
-        # Return in a format expected by the interactive chat
-        return {"role": "tool", "tool_call_id": tool_use["id"], "content": tool_result}
-
-    def format_assistant_message(
-        self, assistant_response: str, tool_uses: Optional[List[Dict]] = None
-    ) -> Dict[str, Any]:
-        """
-        Format the assistant's response for the Google GenAI API.
-
-        Args:
-            assistant_response: The response text
-            tool_uses: List of tool use details
-
-        Returns:
-            Formatted assistant message
-        """
-        if tool_uses and any(tu.get("id") for tu in tool_uses):
-            # Assistant message with tool calls
-            return {
-                "role": "assistant",
-                "content": assistant_response,
-                "tool_calls": [
-                    {
-                        "id": tool_use["id"],
-                        "name": tool_use["name"],
-                        "arguments": tool_use["input"],
-                        "type": tool_use["type"],
-                    }
-                    for tool_use in tool_uses
-                    if tool_use.get("id")  # Only include tool calls with valid IDs
-                ],
-            }
-        else:
-            # Simple assistant message
-            return {"role": "assistant", "content": assistant_response}
-
-    def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
-        """
-        Format thinking content into the appropriate message format.
-        Not supported by Google GenAI.
-
-        Args:
-            thinking_data: Tuple containing (thinking_content, thinking_signature)
-                or None if no thinking data is available
-
-        Returns:
-            Dict[str, Any]: A properly formatted message containing thinking blocks
-        """
-        # Google doesn't support thinking blocks
-        return None
+    # def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
+    #     """
+    #     Format thinking content into the appropriate message format.
+    #     Not supported by Google GenAI.
+    #
+    #     Args:
+    #         thinking_data: Tuple containing (thinking_content, thinking_signature)
+    #             or None if no thinking data is available
+    #
+    #     Returns:
+    #         Dict[str, Any]: A properly formatted message containing thinking blocks
+    #     """
+    #     # Google doesn't support thinking blocks
+    #     return None
 
     async def validate_spec(self, prompt: str) -> str:
         """

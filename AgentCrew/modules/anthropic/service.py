@@ -1,12 +1,12 @@
 import os
 import mimetypes
-from typing import Dict, Any, Optional, List
+import re
+from typing import Dict, Any, List, Union
 from anthropic import AsyncAnthropic
 from anthropic.types import TextBlock
 from dotenv import load_dotenv
 from AgentCrew.modules.llm.base import BaseLLMService, read_binary_file, read_text_file
 from AgentCrew.modules.llm.model_registry import ModelRegistry
-from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules import logger
 
 
@@ -171,6 +171,104 @@ class AnthropicService(BaseLLMService):
         result = handler(**tool_params)
         return result
 
+    def _convert_content_to_claude_format(
+        self,
+        content: Union[Dict[str, Any], List[Dict[str, Any]], str],
+    ):
+        new_content = None
+
+        pattern = r"^data:([^;]+);base64,(.*)$"
+        if isinstance(content, Dict):
+            if content.get("type", "text") == "image_url":
+                data_url = content.get("image_url", {}).get("url", "")
+                match = re.match(pattern, data_url, re.DOTALL)
+
+                if match:
+                    mime_type = match.group(1)
+                    base64_data = match.group(2)
+                    new_content = {
+                        "type": "image",
+                        "source": {
+                            "media_type": mime_type,
+                            "data": base64_data,
+                            "type": "base64",
+                        },
+                    }
+                    return new_content
+            else:
+                return content
+        elif isinstance(content, List):
+            new_content = []
+            for c in content:
+                new_content.append(self._convert_content_to_claude_format(c))
+            return new_content
+        else:
+            return content
+        return content
+
+    def _convert_internal_format(self, messages: List[Dict[str, Any]]) -> Any:
+        claude_messages = []
+        for msg in messages:
+            claude_msg = {"role": msg.get("role", "")}
+            if claude_msg["role"] == "tool":
+                claude_msg["role"] = "user"
+            elif claude_msg["role"] == "consolidated":
+                claude_msg["role"] = "user"
+            # Handle content
+            if "content" in msg:
+                if msg.get("role") == "assistant" and "tool_calls" in msg:
+                    if isinstance(msg["content"], List):
+                        claude_msg["content"] = list(msg["content"])
+                    else:
+                        if msg["content"] == "":
+                            msg["content"] = " "
+                        claude_msg["content"] = [
+                            {"type": "text", "text": msg["content"]}
+                        ]
+
+                    # Add tool use blocks
+                    for tool_call in msg.get("tool_calls", []):
+                        tool_use = {
+                            "type": "tool_use",
+                            "id": tool_call.get("id", ""),
+                            "name": tool_call.get("name", ""),
+                            "input": tool_call.get("arguments", {}),
+                        }
+
+                        claude_msg["content"].append(tool_use)
+                elif msg.get("role") == "tool":
+                    tool_result = {
+                        "type": "tool_result",
+                        "tool_use_id": msg.get("tool_call_id", ""),
+                        "content": self._convert_content_to_claude_format(
+                            msg.get("content", "")
+                        ),
+                    }
+
+                    if msg.get("is_error", False):
+                        tool_result["is_error"] = True
+
+                    if isinstance(tool_result["content"], list):
+                        for content_item in tool_result["content"]:
+                            if isinstance(content_item, dict):
+                                if "annotations" in content_item:
+                                    del content_item["annotations"]
+
+                    claude_msg["content"] = [tool_result]
+                else:
+                    # Regular content
+                    if msg["content"] is str:
+                        claude_msg["content"] = [
+                            {"type": "text", "text": msg["content"]}
+                        ]
+                    else:
+                        claude_msg["content"] = self._convert_content_to_claude_format(
+                            msg["content"]
+                        )
+
+            claude_messages.append(claude_msg)
+        return claude_messages
+
     def process_stream_chunk(self, chunk, assistant_response, tool_uses):
         """
         Process a single chunk from the Anthropic streaming response.
@@ -270,100 +368,100 @@ class AnthropicService(BaseLLMService):
             thinking_data,
         )
 
-    def format_tool_result(
-        self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Format a tool result for Claude API.
+    # def format_tool_result(
+    #     self, tool_use: Dict, tool_result: Any, is_error: bool = False
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Format a tool result for Claude API.
+    #
+    #     Args:
+    #         tool_use_id: The ID of the tool use
+    #         tool_result: The result from the tool execution
+    #         is_error: Whether the result is an error
+    #
+    #     Returns:
+    #         A formatted message that can be appended to the messages list
+    #     """
+    #     parsed_tool_result = tool_result
+    #     if isinstance(tool_result, List):
+    #         parsed_tool_result = []
+    #         for tool in tool_result:
+    #             if tool.get("type", "image_url"):
+    #                 parsed_tool_result.append(
+    #                     MessageTransformer._convert_content_to_claude_format(tool)
+    #                 )
+    #             else:
+    #                 parsed_tool_result.append(tool)
+    #     message = {
+    #         "role": "user",
+    #         "content": [
+    #             {
+    #                 "type": "tool_result",
+    #                 "tool_use_id": tool_use["id"],
+    #                 "content": parsed_tool_result,
+    #             }
+    #         ],
+    #     }
+    #
+    #     # Add is_error flag if this is an error
+    #     if is_error:
+    #         message["content"][0]["is_error"] = True
+    #
+    #     if len(str(parsed_tool_result)) > 1024 and self.caching_blocks < 4:
+    #         message["content"][-1]["cache_control"] = {"type": "ephemeral"}
+    #         self.caching_blocks += 1
+    #     return message
 
-        Args:
-            tool_use_id: The ID of the tool use
-            tool_result: The result from the tool execution
-            is_error: Whether the result is an error
+    # def format_assistant_message(
+    #     self, assistant_response: str, tool_uses: list[Dict] | None = None
+    # ) -> Dict[str, Any]:
+    #     """Format the assistant's response for Anthropic API."""
+    #     # Fix the issue with assistant message return empty
+    #     if assistant_response == "":
+    #         assistant_response = " "
+    #     assistant_message = {
+    #         "role": "assistant",
+    #         "content": [{"type": "text", "text": assistant_response}],
+    #     }
+    #
+    #     # If there's a tool use response, add it to the content array
+    #     if (
+    #         tool_uses
+    #         and tool_uses[0]
+    #         and "response" in tool_uses[0]
+    #         and tool_uses[0]["response"] != ""
+    #     ):
+    #         assistant_message["content"].append(tool_uses[0]["response"])
+    #
+    #     return assistant_message
 
-        Returns:
-            A formatted message that can be appended to the messages list
-        """
-        parsed_tool_result = tool_result
-        if isinstance(tool_result, List):
-            parsed_tool_result = []
-            for tool in tool_result:
-                if tool.get("type", "image_url"):
-                    parsed_tool_result.append(
-                        MessageTransformer._convert_content_to_claude_format(tool)
-                    )
-                else:
-                    parsed_tool_result.append(tool)
-        message = {
-            "role": "user",
-            "content": [
-                {
-                    "type": "tool_result",
-                    "tool_use_id": tool_use["id"],
-                    "content": parsed_tool_result,
-                }
-            ],
-        }
-
-        # Add is_error flag if this is an error
-        if is_error:
-            message["content"][0]["is_error"] = True
-
-        if len(str(parsed_tool_result)) > 1024 and self.caching_blocks < 4:
-            message["content"][-1]["cache_control"] = {"type": "ephemeral"}
-            self.caching_blocks += 1
-        return message
-
-    def format_assistant_message(
-        self, assistant_response: str, tool_uses: list[Dict] | None = None
-    ) -> Dict[str, Any]:
-        """Format the assistant's response for Anthropic API."""
-        # Fix the issue with assistant message return empty
-        if assistant_response == "":
-            assistant_response = " "
-        assistant_message = {
-            "role": "assistant",
-            "content": [{"type": "text", "text": assistant_response}],
-        }
-
-        # If there's a tool use response, add it to the content array
-        if (
-            tool_uses
-            and tool_uses[0]
-            and "response" in tool_uses[0]
-            and tool_uses[0]["response"] != ""
-        ):
-            assistant_message["content"].append(tool_uses[0]["response"])
-
-        return assistant_message
-
-    def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
-        """
-        Format thinking content into the appropriate message format for Claude.
-
-        Args:
-            thinking_data: Tuple containing (thinking_content, thinking_signature)
-                or None if no thinking data is available
-
-        Returns:
-            Dict[str, Any]: A properly formatted message containing thinking blocks
-        """
-        if not thinking_data:
-            return None
-
-        thinking_content, thinking_signature = thinking_data
-
-        if not thinking_content:
-            return None
-
-        # For Claude, thinking blocks need to be preserved in the assistant's message
-        thinking_block = {"type": "thinking", "thinking": thinking_content}
-
-        # Add signature if available
-        if thinking_signature:
-            thinking_block["signature"] = thinking_signature
-
-        return {"role": "assistant", "content": [thinking_block]}
+    # def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
+    #     """
+    #     Format thinking content into the appropriate message format for Claude.
+    #
+    #     Args:
+    #         thinking_data: Tuple containing (thinking_content, thinking_signature)
+    #             or None if no thinking data is available
+    #
+    #     Returns:
+    #         Dict[str, Any]: A properly formatted message containing thinking blocks
+    #     """
+    #     if not thinking_data:
+    #         return None
+    #
+    #     thinking_content, thinking_signature = thinking_data
+    #
+    #     if not thinking_content:
+    #         return None
+    #
+    #     # For Claude, thinking blocks need to be preserved in the assistant's message
+    #     thinking_block = {"type": "thinking", "thinking": thinking_content}
+    #
+    #     # Add signature if available
+    #     if thinking_signature:
+    #         thinking_block["signature"] = thinking_signature
+    #
+    #     return {"role": "assistant", "content": [thinking_block]}
 
     async def validate_spec(self, prompt: str) -> str:
         """
@@ -467,7 +565,7 @@ class AnthropicService(BaseLLMService):
             "model": self.model,
             "max_tokens": 20000,
             "system": self.system_prompt,
-            "messages": messages,
+            "messages": self._convert_internal_format(messages),
             "top_p": 0.95,
             "temperature": self.temperature / 2,  # agent temperature scales at 2,
         }

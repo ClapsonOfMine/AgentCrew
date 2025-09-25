@@ -3,7 +3,8 @@ import asyncio
 
 from AgentCrew.modules import logger
 from AgentCrew.modules.config import ConfigManagement
-from AgentCrew.modules.llm.message import MessageTransformer
+
+# from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import MessageType
 
 
@@ -207,13 +208,16 @@ class ToolManager:
         ):
             self.message_handler.persistent_service.append_conversation_messages(
                 self.message_handler.current_conversation_id,
-                MessageTransformer.standardize_messages(
-                    self.message_handler.agent.history[
-                        self.message_handler.last_assisstant_response_idx :
-                    ],
-                    self.message_handler.agent.get_provider(),
-                    self.message_handler.agent.name,
-                ),
+                self.message_handler.agent.history[
+                    self.message_handler.last_assisstant_response_idx :
+                ],
+                # MessageTransformer.standardize_messages(
+                #     self.message_handler.agent.history[
+                #         self.message_handler.last_assisstant_response_idx :
+                #     ],
+                #     self.message_handler.agent.get_provider(),
+                #     self.message_handler.agent.name,
+                # ),
             )
 
         # Update llm service when transfer agent

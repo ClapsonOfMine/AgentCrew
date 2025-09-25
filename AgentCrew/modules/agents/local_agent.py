@@ -3,7 +3,8 @@ import os
 import time
 from typing import Dict, Any, List, Optional, Callable
 from AgentCrew.modules.llm import BaseLLMService
-from AgentCrew.modules.llm.message import MessageTransformer
+
+# from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules import logger
 import copy
@@ -332,9 +333,13 @@ class LocalAgent(BaseAgent):
 
     @property
     def std_history(self):
-        return MessageTransformer.standardize_messages(
-            self.history, self.llm.provider_name, self.name
-        )
+        """
+        @DEPRECATED: Use self.history directly.
+        """
+        return self.history
+        # return MessageTransformer.standardize_messages(
+        #     self.history, self.llm.provider_name, self.name
+        # )
 
     def get_provider(self) -> str:
         return self.llm.provider_name
@@ -342,17 +347,108 @@ class LocalAgent(BaseAgent):
     def is_streaming(self) -> bool:
         return self.llm.is_stream
 
+    def _format_tool_result(
+        self, tool_use: Dict, tool_result: Any, is_error: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Format a tool result for OpenAI API.
+
+        Args:
+            tool_use: The tool use details
+            tool_result: The result from the tool execution
+            is_error: Whether the result is an error
+
+        Returns:
+            A formatted message for tool response
+        """
+        # OpenAI format for tool responses
+        message = {
+            "role": "tool",
+            "agent": self.name,
+            "tool_call_id": tool_use["id"],
+            "content": tool_result,
+        }
+
+        # Add error indication if needed
+        if is_error:
+            message["content"] = f"ERROR: {str(message['content'])}"
+
+        return message
+
+    def _format_assistant_message(
+        self, assistant_response: str, tool_uses: list[Dict] | None = None
+    ) -> Dict[str, Any]:
+        """
+        Format the assistant's response into the appropriate message format for the LLM provider.
+
+        Args:
+            assistant_response (str): The text response from the assistant
+            tool_use (Dict, optional): Tool use information if a tool was used
+
+        Returns:
+            Dict[str, Any]: A properly formatted message to append to the messages list
+        """
+        if tool_uses and any(tu.get("id") for tu in tool_uses):
+            return {
+                "role": "assistant",
+                "agent": self.name,
+                "content": assistant_response,
+                "tool_calls": [
+                    {
+                        "id": tool_use["id"],
+                        "name": tool_use["name"],
+                        "arguments": tool_use["input"],
+                        "type": tool_use.get("type", "tool_call"),
+                    }
+                    for tool_use in tool_uses
+                    if tool_use.get("id")  # Only include tool calls with valid IDs
+                ],
+            }
+        else:
+            return {
+                "role": "assistant",
+                "content": assistant_response,
+            }
+
+    def _format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
+        """
+        Format thinking content into the appropriate message format for Claude.
+
+        Args:
+            thinking_data: Tuple containing (thinking_content, thinking_signature)
+                or None if no thinking data is available
+
+        Returns:
+            Dict[str, Any]: A properly formatted message containing thinking blocks
+        """
+        if not thinking_data:
+            return None
+
+        thinking_content, thinking_signature = thinking_data
+
+        if not thinking_content:
+            return None
+
+        # For Claude, thinking blocks need to be preserved in the assistant's message
+        thinking_block = {"type": "thinking", "thinking": thinking_content}
+
+        # Add signature if available
+        if thinking_signature:
+            thinking_block["signature"] = thinking_signature
+
+        return {"role": "assistant", "agent": self.name, "content": [thinking_block]}
+
     def format_message(
         self, message_type: MessageType, message_data: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         if message_type == MessageType.Assistant:
-            return self.llm.format_assistant_message(
+            return self._format_assistant_message(
                 message_data.get("message", ""), message_data.get("tool_uses", None)
             )
         elif message_type == MessageType.Thinking:
-            return self.llm.format_thinking_message(message_data.get("thinking", None))
+            return self._format_thinking_message(message_data.get("thinking", None))
         elif message_type == MessageType.ToolResult:
-            return self.llm.format_tool_result(
+            return self._format_tool_result(
                 message_data.get("tool_use", {}),
                 message_data.get("tool_result", ""),
                 message_data.get("is_error", False),
@@ -389,18 +485,18 @@ class LocalAgent(BaseAgent):
             self.deactivate()
 
         # Get the current provider
-        current_provider = self.llm.provider_name
+        # current_provider = self.llm.provider_name
 
         # If we're switching providers, convert messages
-        if current_provider != new_llm_service.provider_name:
-            # Standardize messages from current provider
-            std_messages = MessageTransformer.standardize_messages(
-                self.history, current_provider, self.name
-            )
-            # Convert to new provider format
-            self.history = MessageTransformer.convert_messages(
-                std_messages, new_llm_service.provider_name
-            )
+        # if current_provider != new_llm_service.provider_name:
+        #     # Standardize messages from current provider
+        #     std_messages = MessageTransformer.standardize_messages(
+        #         self.history, current_provider, self.name
+        #     )
+        #     # Convert to new provider format
+        #     self.history = MessageTransformer.convert_messages(
+        #         std_messages, new_llm_service.provider_name
+        #     )
 
         # Update the LLM service
         self.llm = new_llm_service

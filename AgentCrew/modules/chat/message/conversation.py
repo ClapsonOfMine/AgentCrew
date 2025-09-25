@@ -86,6 +86,14 @@ class ConversationManager:
                 conversation_id
             )
             if history:
+                # Backward compatibility: Convert tool messages
+                for msg in history:
+                    if msg.get("role", "user") == "tool":
+                        tool_result = msg.pop("tool_result", None)
+                        if tool_result:
+                            msg["content"] = tool_result.get("content", "")
+                            msg["tool_call_id"] = tool_result.get("tool_use_id", "")
+
                 self.message_handler.current_conversation_id = conversation_id
                 self.message_handler.memory_service.session_id = (
                     self.message_handler.current_conversation_id

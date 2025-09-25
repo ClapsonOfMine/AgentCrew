@@ -33,43 +33,43 @@ class CustomLLMService(OpenAIService):
         )
         self.extra_headers = extra_headers
 
-    def format_tool_result(
-        self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Format a tool result for CustomLLMService API.
-
-        Args:
-            tool_use_id: The ID of the tool use
-            tool_result: The result from the tool execution
-            is_error: Whether the result is an error
-
-        Returns:
-            A formatted message that can be appended to the messages list
-        """
-        if isinstance(tool_result, list):
-            parsed_tool_result = []
-            for res in tool_result:
-                # Skipping vision/image tool results for CustomLLMService
-                # if res.get("type", "text") == "image_url":
-                #     if "vision" in ModelRegistry.get_model_capabilities(self.model):
-                #         parsed_tool_result.append(res)
-                # else:
-                if res.get("type", "text") == "text":
-                    parsed_tool_result.append(res.get("text", ""))
-            tool_result = "\n".join(parsed_tool_result) if parsed_tool_result else ""
-        message = {
-            "role": "tool",
-            "tool_call_id": tool_use["id"],
-            "name": tool_use["name"],
-            "content": tool_result,  # Groq and deepinfra expects string content
-        }
-
-        # Add error indication if needed
-        if is_error:
-            message["content"] = f"ERROR: {message['content']}"
-
-        return message
+    # def format_tool_result(
+    #     self, tool_use: Dict, tool_result: Any, is_error: bool = False
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Format a tool result for CustomLLMService API.
+    #
+    #     Args:
+    #         tool_use_id: The ID of the tool use
+    #         tool_result: The result from the tool execution
+    #         is_error: Whether the result is an error
+    #
+    #     Returns:
+    #         A formatted message that can be appended to the messages list
+    #     """
+    #     if isinstance(tool_result, list):
+    #         parsed_tool_result = []
+    #         for res in tool_result:
+    #             # Skipping vision/image tool results for CustomLLMService
+    #             # if res.get("type", "text") == "image_url":
+    #             #     if "vision" in ModelRegistry.get_model_capabilities(self.model):
+    #             #         parsed_tool_result.append(res)
+    #             # else:
+    #             if res.get("type", "text") == "text":
+    #                 parsed_tool_result.append(res.get("text", ""))
+    #         tool_result = "\n".join(parsed_tool_result) if parsed_tool_result else ""
+    #     message = {
+    #         "role": "tool",
+    #         "tool_call_id": tool_use["id"],
+    #         "name": tool_use["name"],
+    #         "content": tool_result,  # Groq and deepinfra expects string content
+    #     }
+    #
+    #     # Add error indication if needed
+    #     if is_error:
+    #         message["content"] = f"ERROR: {message['content']}"
+    #
+    #     return message
 
     async def process_message(self, prompt: str, temperature: float = 0) -> str:
         try:
@@ -119,6 +119,29 @@ class CustomLLMService(OpenAIService):
         except Exception as e:
             raise Exception(f"Failed to process content: {str(e)}")
 
+    def _convert_internal_format(self, messages: List[Dict[str, Any]]):
+        for msg in messages:
+            msg.pop("agent", None)
+            if "tool_calls" in msg and msg.get("tool_calls", []):
+                for tool_call in msg["tool_calls"]:
+                    tool_call["function"] = {}
+                    tool_call["function"]["name"] = tool_call.pop("name", "")
+                    tool_call["function"]["arguments"] = json.dumps(
+                        tool_call.pop("arguments", {})
+                    )
+            if msg.get("role") == "tool":
+                cleaned_tool_content = []
+                if isinstance(msg.get("content", ""), List):
+                    for tool_content in msg["content"]:
+                        if isinstance(tool_content, dict):
+                            if tool_content.get("type", "text") == "text":
+                                cleaned_tool_content.append(
+                                    tool_content.get("text", "")
+                                )
+                msg["content"] = "\n".join(cleaned_tool_content)
+
+        return messages
+
     async def stream_assistant_response(self, messages):
         """Stream the assistant's response with tool support."""
 
@@ -132,9 +155,9 @@ class CustomLLMService(OpenAIService):
 
         # Add system message if provided
         if self.system_prompt:
-            stream_params["messages"] = [
-                {"role": "system", "content": self.system_prompt}
-            ] + messages
+            stream_params["messages"] = self._convert_internal_format(
+                [{"role": "system", "content": self.system_prompt}] + messages
+            )
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(

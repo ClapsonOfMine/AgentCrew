@@ -3,7 +3,7 @@ import json
 from typing import Dict, Any, Optional, List
 
 from AgentCrew.modules.agents import BaseAgent, LocalAgent
-from AgentCrew.modules.llm.message import MessageTransformer
+# from AgentCrew.modules.llm.message import MessageTransformer
 
 
 class AgentManager:
@@ -185,10 +185,11 @@ class AgentManager:
             ]
 
             if agent_messages:
-                agent.history = MessageTransformer.convert_messages(
-                    agent_messages,
-                    agent.get_provider(),
-                )
+                agent.history = agent_messages
+                # MessageTransformer.convert_messages(
+                #     agent_messages,
+                #     agent.get_provider(),
+                # )
 
     def get_current_agent(self) -> BaseAgent:
         """
@@ -281,9 +282,10 @@ class AgentManager:
         if direct_injected_messages and self.current_agent:
             length_of_current_agent_history = len(self.current_agent.history)
             self.current_agent.history.extend(
-                MessageTransformer.convert_messages(
-                    direct_injected_messages, self.current_agent.get_provider()
-                )
+                direct_injected_messages
+                # MessageTransformer.convert_messages(
+                #     direct_injected_messages, self.current_agent.get_provider()
+                # )
             )
             ## injected messages should not be transfered back to source agent
             if source_agent_name and self.current_agent:

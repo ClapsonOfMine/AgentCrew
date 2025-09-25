@@ -2,7 +2,8 @@ from typing import Dict, Any, Callable
 import asyncio
 
 from AgentCrew.modules.agents import AgentManager
-from AgentCrew.modules.llm.message import MessageTransformer
+
+# from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import MessageType
 
 
@@ -169,9 +170,10 @@ def get_delegate_tool_handler(agent_manager: AgentManager) -> Callable:
             user_message = {"role": "user", "content": delegation_message}
 
             # Convert message to target agent's format and set as target agent's history
-            delegate_history = MessageTransformer.convert_messages(
-                [user_message], target_agent.get_provider()
-            )
+            delegate_history = [user_message]
+            # MessageTransformer.convert_messages(
+            #     [user_message], target_agent.get_provider()
+            # )
 
             try:
 

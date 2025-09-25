@@ -9,7 +9,8 @@ from AgentCrew.modules.agents.base import MessageType
 from AgentCrew.modules.chat.history import ChatHistoryManager
 from AgentCrew.modules.agents import AgentManager
 from AgentCrew.modules.chat.file_handler import FileHandler
-from AgentCrew.modules.llm.message import MessageTransformer
+
+# from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.config import ConfigManagement
 from AgentCrew.modules.memory import (
     BaseMemoryService,
@@ -90,10 +91,10 @@ class MessageHandler(Observable):
         """Append a message to the agent history and streamline messages."""
         self.agent.history.append(message)
 
-        std_msg = MessageTransformer.standardize_messages(
-            [message], self.agent.get_provider(), self.agent.name
-        )
-        self.streamline_messages.extend(std_msg)
+        # std_msg = MessageTransformer.standardize_messages(
+        #     [message], self.agent.get_provider(), self.agent.name
+        # )
+        self.streamline_messages.append(message)
 
     def _prepare_files_processing(self, file_command):
         file_paths_str: str = file_command[6:].strip()
@@ -169,7 +170,11 @@ class MessageHandler(Observable):
 
         # Add regular text message
         self._messages_append(
-            {"role": "user", "content": [{"type": "text", "text": user_input}]}
+            {
+                "role": "user",
+                "agent": self.agent.name,
+                "content": [{"type": "text", "text": user_input}],
+            }
         )
         self.current_user_input = self.agent.history[-1]
         self.current_user_input_idx = len(self.streamline_messages) - 1
@@ -374,12 +379,15 @@ class MessageHandler(Observable):
             if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
                 try:
                     # Get all messages added since the user input for this turn
-                    current_provider = self.agent.get_provider()
-                    messages_for_this_turn = MessageTransformer.standardize_messages(
-                        self.agent.history[self.last_assisstant_response_idx :],
-                        current_provider,
-                        self.agent.name,
-                    )
+                    # current_provider = self.agent.get_provider()
+                    messages_for_this_turn = self.agent.history[
+                        self.last_assisstant_response_idx :
+                    ]
+                    # MessageTransformer.standardize_messages(
+                    #     self.agent.history[self.last_assisstant_response_idx :],
+                    #     current_provider,
+                    #     self.agent.name,
+                    # )
                     if (
                         messages_for_this_turn
                     ):  # Only save if there are messages for the turn
@@ -439,12 +447,15 @@ class MessageHandler(Observable):
                 self.current_user_input_idx = -1
             if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
                 # Get all messages added since the user input for this turn
-                current_provider = self.agent.get_provider()
-                messages_for_this_turn = MessageTransformer.standardize_messages(
-                    self.agent.history[self.last_assisstant_response_idx :],
-                    current_provider,
-                    self.agent.name,
-                )
+                # current_provider = self.agent.get_provider()
+                messages_for_this_turn = self.agent.history[
+                    self.last_assisstant_response_idx :
+                ]
+                # MessageTransformer.standardize_messages(
+                #     self.agent.history[self.last_assisstant_response_idx :],
+                #     current_provider,
+                #     self.agent.name,
+                # )
                 if (
                     messages_for_this_turn
                 ):  # Only save if there are messages for the turn

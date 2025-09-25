@@ -249,6 +249,13 @@ class BaseLLMService(ABC):
         pass
 
     @abstractmethod
+    def _convert_internal_format(self, messages: List[Dict[str, Any]]) -> Any:
+        """
+        Convert agent message format to the provider-specific format.
+        """
+        pass
+
+    @abstractmethod
     def set_think(self, budget_tokens) -> bool:
         """
         Enable or disable thinking mode with the specified token budget.
@@ -282,53 +289,6 @@ class BaseLLMService(ABC):
                 chunk_text (str or None) - text to print for this chunk,
                 thinking_content (tuple or None) - thinking content from this chunk
             )
-        """
-        pass
-
-    @abstractmethod
-    def format_tool_result(
-        self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Format a tool result into the appropriate message format for the LLM provider.
-
-        Args:
-            tool_use_id: The ID of the tool use
-            tool_result: The result from the tool execution
-            is_error: Whether the result is an error
-
-        Returns:
-            A formatted message that can be appended to the messages list
-        """
-        pass
-
-    @abstractmethod
-    def format_assistant_message(
-        self, assistant_response: str, tool_uses: list[Dict] | None = None
-    ) -> Dict[str, Any]:
-        """
-        Format the assistant's response into the appropriate message format for the LLM provider.
-
-        Args:
-            assistant_response (str): The text response from the assistant
-            tool_use (Dict, optional): Tool use information if a tool was used
-
-        Returns:
-            Dict[str, Any]: A properly formatted message to append to the messages list
-        """
-        pass
-
-    @abstractmethod
-    def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
-        """
-        Format thinking content into the appropriate message format for the LLM provider.
-
-        Args:
-            thinking_data: Tuple containing (thinking_content, thinking_signature)
-                or None if no thinking data is available
-
-        Returns:
-            Dict[str, Any]: A properly formatted message containing thinking blocks
         """
         pass
 

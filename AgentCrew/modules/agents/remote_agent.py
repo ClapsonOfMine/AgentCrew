@@ -5,7 +5,8 @@ from pydantic import ValidationError
 from AgentCrew.modules.a2a.adapters import (
     convert_agent_message_to_a2a,
 )
-from AgentCrew.modules.llm.message import MessageTransformer
+
+# from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules.a2a.common.client import A2ACardResolver, A2AClient
 from a2a.types import (
@@ -50,9 +51,10 @@ class RemoteAgent(BaseAgent):
 
     @property
     def std_history(self):
-        return MessageTransformer.standardize_messages(
-            self.history, "a2a_remote", self.name
-        )
+        return self.history
+        # return MessageTransformer.standardize_messages(
+        #     self.history, "a2a_remote", self.name
+        # )
 
     def get_provider(self) -> str:
         return (

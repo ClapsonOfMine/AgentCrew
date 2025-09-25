@@ -196,6 +196,19 @@ class GroqService(BaseLLMService):
         result = handler(**tool_params)
         return result
 
+    def _convert_internal_format(self, messages: List[Dict[str, Any]]):
+        for msg in messages:
+            msg.pop("agent", None)
+            if "tool_calls" in msg and msg.get("tool_calls", []):
+                for tool_call in msg["tool_calls"]:
+                    tool_call["function"] = {}
+                    tool_call["function"]["name"] = tool_call.pop("name", "")
+                    tool_call["function"]["arguments"] = json.dumps(
+                        tool_call.pop("arguments", {})
+                    )
+
+        return messages
+
     async def stream_assistant_response(self, messages):
         """Stream the assistant's response with tool support."""
         stream_params = {
@@ -209,13 +222,16 @@ class GroqService(BaseLLMService):
         # Add system message if provided
         if self.system_prompt:
             system_role = "user" if "deepseek" in self.model else "system"
-            stream_params["messages"] = [
-                {
-                    "role": f"{system_role}",
-                    "content": """DO NOT generate Chinese characters.""",
-                },
-                {"role": f"{system_role}", "content": self.system_prompt},
-            ] + messages
+            stream_params["messages"] = self._convert_internal_format(
+                [
+                    {
+                        "role": f"{system_role}",
+                        "content": """DO NOT generate Chinese characters.""",
+                    },
+                    {"role": f"{system_role}", "content": self.system_prompt},
+                ]
+                + messages
+            )
 
         if "thinking" in ModelRegistry.get_model_capabilities(
             f"{self._provider_name}/{self.model}"
@@ -452,85 +468,85 @@ class GroqService(BaseLLMService):
 
         return content, tool_uses
 
-    def format_tool_result(
-        self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Format a tool result for Groq API.
-
-        Args:
-            tool_use_id: The ID of the tool use
-            tool_result: The result from the tool execution
-            is_error: Whether the result is an error
-
-        Returns:
-            A formatted message that can be appended to the messages list
-        """
-        # Groq follows OpenAI format for tool responses
-        if isinstance(tool_result, list):
-            parsed_tool_result = []
-            for res in tool_result:
-                # Skipping vision/image tool results for Groq
-                # if res.get("type", "text") == "image_url":
-                #     if "vision" in ModelRegistry.get_model_capabilities(self.model):
-                #         parsed_tool_result.append(res)
-                # else:
-                if res.get("type", "text") == "text":
-                    parsed_tool_result.append(res.get("text", ""))
-            tool_result = "\n".join(parsed_tool_result) if parsed_tool_result else ""
-        message = {
-            "role": "tool",
-            "tool_call_id": tool_use["id"],
-            "name": tool_use["name"],
-            "content": tool_result,  # Groq and deepinfra expects string content
-        }
-
-        # Add error indication if needed
-        if is_error:
-            message["content"] = f"ERROR: {message['content']}"
-
-        return message
-
-    def format_assistant_message(
-        self, assistant_response: str, tool_uses: list[Dict] | None = None
-    ) -> Dict[str, Any]:
-        """Format the assistant's response for Groq API."""
-        # Groq uses a simpler format with just a string content
-        if tool_uses:
-            return {
-                "role": "assistant",
-                "content": assistant_response,
-                "tool_calls": [
-                    {
-                        "id": tool_use["id"],
-                        "function": {
-                            "name": tool_use["name"],
-                            "arguments": json.dumps(tool_use["input"]),
-                        },
-                        "type": tool_use["type"],
-                    }
-                    for tool_use in tool_uses
-                ],
-            }
-        else:
-            return {
-                "role": "assistant",
-                "content": assistant_response,
-            }
-
-    def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
-        """
-        Format thinking content into the appropriate message format for Groq.
-
-        Args:
-            thinking_data: Tuple containing (thinking_content, thinking_signature)
-                or None if no thinking data is available
-
-        Returns:
-            Dict[str, Any]: A properly formatted message containing thinking blocks
-        """
-        # Groq doesn't support thinking blocks, so we return None
-        return None
+    # def format_tool_result(
+    #     self, tool_use: Dict, tool_result: Any, is_error: bool = False
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Format a tool result for Groq API.
+    #
+    #     Args:
+    #         tool_use_id: The ID of the tool use
+    #         tool_result: The result from the tool execution
+    #         is_error: Whether the result is an error
+    #
+    #     Returns:
+    #         A formatted message that can be appended to the messages list
+    #     """
+    #     # Groq follows OpenAI format for tool responses
+    #     if isinstance(tool_result, list):
+    #         parsed_tool_result = []
+    #         for res in tool_result:
+    #             # Skipping vision/image tool results for Groq
+    #             # if res.get("type", "text") == "image_url":
+    #             #     if "vision" in ModelRegistry.get_model_capabilities(self.model):
+    #             #         parsed_tool_result.append(res)
+    #             # else:
+    #             if res.get("type", "text") == "text":
+    #                 parsed_tool_result.append(res.get("text", ""))
+    #         tool_result = "\n".join(parsed_tool_result) if parsed_tool_result else ""
+    #     message = {
+    #         "role": "tool",
+    #         "tool_call_id": tool_use["id"],
+    #         "name": tool_use["name"],
+    #         "content": tool_result,  # Groq and deepinfra expects string content
+    #     }
+    #
+    #     # Add error indication if needed
+    #     if is_error:
+    #         message["content"] = f"ERROR: {message['content']}"
+    #
+    #     return message
+    #
+    # def format_assistant_message(
+    #     self, assistant_response: str, tool_uses: list[Dict] | None = None
+    # ) -> Dict[str, Any]:
+    #     """Format the assistant's response for Groq API."""
+    #     # Groq uses a simpler format with just a string content
+    #     if tool_uses:
+    #         return {
+    #             "role": "assistant",
+    #             "content": assistant_response,
+    #             "tool_calls": [
+    #                 {
+    #                     "id": tool_use["id"],
+    #                     "function": {
+    #                         "name": tool_use["name"],
+    #                         "arguments": json.dumps(tool_use["input"]),
+    #                     },
+    #                     "type": tool_use["type"],
+    #                 }
+    #                 for tool_use in tool_uses
+    #             ],
+    #         }
+    #     else:
+    #         return {
+    #             "role": "assistant",
+    #             "content": assistant_response,
+    #         }
+    #
+    # def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
+    #     """
+    #     Format thinking content into the appropriate message format for Groq.
+    #
+    #     Args:
+    #         thinking_data: Tuple containing (thinking_content, thinking_signature)
+    #             or None if no thinking data is available
+    #
+    #     Returns:
+    #         Dict[str, Any]: A properly formatted message containing thinking blocks
+    #     """
+    #     # Groq doesn't support thinking blocks, so we return None
+    #     return None
 
     async def validate_spec(self, prompt: str) -> str:
         """
