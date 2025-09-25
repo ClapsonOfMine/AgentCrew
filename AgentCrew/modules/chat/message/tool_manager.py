@@ -228,6 +228,7 @@ class ToolManager:
         self.message_handler._messages_append(
             {
                 "role": "user",
+                "agent": self.message_handler.agent.name,
                 "content": [{"type": "text", "text": tool_result}],
             }
         )

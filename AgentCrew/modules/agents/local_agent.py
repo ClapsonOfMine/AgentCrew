@@ -406,6 +406,7 @@ class LocalAgent(BaseAgent):
             }
         else:
             return {
+                "agent": self.name,
                 "role": "assistant",
                 "content": assistant_response,
             }
