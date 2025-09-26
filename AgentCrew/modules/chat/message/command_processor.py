@@ -514,7 +514,11 @@ class CommandProcessor:
         # Add all successfully processed file contents to messages
         if all_file_contents:
             self.message_handler._messages_append(
-                {"role": "user", "content": all_file_contents}
+                {
+                    "role": "user",
+                    "agent": self.message_handler.agent.name,
+                    "content": all_file_contents,
+                }
             )
 
             # Notify about overall processing results
