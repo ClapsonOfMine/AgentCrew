@@ -37,6 +37,16 @@ from PySide6.QtWidgets import QApplication
 
 nest_asyncio.apply()
 
+PROVIDER_LIST = [
+    "claude",
+    "groq",
+    "openai",
+    "google",
+    "deepinfra",
+    "github_copilot",
+    "copilot_response",
+]
+
 
 @click.group()
 def cli():
@@ -520,9 +530,7 @@ def discover_and_register_tools(services=None):
 @cli.command()
 @click.option(
     "--provider",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "deepinfra", "github_copilot"]
-    ),
+    type=click.Choice(PROVIDER_LIST),
     default=None,
     help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
 )
@@ -560,14 +568,7 @@ def chat(provider, agent_config, mcp_config, memory_llm, console):
                 last_provider = config_manager.get_last_used_provider()
                 if last_provider:
                     # Verify the provider is still available
-                    if last_provider in [
-                        "claude",
-                        "groq",
-                        "openai",
-                        "google",
-                        "deepinfra",
-                        "github_copilot",
-                    ]:
+                    if last_provider in PROVIDER_LIST:
                         # Check if API key is available for this provider
                         api_key_map = {
                             "claude": "ANTHROPIC_API_KEY",
@@ -576,6 +577,7 @@ def chat(provider, agent_config, mcp_config, memory_llm, console):
                             "groq": "GROQ_API_KEY",
                             "deepinfra": "DEEPINFRA_API_KEY",
                             "github_copilot": "GITHUB_COPILOT_API_KEY",
+                            "copilot_response": "GITHUB_COPILOT_API_KEY",
                         }
                         if os.getenv(api_key_map.get(last_provider, "")):
                             provider = last_provider
