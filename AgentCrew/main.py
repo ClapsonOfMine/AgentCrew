@@ -27,6 +27,11 @@ from AgentCrew.modules.code_analysis import CodeAnalysisService
 from AgentCrew.modules.llm.service_manager import ServiceManager
 from AgentCrew.modules.llm.model_registry import ModelRegistry
 from AgentCrew.modules.agents import AgentManager, LocalAgent, RemoteAgent
+from AgentCrew.modules.agents.example import (
+    DEFAULT_PROMPT,
+    DEFAULT_NAME,
+    DEFAULT_DESCRIPTION,
+)
 from AgentCrew.modules.image_generation import ImageGenerationService
 from PySide6.QtWidgets import QApplication
 
@@ -384,14 +389,12 @@ def setup_agents(services, config_path, remoting_provider=None, model_id=None):
             )
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
-            default_config = """# Default SwissKnife Agent Configuration
+            default_config = f"""
 [[agents]]
-name = "default"
-description = "Default assistant agent"
-system_prompt = \"\"\"You are a helpful AI assistant. Always provide accurate, helpful, and ethical responses.
-Current date: {current_date}
-\"\"\"
-tools = ["memory", "clipboard", "web_search", "code_analysis"]
+name = "{DEFAULT_NAME}"
+description = "{DEFAULT_DESCRIPTION}"
+system_prompt = '''{DEFAULT_PROMPT}'''
+tools = ["memory", "browser", "web_search", "code_analysis"]
 """
 
             with open(config_path, "w+", encoding="utf-8") as f:
