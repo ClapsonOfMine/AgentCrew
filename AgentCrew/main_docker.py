@@ -24,7 +24,23 @@ from AgentCrew.modules.llm.model_registry import ModelRegistry
 from AgentCrew.modules.agents import AgentManager, LocalAgent, RemoteAgent
 from AgentCrew.modules.image_generation import ImageGenerationService
 
+from AgentCrew.modules.agents.example import (
+    DEFAULT_PROMPT,
+    DEFAULT_NAME,
+    DEFAULT_DESCRIPTION,
+)
+
 nest_asyncio.apply()
+
+PROVIDER_LIST = [
+    "claude",
+    "groq",
+    "openai",
+    "google",
+    "deepinfra",
+    "github_copilot",
+    "copilot_response",
+]
 
 
 @click.group()
@@ -228,14 +244,12 @@ def setup_agents(services, config_path, remoting_provider=None, model_id=None):
             )
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
-            default_config = """# Default SwissKnife Agent Configuration
+            default_config = f"""
 [[agents]]
-name = "default"
-description = "Default assistant agent"
-system_prompt = \"\"\"You are a helpful AI assistant. Always provide accurate, helpful, and ethical responses.
-Current date: {current_date}
-\"\"\"
-tools = ["memory", "clipboard", "web_search", "code_analysis"]
+name = "{DEFAULT_NAME}"
+description = "{DEFAULT_DESCRIPTION}"
+system_prompt = '''{DEFAULT_PROMPT}'''
+tools = ["memory", "browser", "web_search", "code_analysis"]
 """
 
             with open(config_path, "w+", encoding="utf-8") as f:
@@ -361,9 +375,7 @@ def discover_and_register_tools(services=None):
 @cli.command()
 @click.option(
     "--provider",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "deepinfra", "github_copilot"]
-    ),
+    type=click.Choice(PROVIDER_LIST),
     default=None,
     help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
 )
@@ -394,14 +406,7 @@ def chat(provider, agent_config, mcp_config, memory_llm):
                 last_provider = config_manager.get_last_used_provider()
                 if last_provider:
                     # Verify the provider is still available
-                    if last_provider in [
-                        "claude",
-                        "groq",
-                        "openai",
-                        "google",
-                        "deepinfra",
-                        "github_copilot",
-                    ]:
+                    if last_provider in PROVIDER_LIST:
                         # Check if API key is available for this provider
                         api_key_map = {
                             "claude": "ANTHROPIC_API_KEY",
@@ -488,9 +493,7 @@ def chat(provider, agent_config, mcp_config, memory_llm):
 @click.option("--base-url", default=None, help="Base URL for agent endpoints")
 @click.option(
     "--provider",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "github_copilot", "deepinfra"]
-    ),
+    type=click.Choice(PROVIDER_LIST),
     default=None,
     help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
 )
@@ -581,9 +584,7 @@ def a2a_server(
 @click.option("--agent", type=str, help="Name of the agent to run")
 @click.option(
     "--provider",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "github_copilot", "deepinfra"]
-    ),
+    type=click.Choice(PROVIDER_LIST),
     default=None,
     help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
 )

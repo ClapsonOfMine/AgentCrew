@@ -673,9 +673,7 @@ def chat(provider, agent_config, mcp_config, memory_llm, console):
 @click.option("--base-url", default=None, help="Base URL for agent endpoints")
 @click.option(
     "--provider",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "github_copilot", "deepinfra"]
-    ),
+    type=click.Choice(PROVIDER_LIST),
     default=None,
     help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
 )
@@ -768,9 +766,7 @@ def a2a_server(
 @click.option("--agent", type=str, help="Name of the agent to run")
 @click.option(
     "--provider",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "github_copilot", "deepinfra"]
-    ),
+    type=click.Choice(PROVIDER_LIST),
     default=None,
     help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
 )

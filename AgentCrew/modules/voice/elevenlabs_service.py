@@ -247,9 +247,11 @@ class ElevenLabsVoiceService(BaseVoiceService):
                 self._start_tts_thread()
 
             # Queue the TTS request
-            tts_request = (text, voice_id, model_id)
             try:
-                self.tts_queue.put(tts_request, block=False)
+                sentences = text.split(". ")
+                for sentence in sentences:
+                    tts_request = (sentence + ". ", voice_id, model_id)
+                    self.tts_queue.put(tts_request, block=False)
                 logger.debug(f"TTS request queued for text: {text[:50]}...")
             except queue.Full:
                 logger.warning(

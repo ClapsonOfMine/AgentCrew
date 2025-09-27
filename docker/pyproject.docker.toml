@@ -46,18 +46,20 @@ dependencies = [
   "xmltodict>=0.14.2",
   "jsonref>=1.1.0",
   "pychromedevtools>=0.3.3",
-  "trafilatura>=2.0.0",
+  "html-to-markdown[lxml]>=1.14.0",
 ]
 
 [project.optional-dependencies]
 cpu = [
   "torch>=2.8.0",
   "torchvision>=0.23.0",
+  "torchaudio>=2.8.0",
   "docling>=2.26.0",
 ]
 nvidia = [
   "torch>=2.8.0",
   "torchvision>=0.23.0",
+  "torchaudio>=2.8.0",
   "docling>=2.26.0",
 ]
 
@@ -75,6 +77,11 @@ torch = [
   { index = "pytorch-cu128", extra = "nvidia" },
 ]
 torchvision = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "nvidia" },
+]
+
+torchaudio = [
   { index = "pytorch-cpu", extra = "cpu" },
   { index = "pytorch-cu128", extra = "nvidia" },
 ]
