@@ -1,3 +1,4 @@
+import json
 from typing import Tuple, Optional, List
 import os
 import shlex
@@ -279,7 +280,6 @@ class MessageHandler(Observable):
                         ):
                             voice_sentence += chunk_text
 
-                    print(voice_sentence)
                     if (
                         voice_sentence
                         and "\n" in voice_sentence.strip()
@@ -292,7 +292,9 @@ class MessageHandler(Observable):
                         if voice_mode == "partial":
                             voice_sentence = None
                         else:
-                            voice_sentence = voice_sentence.strip().partition("\n")[-1]
+                            voice_sentence = (
+                                voice_sentence.strip().partition("\n")[-1].lstrip("\n")
+                            )
 
             # End thinking when break the response stream
             if not end_thinking and start_thinking:

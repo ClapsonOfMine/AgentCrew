@@ -1,10 +1,15 @@
-from typing import Optional, Tuple, Any
+from typing import Callable, Optional, Tuple, Any
 import threading
 import queue
 import numpy as np
+import torch
+from scipy import signal
 import sounddevice as sd
 from AgentCrew.modules import logger
 from .base import BaseAudioHandler
+
+INT16_MAX_ABS_VALUE = 32768.0
+SILERO_VAD_SAMPLE_RATE = 16000
 
 
 class AudioHandler(BaseAudioHandler):
@@ -20,8 +25,24 @@ class AudioHandler(BaseAudioHandler):
         self.recording_thread = None
         self.audio_queue = queue.Queue()
         self.current_sample_rate = 44100
+        self.silero_vad_model = None
+        self._is_start_voice_activity = False
+        self._is_end_voice_activity = False
+        self.silero_vad_model = None
+        try:
+            self.silero_vad_model, _ = torch.hub.load(
+                repo_or_dir="snakers4/silero-vad",
+                model="silero_vad",
+                verbose=False,
+            )  # type: ignore
+        except Exception as e:
+            logger.exception(
+                f"Error initializing Silero VAD voice activity detection engine: {e}"
+            )
 
-    def start_recording(self, sample_rate: int = 44100) -> None:
+    def start_recording(
+        self, sample_rate: int = 44100, voice_completed_cb: Optional[Callable] = None
+    ) -> None:
         """
         Start recording audio in a separate thread.
 
@@ -37,7 +58,9 @@ class AudioHandler(BaseAudioHandler):
         self.audio_queue.queue.clear()  # Clear any previous data
 
         self.recording_thread = threading.Thread(
-            target=self._recording_worker, args=(sample_rate,), daemon=True
+            target=self._recording_worker,
+            args=(sample_rate, voice_completed_cb),
+            daemon=True,
         )
         self.recording_thread.start()
         logger.info("Recording started")
@@ -77,9 +100,21 @@ class AudioHandler(BaseAudioHandler):
             logger.warning("No audio data captured")
             return None, 0
 
-    def _recording_worker(self, sample_rate: int):
+    def _recording_worker(
+        self, sample_rate: int, voice_completed_cb: Optional[Callable] = None
+    ):
         """Worker thread for continuous recording."""
         try:
+            # Calculate blocksize to get the right number of samples for Silero after resampling
+            # Silero expects 512 samples for 16kHz, so we need to work backwards
+            target_samples_16k = 512  # Required samples for Silero at 16kHz
+            if sample_rate == SILERO_VAD_SAMPLE_RATE:
+                blocksize = target_samples_16k
+            else:
+                # Calculate blocksize for source sample rate to get 512 samples at 16kHz after resampling
+                blocksize = int(
+                    target_samples_16k * sample_rate / SILERO_VAD_SAMPLE_RATE
+                )
 
             def callback(indata, frames, time, status):
                 if status:
@@ -87,13 +122,73 @@ class AudioHandler(BaseAudioHandler):
                 if self.recording:
                     self.audio_queue.put(indata.copy())
 
+                    # Process audio for VAD
+                    # indata is already float32 in range [-1, 1]
+                    audio_chunk = indata.flatten()  # Ensure 1D array
+
+                    # Resample to 16kHz if needed
+                    if self.current_sample_rate != SILERO_VAD_SAMPLE_RATE:
+                        # Use signal.resample for float32 data
+                        # Ensure we get only the resampled data, not a tuple
+                        audio_chunk_16k = signal.resample(
+                            audio_chunk,
+                            int(
+                                len(audio_chunk)
+                                * SILERO_VAD_SAMPLE_RATE
+                                / self.current_sample_rate
+                            ),
+                            domain="time",
+                        )
+                    else:
+                        audio_chunk_16k = audio_chunk
+
+                    audio_chunk_16k = audio_chunk_16k.astype(np.float32)  # type: ignore
+
+                    # Ensure we have exactly the right number of samples for Silero
+                    if len(audio_chunk_16k) != target_samples_16k:
+                        if len(audio_chunk_16k) > target_samples_16k:
+                            # Truncate if too many samples
+                            audio_chunk_16k = audio_chunk_16k[:target_samples_16k]
+                        else:
+                            # Pad with zeros if too few samples
+                            audio_chunk_16k = np.pad(
+                                audio_chunk_16k,
+                                (0, target_samples_16k - len(audio_chunk_16k)),
+                                mode="constant",
+                            )
+
+                    # Convert to tensor and run VAD
+                    if self.silero_vad_model is None:
+                        return
+
+                    try:
+                        # Ensure the audio chunk is float32 and properly shaped
+                        audio_tensor = torch.from_numpy(audio_chunk_16k)
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(
+                                0
+                            )  # Add batch dimension
+
+                        vad_prob = self.silero_vad_model(audio_tensor, 16000).item()
+                        is_silero_speech_active = vad_prob > (1 - 0.4)
+                        print(
+                            f"VAD prob: {vad_prob:.3f}, Speech: {is_silero_speech_active}, Samples: {len(audio_chunk_16k)}"
+                        )
+                        if is_silero_speech_active:
+                            print("Speech detected")
+                    except Exception as e:
+                        logger.error(f"VAD processing error: {e}")
+
             with sd.InputStream(
                 samplerate=sample_rate,
                 channels=1,
                 callback=callback,
                 dtype="float32",
-                blocksize=1024,
+                blocksize=blocksize,
             ):
+                logger.info(
+                    f"Recording started with sample_rate={sample_rate}, blocksize={blocksize}"
+                )
                 while self.recording:
                     sd.sleep(100)  # Sleep for 100ms chunks
 

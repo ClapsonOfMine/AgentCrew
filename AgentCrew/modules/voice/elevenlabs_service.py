@@ -1,7 +1,7 @@
 import os
 import tempfile
 import threading
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from io import BytesIO
 import queue
 import soundfile as sf
@@ -36,7 +36,7 @@ class ElevenLabsVoiceService(BaseVoiceService):
         self.default_voice_id = "kHhWB9Fw3aF6ly7JvltC"
         self.default_model = "eleven_turbo_v2_5"  # Low latency model
         self.voice_settings = VoiceSettings(
-            stability=1,
+            stability=0.5,
             similarity_boost=1,
             style=0,
             # use_speaker_boost=False,
@@ -46,7 +46,9 @@ class ElevenLabsVoiceService(BaseVoiceService):
         # TTS streaming thread management
         self._start_tts_thread()
 
-    def start_voice_recording(self, sample_rate: int = 44100) -> Dict[str, Any]:
+    def start_voice_recording(
+        self, sample_rate: int = 16000, voice_completed_cb: Optional[Callable] = None
+    ) -> Dict[str, Any]:
         """
         Start recording voice input.
 
@@ -57,7 +59,7 @@ class ElevenLabsVoiceService(BaseVoiceService):
             Status dictionary
         """
         try:
-            self.audio_handler.start_recording(sample_rate)
+            self.audio_handler.start_recording(sample_rate, voice_completed_cb)
             return {
                 "success": True,
                 "message": "Recording started.",
@@ -197,6 +199,7 @@ class ElevenLabsVoiceService(BaseVoiceService):
         try:
             # Clean text for speech
             cleaned_text = self.clean_text_for_speech(text)
+            print(cleaned_text)
 
             if not cleaned_text.strip():
                 logger.warning("No speakable text after cleaning")

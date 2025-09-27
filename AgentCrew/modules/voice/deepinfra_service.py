@@ -1,7 +1,7 @@
 import os
 import tempfile
 import threading
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 import queue
 import soundfile as sf
 from openai import OpenAI
@@ -49,7 +49,9 @@ class DeepInfraVoiceService(BaseVoiceService):
         # TTS streaming thread management
         self._start_tts_thread()
 
-    def start_voice_recording(self, sample_rate: int = 44100) -> Dict[str, Any]:
+    def start_voice_recording(
+        self, sample_rate: int = 44100, voice_completed_cb: Optional[Callable] = None
+    ) -> Dict[str, Any]:
         """
         Start recording voice input.
 
@@ -60,7 +62,7 @@ class DeepInfraVoiceService(BaseVoiceService):
             Status dictionary
         """
         try:
-            self.audio_handler.start_recording(sample_rate)
+            self.audio_handler.start_recording(sample_rate, voice_completed_cb)
             return {
                 "success": True,
                 "message": "Recording started.",

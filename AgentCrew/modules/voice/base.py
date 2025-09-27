@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Callable, Dict, Any, Optional, List
 import threading
 import queue
 
@@ -37,7 +37,9 @@ class BaseVoiceService(ABC):
         self.tts_lock: threading.Lock = threading.Lock()
 
     @abstractmethod
-    def start_voice_recording(self, sample_rate: int = 44100) -> Dict[str, Any]:
+    def start_voice_recording(
+        self, sample_rate: int = 44100, voice_completed_cb: Optional[Callable] = None
+    ) -> Dict[str, Any]:
         """
         Start recording voice input.
 

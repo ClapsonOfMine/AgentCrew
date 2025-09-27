@@ -529,6 +529,8 @@ class LocalAgent(BaseAgent):
                 "context_persistent"
             ].get_adaptive_behaviors(self.name)
             # adaptive behaviors are only added if the last message is from the user
+            if len(final_messages) == 0:
+                return
             if isinstance(final_messages[-1]["content"], str) or (
                 isinstance(final_messages[-1]["content"], list)
                 and final_messages[-1]["content"][0].get("type") != "tool_result"
