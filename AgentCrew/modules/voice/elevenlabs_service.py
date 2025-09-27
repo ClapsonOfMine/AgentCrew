@@ -217,7 +217,9 @@ class ElevenLabsVoiceService(BaseVoiceService):
             )
 
             # Stream the audio
+            self.audio_handler.is_host_playing = True
             stream(response)
+            self.audio_handler.is_host_playing = False
             logger.debug("TTS streaming completed")
 
         except Exception as e:

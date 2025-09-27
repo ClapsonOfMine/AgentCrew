@@ -333,6 +333,9 @@ class ChatWindow(QMainWindow, Observer):
 
     def stop_message_stream(self):
         """Stop the current message stream."""
+        if self.message_handler.voice_service:
+            self.message_handler.voice_service.clear_tts_queue()
+            self.input_components.stop_voice_recording()
         if self.waiting_for_response:
             self.ui_state_manager.stop_button_stopping_state()
             if self.message_handler.stream_generator:
@@ -346,11 +349,11 @@ class ChatWindow(QMainWindow, Observer):
                     self.message_handler.stop_streaming = True
                     self.message_handler.stream_generator = None
             # Also stop UI streaming
-            self.ui_state_manager.set_input_controls_enabled(True)
-            if self.current_response_bubble:
-                self.current_response_bubble.stop_streaming()
-            if self.current_thinking_bubble:
-                self.current_thinking_bubble.stop_streaming()
+        self.ui_state_manager.set_input_controls_enabled(True)
+        if self.current_response_bubble:
+            self.current_response_bubble.stop_streaming()
+        if self.current_thinking_bubble:
+            self.current_thinking_bubble.stop_streaming()
             self.display_status_message("Stopping message stream...")
 
     def show_context_menu(self, position):

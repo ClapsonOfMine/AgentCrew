@@ -11,7 +11,7 @@ from .base import BaseAudioHandler
 
 INT16_MAX_ABS_VALUE = 32768.0
 SILERO_VAD_SAMPLE_RATE = 16000
-SILENT_COUNT_THRESHOLD = 15
+SILENT_COUNT_THRESHOLD = 25
 VAD_COUNT_THRESHOLD = 5
 
 
@@ -25,6 +25,7 @@ class AudioHandler(BaseAudioHandler):
 
         # Override parent attributes and add specific implementations
         self.recording = False
+        self.is_host_playing = False
         self.recording_thread = None
         self.audio_queue = queue.Queue()
         self.current_sample_rate = 44100
@@ -124,7 +125,7 @@ class AudioHandler(BaseAudioHandler):
             def callback(indata, frames, time, status):
                 if status:
                     logger.warning(f"Recording status: {status}")
-                if self.recording:
+                if self.recording and not self.is_host_playing:
                     self.audio_queue.put(indata.copy())
 
                     # Process audio for VAD

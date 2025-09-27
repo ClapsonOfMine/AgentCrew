@@ -31,7 +31,7 @@ class BaseVoiceService(ABC):
         self.playback_thread: Optional[threading.Thread] = None
 
         # TTS threading management
-        self.tts_queue: queue.Queue = queue.Queue(maxsize=10)
+        self.tts_queue: queue.Queue = queue.Queue(maxsize=50)
         self.tts_thread: Optional[threading.Thread] = None
         self.tts_thread_running: bool = False
         self.tts_lock: threading.Lock = threading.Lock()

@@ -243,7 +243,13 @@ class ConsoleUI(Observer):
                 )
                 self.input_handler.is_message_processing = False
 
-                self._calculate_token_usage(input_tokens, output_tokens)
+                total_cost = self._calculate_token_usage(input_tokens, output_tokens)
+
+                if assistant_response:
+                    # Calculate and display token usage
+                    self.display_token_usage(
+                        input_tokens, output_tokens, total_cost, self.session_cost
+                    )
 
         elif event == "voice_recording_stopping":
             self.display_handlers.display_message(

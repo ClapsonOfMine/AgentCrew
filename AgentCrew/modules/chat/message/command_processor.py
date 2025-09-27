@@ -640,13 +640,6 @@ class CommandProcessor:
                     f"✅ Transcribed (confidence: {confidence:.0%}): {transcribed_text}",
                 )
 
-                # Process as regular user input if there's text
-                if transcribed_text.strip():
-                    await self.message_handler.process_user_input(transcribed_text)
-                else:
-                    self.message_handler._notify(
-                        "system_message", "No speech detected in the recording."
-                    )
             else:
                 self.message_handler._notify("error", transcribe_result["error"])
 

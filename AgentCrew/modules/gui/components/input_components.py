@@ -278,19 +278,7 @@ class InputComponents:
             # Start recording
             self.chat_window.llm_worker.process_request.emit("/voice")
         else:
-            # Stop recording
-            self.chat_window.ui_state_manager.is_voice_activated = False
-            # Restore normal UI state
-            self.chat_window.message_input.setPlaceholderText("Type a message...")
-            # Update voice button to show normal state
-            self.chat_window.input_components.update_voice_button_state(False)
-            self.chat_window.ui_state_manager.set_input_controls_enabled(
-                self.chat_window.ui_state_manager._last_enabled_state
-            )
-            self.chat_window.ui_state_manager._set_send_button_state(
-                not self.chat_window.ui_state_manager._last_enabled_state
-            )
-            self.chat_window.llm_worker.process_request.emit("/end_voice")
+            self.stop_voice_recording()
 
     def update_voice_button_state(self, is_recording: bool):
         """Update the voice button icon and state based on recording status."""
@@ -314,6 +302,19 @@ class InputComponents:
             self.chat_window.voice_button.setStyleSheet(
                 self.chat_window.style_provider.get_button_style("secondary")
             )
+
+    def stop_voice_recording(self):
+        """Stop voice recording if active."""
+        self.chat_window.ui_state_manager.is_voice_activated = False
+        self.chat_window.message_input.setPlaceholderText("Type a message...")
+        self.chat_window.input_components.update_voice_button_state(False)
+        self.chat_window.ui_state_manager.set_input_controls_enabled(
+            self.chat_window.ui_state_manager._last_enabled_state
+        )
+        self.chat_window.ui_state_manager._set_send_button_state(
+            not self.chat_window.ui_state_manager._last_enabled_state
+        )
+        self.chat_window.llm_worker.process_request.emit("/end_voice")
 
     def get_input_layout(self):
         """Get the input row layout for integration with main window."""
