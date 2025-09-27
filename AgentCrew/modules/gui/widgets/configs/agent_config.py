@@ -184,6 +184,30 @@ class AgentsConfigTab(QWidget):
         self.enabled_checkbox.setChecked(True)  # Default to enabled
         local_form_layout.addRow("", self.enabled_checkbox)
 
+        # Voice Settings
+        voice_group = QGroupBox("Voice Settings")
+        voice_layout = QFormLayout()
+
+        self.voice_enabled_checkbox = QCheckBox("Voice Enabled")
+        self.voice_enabled_checkbox.setTristate(True)
+        # Apply enhanced styling for tristate checkbox
+        style_provider = StyleProvider()
+        self.voice_enabled_checkbox.setStyleSheet(style_provider.get_checkbox_style())
+        # Add tooltip explaining the three states
+        self.voice_enabled_checkbox.setToolTip(
+            "Voice Features:\n"
+            "• Square (green): Full voice mode - TTS for full conversation\n"
+            "• Circle (amber): Partial voice mode - TTS for first sentence only\n"
+            "• Unchecked: Voice disabled"
+        )
+        voice_layout.addRow("", self.voice_enabled_checkbox)
+
+        self.voice_id_input = QLineEdit()
+        self.voice_id_input.setPlaceholderText("e.g., kHhWB9Fw3aF6ly7JvltC")
+        voice_layout.addRow("Voice ID:", self.voice_id_input)
+
+        voice_group.setLayout(voice_layout)
+
         tools_group = QGroupBox("Tools")
         tools_layout = QVBoxLayout()
         self.tool_checkboxes = {}
@@ -194,6 +218,7 @@ class AgentsConfigTab(QWidget):
         tools_group.setLayout(tools_layout)
 
         general_tab_layout.addLayout(local_form_layout)
+        general_tab_layout.addWidget(voice_group)
         general_tab_layout.addWidget(tools_group)
         general_tab_layout.addStretch()
 
@@ -350,6 +375,11 @@ class AgentsConfigTab(QWidget):
         self.temperature_input.textChanged.connect(self._on_editor_field_changed)
         self.system_prompt_input.markdown_changed.connect(self._on_editor_field_changed)
         self.enabled_checkbox.stateChanged.connect(self._on_editor_field_changed)
+
+        # Voice settings field connections
+        self.voice_enabled_checkbox.stateChanged.connect(self._on_editor_field_changed)
+        self.voice_id_input.textChanged.connect(self._on_editor_field_changed)
+
         for checkbox in self.tool_checkboxes.values():
             checkbox.stateChanged.connect(self._on_editor_field_changed)
         # Behavior editing fields
@@ -422,6 +452,8 @@ class AgentsConfigTab(QWidget):
             self.temperature_input,
             self.system_prompt_input,
             self.enabled_checkbox,
+            self.voice_enabled_checkbox,
+            self.voice_id_input,
             self.remote_name_input,
             self.remote_base_url_input,
             self.remote_enabled_checkbox,
@@ -435,6 +467,20 @@ class AgentsConfigTab(QWidget):
             self.description_input.setText(agent_data.get("description", ""))
             self.temperature_input.setText(str(agent_data.get("temperature", "0.5")))
             self.enabled_checkbox.setChecked(agent_data.get("enabled", True))
+
+            # Load voice settings
+            voice_state = agent_data.get("voice_enabled", "disabled")
+            if voice_state == "full":
+                self.voice_enabled_checkbox.setCheckState(Qt.CheckState.Checked)
+            elif voice_state == "partial":
+                self.voice_enabled_checkbox.setCheckState(
+                    Qt.CheckState.PartiallyChecked
+                )
+            else:
+                self.voice_enabled_checkbox.setCheckState(Qt.CheckState.Unchecked)
+
+            self.voice_id_input.setText(agent_data.get("voice_id", ""))
+
             tools = agent_data.get("tools", [])
             for tool, checkbox in self.tool_checkboxes.items():
                 checkbox.setChecked(tool in tools)
@@ -462,6 +508,11 @@ class AgentsConfigTab(QWidget):
             self.temperature_input.clear()
             self.system_prompt_input.clear()
             self.enabled_checkbox.setChecked(True)  # Default for clearing
+
+            # Clear voice settings
+            self.voice_enabled_checkbox.setChecked(False)
+            self.voice_id_input.clear()
+
             for checkbox in self.tool_checkboxes.values():
                 checkbox.setChecked(False)
             # Clear behaviors
@@ -742,6 +793,16 @@ class AgentsConfigTab(QWidget):
                 return
 
             tools = [t for t, cb in self.tool_checkboxes.items() if cb.isChecked()]
+
+            voice_state = "disabled"
+            if self.voice_enabled_checkbox.checkState() == Qt.CheckState.Checked:
+                voice_state = "full"
+            elif (
+                self.voice_enabled_checkbox.checkState()
+                == Qt.CheckState.PartiallyChecked
+            ):
+                voice_state = "partial"
+
             updated_agent_data = {
                 "name": name,
                 "description": description,
@@ -749,6 +810,8 @@ class AgentsConfigTab(QWidget):
                 "tools": tools,
                 "system_prompt": system_prompt,
                 "enabled": self.enabled_checkbox.isChecked(),
+                "voice_enabled": voice_state,
+                "voice_id": self.voice_id_input.text().strip(),
                 "agent_type": "local",
             }
             current_item.setText(name)

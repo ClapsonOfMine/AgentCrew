@@ -262,6 +262,10 @@ class StyleProvider(QObject):
     def get_combo_box_style(self):
         """Get style for combo boxes."""
         return self.theme_class.COMBO_BOX
+        
+    def get_checkbox_style(self):
+        """Get style for checkboxes with enhanced tristate support."""
+        return getattr(self.theme_class, "CHECKBOX_STYLE", "")
 
     def get_tool_widget_style(self):
         """Get style for tool widgets."""

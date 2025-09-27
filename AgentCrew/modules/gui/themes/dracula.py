@@ -868,18 +868,35 @@ QCheckBox {
     color: #F8F8F2; /* Dracula Foreground */
 }
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     background-color: #44475A; /* Dracula Current Line */
-    border: 1px solid #6272A4; /* Dracula Comment */
+    border: 2px solid #6272A4; /* Dracula Comment */
 }
 QCheckBox::indicator:checked {
     background-color: #BD93F9; /* Dracula Purple */
-    border: 1px solid #BD93F9; /* Dracula Purple */
+    border: 2px solid #BD93F9; /* Dracula Purple */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #F1FA8C; /* Dracula Yellow - for partial state */
+    border: 2px solid #F1FA8C; /* Dracula Yellow */
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover {
-    border: 1px solid #8BE9FD; /* Dracula Cyan */
+    border: 2px solid #8BE9FD; /* Dracula Cyan */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #8BE9FD; /* Dracula Cyan */
+    border: 2px solid #8BE9FD;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #FF79C6; /* Dracula Pink on hover for amber state */
+    border: 2px solid #FF79C6;
+}
+QCheckBox::indicator:disabled {
+    background-color: #282A36; /* Dracula Background */
+    border: 2px solid #44475A; /* Dracula Current Line */
 }
 QGroupBox {
     font-weight: bold;
@@ -1109,7 +1126,45 @@ span.linenos.special { color: #F8F8F2; background-color: #44475A; padding-left: 
 .codehilite .il { color: #BD93F9 } /* Literal.Number.Integer.Long -> Dracula Purple */
 """
 
-    # Tool widget styles
+    # Enhanced checkbox styles with tristate support
+    CHECKBOX_STYLE = """
+QCheckBox {
+    spacing: 8px;
+    color: #F8F8F2; /* Dracula Foreground */
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: #44475A; /* Dracula Current Line */
+    border: 2px solid #6272A4; /* Dracula Comment */
+}
+QCheckBox::indicator:checked {
+    background-color: #BD93F9; /* Dracula Purple */
+    border: 2px solid #BD93F9; /* Dracula Purple */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #F1FA8C; /* Dracula Yellow - for partial state */
+    border: 2px solid #F1FA8C; /* Dracula Yellow */
+    border-radius: 9px;
+}
+QCheckBox::indicator:hover {
+    border: 2px solid #8BE9FD; /* Dracula Cyan */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #8BE9FD; /* Dracula Cyan */
+    border: 2px solid #8BE9FD;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #FF79C6; /* Dracula Pink on hover for amber state */
+    border: 2px solid #FF79C6;
+}
+QCheckBox::indicator:disabled {
+    background-color: #282A36; /* Dracula Background */
+    border: 2px solid #44475A; /* Dracula Current Line */
+}
+"""
+
     # Tool widget styles
     TOOL_WIDGET = """
 QWidget {

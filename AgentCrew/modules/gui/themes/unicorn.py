@@ -869,18 +869,35 @@ QCheckBox {
     color: #374151; /* Dark slate text */
 }
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     background-color: #ffffff; /* White background */
-    border: 1px solid #d1d5db; /* Light gray border */
+    border: 2px solid #d1d5db; /* Light gray border */
 }
 QCheckBox::indicator:checked {
     background-color: #6b46c1; /* Deep purple checked */
-    border: 1px solid #6b46c1; /* Deep purple border */
+    border: 2px solid #6b46c1; /* Deep purple border */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #fbbf24; /* Golden yellow - for partial state */
+    border: 2px solid #fbbf24; /* Golden yellow */
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover {
-    border: 1px solid #553c9a; /* Darker purple hover border */
+    border: 2px solid #553c9a; /* Darker purple hover border */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #553c9a; /* Darker purple hover */
+    border: 2px solid #553c9a;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #f59e0b; /* Darker amber on hover */
+    border: 2px solid #f59e0b;
+}
+QCheckBox::indicator:disabled {
+    background-color: #f9fafb; /* Very light gray */
+    border: 2px solid #e5e7eb; /* Light gray */
 }
 QGroupBox {
     font-weight: bold;
@@ -1107,6 +1124,45 @@ span.linenos.special { color: #374151; background-color: #f9fafb; padding-left: 
 .codehilite .vi { color: #374151 } /* Name.Variable.Instance -> Dark slate */
 .codehilite .vm { color: #374151 } /* Name.Variable.Magic -> Dark slate */
 .codehilite .il { color: #7c3aed } /* Literal.Number.Integer.Long -> Purple */
+"""
+
+    # Enhanced checkbox styles with tristate support
+    CHECKBOX_STYLE = """
+QCheckBox {
+    spacing: 8px;
+    color: #374151; /* Dark slate text */
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: #ffffff; /* White background */
+    border: 2px solid #d1d5db; /* Light gray border */
+}
+QCheckBox::indicator:checked {
+    background-color: #6b46c1; /* Deep purple checked */
+    border: 2px solid #6b46c1; /* Deep purple border */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #fbbf24; /* Golden yellow - for partial state */
+    border: 2px solid #fbbf24; /* Golden yellow */
+    border-radius: 9px;
+}
+QCheckBox::indicator:hover {
+    border: 2px solid #553c9a; /* Darker purple hover border */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #553c9a; /* Darker purple hover */
+    border: 2px solid #553c9a;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #f59e0b; /* Darker amber on hover */
+    border: 2px solid #f59e0b;
+}
+QCheckBox::indicator:disabled {
+    background-color: #f9fafb; /* Very light gray */
+    border: 2px solid #e5e7eb; /* Light gray */
+}
 """
 
     # Tool widget styles

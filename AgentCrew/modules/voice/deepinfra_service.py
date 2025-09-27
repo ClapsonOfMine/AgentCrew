@@ -271,52 +271,6 @@ class DeepInfraVoiceService(BaseVoiceService):
         except Exception as e:
             logger.error(f"Failed to queue TTS request: {str(e)}")
 
-    def text_to_speech_stream_sync(
-        self, text: str, voice_id: Optional[str] = None, model_id: Optional[str] = None
-    ):
-        """
-        Synchronous version of text-to-speech streaming.
-
-        Args:
-            text: Text to convert to speech
-            voice_id: Voice ID (defaults to "tara")
-            model_id: Model ID (defaults to canopylabs/orpheus-3b-0.1-ft)
-
-        Returns:
-            Path to generated audio file
-        """
-        try:
-            # Clean text for speech
-            cleaned_text = self.clean_text_for_speech(text)
-
-            if not cleaned_text.strip():
-                logger.warning("No speakable text after cleaning")
-                return None
-
-            # Use default values if not provided
-            voice = voice_id or self.default_voice
-            model = model_id or self.tts_model
-
-            # Create temporary file for audio output
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
-                speech_file_path = Path(tmp_file.name)
-
-            # Generate speech using DeepInfra's OpenAI-compatible Speech API
-            with self.client.audio.speech.with_streaming_response.create(
-                model=model,
-                voice=voice,
-                input=cleaned_text,
-                response_format="mp3",
-            ) as response:
-                response.stream_to_file(speech_file_path)
-
-            logger.debug(f"TTS file generated: {speech_file_path}")
-            return speech_file_path
-
-        except Exception as e:
-            logger.error(f"Text-to-speech failed: {str(e)}")
-            raise
-
     def list_voices(self) -> Dict[str, Any]:
         """
         List available voices for DeepInfra TTS.

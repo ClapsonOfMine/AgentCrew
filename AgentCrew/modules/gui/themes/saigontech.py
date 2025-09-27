@@ -858,18 +858,31 @@ QCheckBox {
     color: #f8fafc; /* Primary Text - Slate 50 */
 }
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     background-color: #475569; /* Borders - Slate 600 */
-    border: 1px solid #64748b; /* Accent/Hover - Slate 500 */
+    border: 2px solid #64748b; /* Accent/Hover - Slate 500 */
 }
 QCheckBox::indicator:checked {
     background-color: #7fb239; /* Primary Green */
-    border: 1px solid #7fb239; /* Primary Green */
+    border: 2px solid #7fb239; /* Primary Green */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #f59e0b; /* Amber 500 - for partial state */
+    border: 2px solid #f59e0b; /* Amber 500 */
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover {
-    border: 1px solid #638b2c; /* Secondary Green */
+    border: 2px solid #638b2c; /* Secondary Green */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #638b2c; /* Darker green on hover */
+    border: 2px solid #638b2c;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #d97706; /* Darker amber on hover */
+    border: 2px solid #d97706;
 }
 QGroupBox {
     font-weight: bold;
@@ -1098,6 +1111,45 @@ span.linenos.special { color: #f8fafc; background-color: #334155; padding-left: 
 .codehilite .vi { color: #64748b } /* Name.Variable.Instance -> Accent */
 .codehilite .vm { color: #64748b } /* Name.Variable.Magic -> Accent */
 .codehilite .il { color: #64748b } /* Literal.Number.Integer.Long -> Accent */
+"""
+
+    # Enhanced checkbox styles with tristate support
+    CHECKBOX_STYLE = """
+QCheckBox {
+    spacing: 8px;
+    color: #f8fafc; /* Primary Text - Slate 50 */
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: #475569; /* Borders - Slate 600 */
+    border: 2px solid #64748b; /* Accent/Hover - Slate 500 */
+}
+QCheckBox::indicator:checked {
+    background-color: #7fb239; /* Primary Green */
+    border: 2px solid #7fb239; /* Primary Green */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #f59e0b; /* Amber 500 - for partial state */
+    border: 2px solid #f59e0b; /* Amber 500 */
+    border-radius: 9px;
+}
+QCheckBox::indicator:hover {
+    border: 2px solid #638b2c; /* Secondary Green */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #638b2c; /* Darker green on hover */
+    border: 2px solid #638b2c;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #d97706; /* Darker amber on hover */
+    border: 2px solid #d97706;
+}
+QCheckBox::indicator:disabled {
+    background-color: #334155; /* Secondary/Muted Background */
+    border: 2px solid #475569; /* Borders */
+}
 """
 
     # Tool widget styles

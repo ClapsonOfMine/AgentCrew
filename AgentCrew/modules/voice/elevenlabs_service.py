@@ -34,13 +34,13 @@ class ElevenLabsVoiceService(BaseVoiceService):
 
         # TTS settings
         self.default_voice_id = "kHhWB9Fw3aF6ly7JvltC"
-        self.default_model = "eleven_v3"  # Low latency model
+        self.default_model = "eleven_turbo_v2_5"  # Low latency model
         self.voice_settings = VoiceSettings(
             stability=1,
             similarity_boost=1,
             style=0,
-            use_speaker_boost=False,
-            speed=1,
+            # use_speaker_boost=False,
+            speed=1.1,
         )
 
         # TTS streaming thread management
@@ -253,42 +253,6 @@ class ElevenLabsVoiceService(BaseVoiceService):
         except Exception as e:
             logger.error(f"Failed to queue TTS request: {str(e)}")
 
-    def text_to_speech_stream_sync(
-        self, text: str, voice_id: Optional[str] = None, model_id: Optional[str] = None
-    ):
-        """
-        Synchronous version of text-to-speech streaming for cases where blocking is acceptable.
-
-        Args:
-            text: Text to convert to speech
-            voice_id: ElevenLabs voice ID (uses default if None)
-            model_id: Model ID (uses default if None)
-
-        Yields:
-            Audio chunks as bytes
-        """
-        try:
-            # Clean text for speech
-            cleaned_text = self.clean_text_for_speech(text)
-
-            if not cleaned_text.strip():
-                logger.warning("No speakable text after cleaning")
-                return
-
-            # Generate speech
-            response = self.client.text_to_speech.stream(
-                text=cleaned_text,
-                voice_id=voice_id or self.default_voice_id,
-                model_id=model_id or self.default_model,
-                output_format="mp3_44100_128",
-                # voice_settings=self.voice_settings,
-            )
-            stream(response)
-
-        except Exception as e:
-            logger.error(f"Text-to-speech failed: {str(e)}")
-            raise
-
     def list_voices(self) -> Dict[str, Any]:
         """List available ElevenLabs voices."""
         try:
@@ -313,27 +277,11 @@ class ElevenLabsVoiceService(BaseVoiceService):
         self.default_voice_id = voice_id
 
     def get_configured_voice_id(self) -> str:
-        """Get the voice ID from global config or return default."""
-        try:
-            from AgentCrew.modules.config import ConfigManagement
-
-            config_management = ConfigManagement()
-            global_config = config_management.read_global_config_data()
-            voice_id = global_config.get("global_settings", {}).get(
-                "voice_id", self.default_voice_id
-            )
-
-            # Validate voice_id is not empty and has reasonable length
-            if voice_id and voice_id.strip() and len(voice_id.strip()) >= 10:
-                return voice_id.strip()
-            else:
-                logger.warning(
-                    f"Invalid voice_id in config: '{voice_id}', using default"
-                )
-                return self.default_voice_id
-        except Exception as e:
-            logger.warning(f"Failed to read voice_id from config: {e}")
-            return self.default_voice_id
+        """Get the voice ID or return default."""
+        logger.warning(
+            "get_configured_voice_id is deprecated. Voice ID should be managed by MessageHandler."
+        )
+        return self.default_voice_id
 
     def set_voice_settings(self, **kwargs):
         """Update voice settings."""

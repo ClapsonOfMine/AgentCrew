@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 import time
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, Literal
 from AgentCrew.modules.llm import BaseLLMService
 
 # from AgentCrew.modules.llm.message import MessageTransformer
@@ -22,6 +22,8 @@ class LocalAgent(BaseAgent):
         tools: List[str],
         temperature: Optional[float] = None,
         is_remoting_mode: bool = False,
+        voice_enabled: Literal["full", "partial", "disabled"] = "disabled",
+        voice_id: Optional[str] = None,
     ):
         """
         Initialize a new agent.
@@ -31,6 +33,8 @@ class LocalAgent(BaseAgent):
             description: A description of the agent's capabilities
             llm_service: The LLM service to use for this agent
             services: Dictionary of available services
+            voice_enabled: Whether voice features are enabled for this agent
+            voice_id: Voice ID to use for text-to-speech
         """
         super().__init__(name, description)
         # self.name = name
@@ -42,7 +46,12 @@ class LocalAgent(BaseAgent):
         self.system_prompt = None
         self.custom_system_prompt = None
         self.tool_prompts = []
-        self.is_remoting_mode = is_remoting_mode
+        self.is_remoting_mode: bool = is_remoting_mode
+
+        # Voice configuration
+        self.voice_enabled: Literal["full", "partial", "disabled"] = voice_enabled
+        self.voice_id: Optional[str] = voice_id
+
         # self.history = []
         # self.shared_context_pool: Dict[str, List[int]] = {}
         # Store tool definitions in the same format as ToolRegistry

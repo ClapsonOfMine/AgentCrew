@@ -213,10 +213,9 @@ class MessageHandler(Observable):
         start_thinking = False
         end_thinking = False
         has_stop_interupted = False
-        voice_sentence = "" if self._is_voice_enabled() else None
-        voice_id = (
-            self.voice_service.get_configured_voice_id() if self.voice_service else None
-        )
+        voice_mode = self._is_voice_enabled()
+        voice_sentence = "" if voice_mode != "disabled" else None
+        voice_id = self._get_configured_voice_id() if self.voice_service else None
 
         # Create a reference to the streaming generator
         self.stream_generator = None
@@ -271,16 +270,29 @@ class MessageHandler(Observable):
                         time.sleep(0.5)
                     self._notify("response_chunk", (chunk_text, assistant_response))
                     if voice_sentence is not None:
-                        voice_sentence += chunk_text
+                        if (
+                            "<agent_evaluation>" in assistant_response
+                            and "</agent_evaluation>" in assistant_response
+                        ) or (
+                            "<agent_evaluation>" not in assistant_response
+                            and "</agent_evaluation>" not in assistant_response
+                        ):
+                            voice_sentence += chunk_text
+
+                    print(voice_sentence)
                     if (
                         voice_sentence
                         and "\n" in voice_sentence.strip()
                         and self.voice_service
+                        and voice_id
                     ):
                         self.voice_service.text_to_speech_stream(
                             voice_sentence.strip().partition("\n")[0], voice_id=voice_id
                         )
-                        voice_sentence = None
+                        if voice_mode == "partial":
+                            voice_sentence = None
+                        else:
+                            voice_sentence = voice_sentence.strip().partition("\n")[-1]
 
             # End thinking when break the response stream
             if not end_thinking and start_thinking:
@@ -495,11 +507,28 @@ class MessageHandler(Observable):
         return self.conversation_manager.delete_conversation_by_id(conversation_id)
 
     def _is_voice_enabled(self) -> bool:
-        """Check if voice is enabled in global settings."""
+        """Check if voice is enabled in current agent settings."""
         try:
-            config_management = ConfigManagement()
-            global_config = config_management.read_global_config_data()
-            return global_config.get("global_settings", {}).get("voice_enabled", False)
+            # Check if voice service is available first
+            if self.voice_service is None:
+                return False
+
+            if hasattr(self.agent, "voice_enabled"):
+                return getattr(self.agent, "voice_enabled")
+
+            return False
         except Exception as e:
             logger.warning(f"Failed to read voice_enabled setting: {e}")
             return False
+
+    def _get_configured_voice_id(self) -> Optional[str]:
+        """Get the voice ID from current agent settings or return default."""
+        try:
+            if hasattr(self.agent, "voice_id"):
+                return getattr(self.agent, "voice_id", None)
+
+            return None
+
+        except Exception as e:
+            logger.warning(f"Failed to read voice_id from agent config: {e}")
+            return None

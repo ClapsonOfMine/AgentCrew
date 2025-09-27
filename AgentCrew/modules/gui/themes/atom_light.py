@@ -860,18 +860,35 @@ QCheckBox {
     color: #333333; /* Dark gray text */
 }
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     background-color: #ffffff; /* White */
-    border: 1px solid #cccccc; /* Light gray border */
+    border: 2px solid #cccccc; /* Light gray border */
 }
 QCheckBox::indicator:checked {
     background-color: #4285f4; /* Blue */
-    border: 1px solid #4285f4; /* Blue border */
+    border: 2px solid #4285f4; /* Blue border */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #ff9800; /* Orange - for partial state */
+    border: 2px solid #ff9800; /* Orange */
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover {
-    border: 1px solid #3367d6; /* Darker blue */
+    border: 2px solid #3367d6; /* Darker blue */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #3367d6; /* Darker blue hover */
+    border: 2px solid #3367d6;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #f57c00; /* Darker orange on hover */
+    border: 2px solid #f57c00;
+}
+QCheckBox::indicator:disabled {
+    background-color: #f5f5f5; /* Very light gray */
+    border: 2px solid #e0e0e0; /* Light gray */
 }
 QGroupBox {
     font-weight: bold;
@@ -1102,7 +1119,45 @@ span.linenos.special { color: #333333; background-color: #e0e0e0; padding-left: 
 .codehilite .il { color: #ff6600 } /* Literal.Number.Integer.Long -> Orange */
 """
 
-    # Tool widget styles
+    # Enhanced checkbox styles with tristate support
+    CHECKBOX_STYLE = """
+QCheckBox {
+    spacing: 8px;
+    color: #333333; /* Dark gray text */
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: #ffffff; /* White */
+    border: 2px solid #cccccc; /* Light gray border */
+}
+QCheckBox::indicator:checked {
+    background-color: #4285f4; /* Blue */
+    border: 2px solid #4285f4; /* Blue border */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #ff9800; /* Orange - for partial state */
+    border: 2px solid #ff9800; /* Orange */
+    border-radius: 9px;
+}
+QCheckBox::indicator:hover {
+    border: 2px solid #3367d6; /* Darker blue */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #3367d6; /* Darker blue hover */
+    border: 2px solid #3367d6;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #f57c00; /* Darker orange on hover */
+    border: 2px solid #f57c00;
+}
+QCheckBox::indicator:disabled {
+    background-color: #f5f5f5; /* Very light gray */
+    border: 2px solid #e0e0e0; /* Light gray */
+}
+"""
+
     # Tool widget styles
     TOOL_WIDGET = """
 QWidget {

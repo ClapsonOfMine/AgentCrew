@@ -118,23 +118,6 @@ class BaseVoiceService(ABC):
         pass
 
     @abstractmethod
-    def text_to_speech_stream_sync(
-        self, text: str, voice_id: Optional[str] = None, model_id: Optional[str] = None
-    ) -> Any:
-        """
-        Synchronous version of text-to-speech streaming.
-
-        Args:
-            text: Text to convert to speech
-            voice_id: Voice ID (uses default if None)
-            model_id: Model ID (uses default if None)
-
-        Returns:
-            Audio stream or generator yielding audio chunks
-        """
-        pass
-
-    @abstractmethod
     def list_voices(self) -> Dict[str, Any]:
         """
         List available voices from the service.

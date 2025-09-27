@@ -899,18 +899,35 @@ QCheckBox {
     color: #cdd6f4; /* Catppuccin Text */
 }
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     background-color: #45475a; /* Catppuccin Surface1 */
-    border: 1px solid #585b70; /* Catppuccin Surface2 */
+    border: 2px solid #585b70; /* Catppuccin Surface2 */
 }
 QCheckBox::indicator:checked {
     background-color: #89b4fa; /* Catppuccin Blue */
-    border: 1px solid #89b4fa; /* Catppuccin Blue */
+    border: 2px solid #89b4fa; /* Catppuccin Blue */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #f9e2af; /* Catppuccin Yellow - for partial state */
+    border: 2px solid #f9e2af; /* Catppuccin Yellow */
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover {
-    border: 1px solid #b4befe; /* Catppuccin Lavender */
+    border: 2px solid #b4befe; /* Catppuccin Lavender */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #74c7ec; /* Catppuccin Sapphire */
+    border: 2px solid #74c7ec;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #f38ba8; /* Catppuccin Red on hover for amber state */
+    border: 2px solid #f38ba8;
+}
+QCheckBox::indicator:disabled {
+    background-color: #313244; /* Catppuccin Surface0 */
+    border: 2px solid #45475a; /* Catppuccin Surface1 */
 }
 QGroupBox {
     font-weight: bold;
@@ -1139,6 +1156,45 @@ span.linenos.special { color: #cdd6f4; background-color: #313244; padding-left: 
 .codehilite .vi { color: #f5e0dc } /* Name.Variable.Instance -> Rosewater */
 .codehilite .vm { color: #f5e0dc } /* Name.Variable.Magic -> Rosewater */
 .codehilite .il { color: #fab387 } /* Literal.Number.Integer.Long -> Peach */
+"""
+
+    # Enhanced checkbox styles with tristate support
+    CHECKBOX_STYLE = """
+QCheckBox {
+    spacing: 8px;
+    color: #cdd6f4; /* Catppuccin Text */
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: #45475a; /* Catppuccin Surface1 */
+    border: 2px solid #585b70; /* Catppuccin Surface2 */
+}
+QCheckBox::indicator:checked {
+    background-color: #89b4fa; /* Catppuccin Blue */
+    border: 2px solid #89b4fa; /* Catppuccin Blue */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #f9e2af; /* Catppuccin Yellow - for partial state */
+    border: 2px solid #f9e2af; /* Catppuccin Yellow */
+    border-radius: 9px; 
+}
+QCheckBox::indicator:hover {
+    border: 2px solid #b4befe; /* Catppuccin Lavender */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #74c7ec; /* Catppuccin Sapphire */
+    border: 2px solid #74c7ec;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #f38ba8; /* Catppuccin Red on hover for amber state */
+    border: 2px solid #f38ba8;
+}
+QCheckBox::indicator:disabled {
+    background-color: #313244; /* Catppuccin Surface0 */
+    border: 2px solid #45475a; /* Catppuccin Surface1 */
+}
 """
 
     # Tool widget styles

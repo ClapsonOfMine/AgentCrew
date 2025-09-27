@@ -861,18 +861,35 @@ QCheckBox {
     color: #e5e9f0; /* Nord Snow Storm 1 */
 }
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     background-color: #4c566a; /* Nord Polar Night 3 */
-    border: 1px solid #434c5e; /* Nord Polar Night 2 */
+    border: 2px solid #434c5e; /* Nord Polar Night 2 */
 }
 QCheckBox::indicator:checked {
     background-color: #5e81ac; /* Nord Frost 3 */
-    border: 1px solid #5e81ac; /* Nord Frost 3 */
+    border: 2px solid #5e81ac; /* Nord Frost 3 */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #ebcb8b; /* Nord Aurora Yellow - for partial state */
+    border: 2px solid #ebcb8b; /* Nord Aurora Yellow */
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover {
-    border: 1px solid #88c0d0; /* Nord Frost 1 */
+    border: 2px solid #88c0d0; /* Nord Frost 1 */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #81a1c1; /* Nord Frost 2 */
+    border: 2px solid #81a1c1;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #d08770; /* Nord Aurora Orange on hover */
+    border: 2px solid #d08770;
+}
+QCheckBox::indicator:disabled {
+    background-color: #3b4252; /* Nord Polar Night 1 */
+    border: 2px solid #434c5e; /* Nord Polar Night 2 */
 }
 QGroupBox {
     font-weight: bold;
@@ -1102,7 +1119,45 @@ span.linenos.special { color: #e5e9f0; background-color: #434c5e; padding-left: 
 .codehilite .il { color: #b48ead } /* Literal.Number.Integer.Long -> Aurora Purple */
 """
 
-    # Tool widget styles
+    # Enhanced checkbox styles with tristate support
+    CHECKBOX_STYLE = """
+QCheckBox {
+    spacing: 8px;
+    color: #e5e9f0; /* Nord Snow Storm 1 */
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    background-color: #4c566a; /* Nord Polar Night 3 */
+    border: 2px solid #434c5e; /* Nord Polar Night 2 */
+}
+QCheckBox::indicator:checked {
+    background-color: #5e81ac; /* Nord Frost 3 */
+    border: 2px solid #5e81ac; /* Nord Frost 3 */
+}
+QCheckBox::indicator:indeterminate {
+    background-color: #ebcb8b; /* Nord Aurora Yellow - for partial state */
+    border: 2px solid #ebcb8b; /* Nord Aurora Yellow */
+    border-radius: 9px;
+}
+QCheckBox::indicator:hover {
+    border: 2px solid #88c0d0; /* Nord Frost 1 */
+}
+QCheckBox::indicator:hover:checked {
+    background-color: #81a1c1; /* Nord Frost 2 */
+    border: 2px solid #81a1c1;
+}
+QCheckBox::indicator:hover:indeterminate {
+    background-color: #d08770; /* Nord Aurora Orange on hover */
+    border: 2px solid #d08770;
+}
+QCheckBox::indicator:disabled {
+    background-color: #3b4252; /* Nord Polar Night 1 */
+    border: 2px solid #434c5e; /* Nord Polar Night 2 */
+}
+"""
+
     # Tool widget styles
     TOOL_WIDGET = """
 QWidget {

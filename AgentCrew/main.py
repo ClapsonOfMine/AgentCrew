@@ -441,6 +441,8 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
                 services=services,
                 tools=agent_def["tools"],
                 temperature=agent_def.get("temperature", None),
+                voice_enabled=agent_def.get("voice_enabled", "disabled"),
+                voice_id=agent_def.get("voice_id", None),
             )
             agent.set_system_prompt(agent_def["system_prompt"])
             if remoting_provider:

@@ -235,8 +235,6 @@ class ConfigManagement:
             "global_settings": {
                 "theme": "dark",
                 "yolo_mode": False,
-                "voice_enabled": False,
-                "voice_id": "kHhWB9Fw3aF6ly7JvltC",  # Default ElevenLabs voice ID
             },
         }
         try:
@@ -368,15 +366,24 @@ class ConfigManagement:
                 existing_agent.tools = agent_cfg.get("tools", [])
                 existing_agent.set_system_prompt(system_prompt)
                 existing_agent.temperature = agent_cfg.get("temperature", 0.4)
+                existing_agent.voice_enabled = agent_cfg.get(
+                    "voice_enabled", "disabled"
+                )
+                existing_agent.voice_id = agent_cfg.get("voice_id", None)
             # New Agent
             else:
                 clone_agent = agent_manager.get_current_agent()
                 if not isinstance(clone_agent, LocalAgent):
                     clone_agent = [
                         agent
-                        for agent in agent_manager.agents
+                        for agent in agent_manager.agents.values()
                         if isinstance(agent, LocalAgent)
                     ][0]
+
+                # Extract voice settings from agent config
+                voice_enabled = agent_cfg.get("voice_enabled", "disabled")
+                voice_id = agent_cfg.get("voice_id", None)
+
                 new_agent = LocalAgent(
                     name=agent_cfg["name"],
                     description=agent_cfg["description"],
@@ -384,6 +391,8 @@ class ConfigManagement:
                     services=clone_agent.services,
                     tools=agent_cfg["tools"],
                     temperature=agent_cfg.get("temperature", None),
+                    voice_enabled=voice_enabled,
+                    voice_id=voice_id,
                 )
                 new_agent.set_system_prompt(system_prompt)
                 agent_manager.register_agent(new_agent)
