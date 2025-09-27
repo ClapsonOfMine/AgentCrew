@@ -136,7 +136,6 @@ class SettingsTab(QWidget):
         self.yolo_mode_checkbox.setChecked(False)  # Default to unchecked
         global_settings_form_layout.addRow(yolo_label, self.yolo_mode_checkbox)
 
-
         global_settings_group.setLayout(global_settings_form_layout)
         form_layout.addWidget(global_settings_group)
 
@@ -187,7 +186,6 @@ class SettingsTab(QWidget):
         yolo_mode = global_settings_data.get("yolo_mode", False)
         if self.yolo_mode_checkbox:
             self.yolo_mode_checkbox.setChecked(yolo_mode)
-
 
     def save_settings(self):
         if "api_keys" not in self.global_config:

@@ -26,6 +26,7 @@ class UIStateManager:
             "⠋⠁",
         ]
         self.spinner_index = 0
+        self.is_voice_activated = False
         self._setup_animation_timer()
 
     def _setup_animation_timer(self):
@@ -36,6 +37,10 @@ class UIStateManager:
     def set_input_controls_enabled(self, enabled: bool):
         """Enable or disable input controls."""
         # Keep controls disabled if loading a conversation, regardless of 'enabled' argument
+        self._last_enabled_state = enabled
+        if self.is_voice_activated:
+            self._set_send_button_state(True)
+            return
         actual_enabled = enabled and not self.chat_window.loading_conversation
 
         self.chat_window.message_input.setEnabled(actual_enabled)

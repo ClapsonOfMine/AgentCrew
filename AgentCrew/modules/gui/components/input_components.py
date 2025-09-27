@@ -279,6 +279,17 @@ class InputComponents:
             self.chat_window.llm_worker.process_request.emit("/voice")
         else:
             # Stop recording
+            self.chat_window.ui_state_manager.is_voice_activated = False
+            # Restore normal UI state
+            self.chat_window.message_input.setPlaceholderText("Type a message...")
+            # Update voice button to show normal state
+            self.chat_window.input_components.update_voice_button_state(False)
+            self.chat_window.ui_state_manager.set_input_controls_enabled(
+                self.chat_window.ui_state_manager._last_enabled_state
+            )
+            self.chat_window.ui_state_manager._set_send_button_state(
+                not self.chat_window.ui_state_manager._last_enabled_state
+            )
             self.chat_window.llm_worker.process_request.emit("/end_voice")
 
     def update_voice_button_state(self, is_recording: bool):

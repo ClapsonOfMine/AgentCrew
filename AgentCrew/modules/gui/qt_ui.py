@@ -563,18 +563,26 @@ class ChatWindow(QMainWindow, Observer):
         elif event == "voice_recording_started":
             # Update UI to show recording state
             self.ui_state_manager.set_input_controls_enabled(False)
+            self.ui_state_manager.is_voice_activated = True
             self.message_input.setPlaceholderText(
                 "🎤 Recording... Click voice button or press Enter to stop"
             )
             # Update voice button to show recording state
             self.input_components.update_voice_button_state(True)
-        elif event == "voice_recording_completed":
-            # Restore normal UI state
-            self.message_input.setPlaceholderText("Type a message...")
-            # Update voice button to show normal state
-            self.input_components.update_voice_button_state(False)
+        elif event == "voice_activate":
+            if data:
+                self._add_user_message_bubble(data)
+            self.llm_worker.process_request.emit(data)
             self.ui_state_manager._set_send_button_state(True)
-            self._add_user_message_bubble(data)
+        # elif event == "voice_recording_completed":
+        #     self.ui_state_manager.is_voice_activated = False
+        #     # Restore normal UI state
+        #     self.message_input.setPlaceholderText("Type a message...")
+        #     # Update voice button to show normal state
+        #     self.input_components.update_voice_button_state(False)
+        #     self.ui_state_manager.set_input_controls_enabled(
+        #         self.ui_state_manager._last_enabled_state
+        #     )
 
     def _add_user_message_bubble(self, data):
         self.chat_components.append_message(

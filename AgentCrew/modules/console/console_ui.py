@@ -233,6 +233,18 @@ class ConsoleUI(Observer):
             self.display_handlers.display_message(
                 Text("Start recording press Enter to stop...", style="bold yellow")
             )
+        elif event == "voice_activate":
+            if data:
+                asyncio.run(self.message_handler.process_user_input(data))
+                self.input_handler.is_message_processing = True
+                # Get assistant response
+                assistant_response, input_tokens, output_tokens = asyncio.run(
+                    self.message_handler.get_assistant_response()
+                )
+                self.input_handler.is_message_processing = False
+
+                self._calculate_token_usage(input_tokens, output_tokens)
+
         elif event == "voice_recording_stopping":
             self.display_handlers.display_message(
                 Text("⏹️  Stopping recording...", style="bold yellow")

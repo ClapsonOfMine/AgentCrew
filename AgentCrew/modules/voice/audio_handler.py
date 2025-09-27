@@ -5,11 +5,14 @@ import numpy as np
 import torch
 from scipy import signal
 import sounddevice as sd
+import asyncio
 from AgentCrew.modules import logger
 from .base import BaseAudioHandler
 
 INT16_MAX_ABS_VALUE = 32768.0
 SILERO_VAD_SAMPLE_RATE = 16000
+SILENT_COUNT_THRESHOLD = 15
+VAD_COUNT_THRESHOLD = 5
 
 
 class AudioHandler(BaseAudioHandler):
@@ -27,8 +30,10 @@ class AudioHandler(BaseAudioHandler):
         self.current_sample_rate = 44100
         self.silero_vad_model = None
         self._is_start_voice_activity = False
-        self._is_end_voice_activity = False
+        self._is_still_speaking = False
         self.silero_vad_model = None
+        self._silent_chunk_count = 0
+        self._vad_chunk_count = 0
         try:
             self.silero_vad_model, _ = torch.hub.load(
                 repo_or_dir="snakers4/silero-vad",
@@ -169,13 +174,52 @@ class AudioHandler(BaseAudioHandler):
                                 0
                             )  # Add batch dimension
 
-                        vad_prob = self.silero_vad_model(audio_tensor, 16000).item()
-                        is_silero_speech_active = vad_prob > (1 - 0.4)
-                        print(
+                        vad_prob = self.silero_vad_model(
+                            audio_tensor, SILERO_VAD_SAMPLE_RATE
+                        ).item()
+                        is_silero_speech_active = vad_prob > (1 - 0.3)
+                        logger.info(
                             f"VAD prob: {vad_prob:.3f}, Speech: {is_silero_speech_active}, Samples: {len(audio_chunk_16k)}"
                         )
                         if is_silero_speech_active:
-                            print("Speech detected")
+                            self._silent_chunk_count = 0
+                            if not self._is_still_speaking:
+                                self._vad_chunk_count = 0
+                            self._is_still_speaking = True
+                            if self._is_still_speaking:
+                                self._vad_chunk_count += 1
+                            if not self._is_start_voice_activity:
+                                self._is_start_voice_activity = True
+                        else:
+                            self._is_still_speaking = False
+                            if self._is_start_voice_activity:
+                                self._silent_chunk_count += 1
+                        if (
+                            self._silent_chunk_count > SILENT_COUNT_THRESHOLD
+                            and self._vad_chunk_count > VAD_COUNT_THRESHOLD
+                        ):
+                            self._is_start_voice_activity = False
+                            self._silent_chunk_count = 0
+                            self._vad_chunk_count = 0
+                            # Collect all recorded frames
+                            frames = []
+                            while not self.audio_queue.empty():
+                                try:
+                                    frames.append(self.audio_queue.get_nowait())
+                                except queue.Empty:
+                                    break
+
+                            if frames:
+                                audio_data = np.concatenate(frames, axis=0).flatten()
+                                logger.info(
+                                    f"Recording stopped. Captured {len(audio_data) / self.current_sample_rate:.2f} seconds"
+                                )
+                                if voice_completed_cb:
+                                    asyncio.run(
+                                        voice_completed_cb(
+                                            audio_data, self.current_sample_rate
+                                        )
+                                    )
                     except Exception as e:
                         logger.error(f"VAD processing error: {e}")
 
