@@ -86,7 +86,10 @@ class LocalAgent(BaseAgent):
         Register tools for this agent using the services dictionary.
         """
 
-        if self.services.get("agent_manager"):
+        if (
+            self.services.get("agent_manager")
+            and self.services["agent_manager"].enforce_transfer
+        ):
             self.tool_prompts.append(
                 self.services["agent_manager"].get_agents_list_prompt()
             )

@@ -563,6 +563,10 @@ class ChatWindow(QMainWindow, Observer):
             self._update_cost_info(data["input_tokens"], data["output_tokens"])
         elif event == "mcp_prompt":
             self.message_input.setPlainText(data.get("content", ""))
+        elif event == "transfer_enforce_toggled":
+            self.chat_components.add_system_message(
+                f"🔄 Transfer enforcement is now {data}."
+            )
         elif event == "voice_recording_started":
             # Update UI to show recording state
             self.ui_state_manager.set_input_controls_enabled(False)

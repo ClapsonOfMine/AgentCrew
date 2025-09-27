@@ -691,11 +691,16 @@ class CommandProcessor:
             self.message_handler.agent_manager.enforce_transfer = not current_state
             new_state = self.message_handler.agent_manager.enforce_transfer
 
+            self.message_handler.agent.deactivate()
+
+            self.message_handler.agent.activate()
+
             # Notify user about the state change
             status = "enabled" if new_state else "disabled"
             self.message_handler._notify(
                 "system_message", f"🔄 Transfer enforcement is now {status}."
             )
+            self.message_handler._notify("transfer_enforce_toggled", status)
 
             return CommandResult(handled=True, clear_flag=True)
 
