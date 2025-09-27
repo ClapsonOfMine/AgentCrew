@@ -250,7 +250,7 @@ class ElevenLabsVoiceService(BaseVoiceService):
             try:
                 sentences = text.split(". ")
                 for sentence in sentences:
-                    tts_request = (sentence + ". ", voice_id, model_id)
+                    tts_request = (sentence, voice_id, model_id)
                     self.tts_queue.put(tts_request, block=False)
                 logger.debug(f"TTS request queued for text: {text[:50]}...")
             except queue.Full:

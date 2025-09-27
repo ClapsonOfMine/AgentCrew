@@ -285,6 +285,9 @@ class MessageHandler(Observable):
                         and self.voice_service
                         and voice_id
                     ):
+                        voice_sentence = voice_sentence.replace(
+                            "<agent_evaluation>", ""
+                        ).replace("</agent_evaluation>", "")
                         self.voice_service.text_to_speech_stream(
                             voice_sentence.strip().partition("\n")[0], voice_id=voice_id
                         )
