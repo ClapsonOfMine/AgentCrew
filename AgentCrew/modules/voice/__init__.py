@@ -21,7 +21,7 @@ try:
         "TextCleaner",
         "AudioHandler",
     ]
-except OSError as e:
+except Exception as e:
     print(f"Failed to import voice module components: {e}")
     print("Please install PyAudio and other dependencies to enable voice features.")
 
