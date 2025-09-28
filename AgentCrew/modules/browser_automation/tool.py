@@ -199,7 +199,7 @@ def get_browser_get_content_tool_handler(
                 tool_result.append(context_image.get("screenshot", {}))
             return tool_result
         else:
-            return f"❌ Content extraction failed: {result['error']}"
+            raise RuntimeError(f"❌ Content extraction failed: {result['error']}")
 
     return handle_browser_get_content
 
@@ -226,7 +226,7 @@ def get_browser_navigate_tool_handler(
             )
             return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}{profile_info}"
         else:
-            return f"❌ Navigation failed: {result['error']}"
+            raise RuntimeError(f"❌ Navigation failed: {result['error']}")
 
     return handle_browser_navigate
 
@@ -276,7 +276,7 @@ def get_browser_scroll_tool_handler(
             return f"✅ {result.get('message', 'Success')}, Use `browser_get_content` to get the updated content."
         else:
             uuid_info = f"\nUUID: {element_uuid}" if element_uuid else ""
-            return f"❌ Scroll failed: {result['error']}{uuid_info}"
+            raise RuntimeError(f"❌ Scroll failed: {result['error']}{uuid_info}")
 
     return handle_browser_scroll
 
@@ -341,7 +341,9 @@ def get_browser_input_tool_handler(
         if result.get("success", True):
             return f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}"
         else:
-            return f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
+            raise RuntimeError(
+                f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
+            )
 
     return handle_browser_input
 
@@ -407,7 +409,9 @@ def get_browser_get_elements_by_text_tool_handler(
                 + content
             )
         else:
-            return f"❌ Search failed: {result.get('error', 'Unknown error')}\nSearch text: '{text}'"
+            raise RuntimeError(
+                f"❌ Search failed: {result.get('error', 'Unknown error')}\nSearch text: '{text}'"
+            )
 
     return handle_browser_get_elements_by_text
 
@@ -491,7 +495,7 @@ def get_browser_capture_screenshot_tool_handler(
             screenshot_data = result.get("screenshot", {})
             return [screenshot_data]
         else:
-            return (
+            raise RuntimeError(
                 f"❌ Screenshot capture failed: {result.get('error', 'Unknown error')}"
             )
 
@@ -500,7 +504,7 @@ def get_browser_capture_screenshot_tool_handler(
 
 def get_browser_send_key_tool_definition(provider="claude") -> Dict[str, Any]:
     """Get tool definition for browser key event send."""
-    tool_description = "Send keyboard events like arrow keys, function keys, page navigation keys, etc. using Chrome DevTools Protocol."
+    tool_description = "Send keyboard events like arrow keys, function keys, page navigation keys, etc. useful when combine with input tool."
     tool_arguments = {
         "key": {
             "type": "string",
@@ -613,7 +617,9 @@ def get_browser_send_key_tool_handler(
                 success_msg += f". {modifiers_info}"
             return success_msg
         else:
-            return f"❌ Key send failed: {result.get('error', 'Unknown error')}"
+            raise RuntimeError(
+                f"❌ Key send failed: {result.get('error', 'Unknown error')}"
+            )
 
     return handle_browser_send_key
 

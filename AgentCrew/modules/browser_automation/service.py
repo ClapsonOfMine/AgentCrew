@@ -114,7 +114,6 @@ class BrowserAutomationService:
                             "profile": profile,
                         }
 
-            time.sleep(2)
             current_url = self._get_current_url()
 
             return {
@@ -297,9 +296,16 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            time.sleep(1)
             # Get page document
             _, dom_data = self.chrome_interface.DOM.getDocument(depth=1)
+
+            retry_count = 0
+
+            while not dom_data or not dom_data[0].get("result", {}).get("root", None):
+                time.sleep(1)
+                retry_count += 1
+                if retry_count >= 5:
+                    break
 
             # Find HTML node
             html_node = None
@@ -762,17 +768,17 @@ class BrowserAutomationService:
             if clip is not None:
                 screenshot_params["clip"] = clip
 
-            self.chrome_interface.Emulation.setDeviceMetricsOverride(
-                height=1280,
-                width=720,
-                deviceScaleFactor=1,
-                mobile=False,
-            )
+            # self.chrome_interface.Emulation.setDeviceMetricsOverride(
+            #     height=1280,
+            #     width=720,
+            #     deviceScaleFactor=1,
+            #     mobile=False,
+            # )
 
             # Capture the screenshot
             result = self.chrome_interface.Page.captureScreenshot(**screenshot_params)
 
-            self.chrome_interface.Emulation.clearDeviceMetricsOverride()
+            # self.chrome_interface.Emulation.clearDeviceMetricsOverride()
 
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):

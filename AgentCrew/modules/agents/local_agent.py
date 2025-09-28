@@ -544,21 +544,6 @@ class LocalAgent(BaseAgent):
                 }
                 if (
                     self.services.get("agent_manager")
-                    and self.services["agent_manager"].enforce_transfer
-                ):
-                    adaptive_messages["content"].append(
-                        {
-                            "type": "text",
-                            "text": """Before processing my request:
-- Break my request into sub-tasks when applicable.
-- For each sub-task, evaluate other agents capabilities.
-- Transfer sub-task to other agent if they are more suitable. 
-- Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
-- Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
-                        }
-                    )
-                if (
-                    self.services.get("agent_manager")
                     and self.services["agent_manager"].one_turn_process
                 ):
                     adaptive_messages["content"].append(
@@ -591,9 +576,24 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                     and final_messages[last_user_index]["content"][0]
                     .get("text", "")
                     .find("<Transfer_Tool>")
-                    == 0
+                    != 0
                 ):
-                    adaptive_messages["content"].pop(0)
+                    if (
+                        self.services.get("agent_manager")
+                        and self.services["agent_manager"].enforce_transfer
+                    ):
+                        adaptive_messages["content"].insert(
+                            0,
+                            {
+                                "type": "text",
+                                "text": """Before processing my request:
+    - Break my request into sub-tasks when applicable.
+    - For each sub-task, evaluate other agents capabilities.
+    - Transfer sub-task to other agent if they are more suitable. 
+    - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
+    - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
+                            },
+                        )
                 if len(adaptive_messages["content"]) > 0:
                     final_messages.insert(last_user_index, adaptive_messages)
 

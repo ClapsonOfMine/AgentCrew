@@ -298,6 +298,12 @@ class CommandProcessor:
 
             selected_turn = self.message_handler.conversation_turns[turn_number - 1]
 
+            selected_message = self.message_handler.streamline_messages[
+                selected_turn.message_index
+            ]
+
+            selected_message_agent = selected_message.get("agent", "")
+
             self.message_handler.streamline_messages = (
                 self.message_handler.streamline_messages[: selected_turn.message_index]
             )
@@ -314,6 +320,8 @@ class CommandProcessor:
             )
             if last_message and last_message.get("agent", ""):
                 self._handle_agent_command(f"/agent {last_message['agent']}")
+            elif selected_message_agent:
+                self._handle_agent_command(f"/agent {selected_message_agent}")
 
             self.message_handler.agent_manager.rebuild_agents_messages(
                 self.message_handler.streamline_messages

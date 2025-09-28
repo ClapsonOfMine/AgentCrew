@@ -1226,11 +1226,11 @@ class AgentsConfigTab(QWidget):
 
         # Validate behavior format
         behavior_lower = behavior_text.lower()
-        if not behavior_lower.startswith("when ") or " do " not in behavior_lower:
+        if not behavior_lower.startswith("when "):
             QMessageBox.warning(
                 self,
                 "Format Error",
-                "Behavior must follow 'when [condition] do [action]' format.",
+                "Behavior must follow 'when [condition], [action]' format.",
             )
             return
 
