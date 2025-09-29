@@ -192,10 +192,12 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
         to_date = params.get("to_date", None)
 
         if not phrases:
-            return "❌ Phrases required for memory search."
+            raise ValueError("❌ Phrases required for memory search. Try again.")
 
         if len(phrases) < 3:
-            return f"⚠️ Search term '{phrases}' too short. Use more semantica and descriptive phrases."
+            raise ValueError(
+                f"⚠️ Search term '{phrases}' too short. Try again with more semantica and descriptive phrases."
+            )
 
         # Use provided agent_name or fallback to current agent
         current_agent = AgentManager.get_instance().get_current_agent()
@@ -208,7 +210,7 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
                 to_date = int(dt.strptime(to_date, "%Y-%m-%d").timestamp())
             if from_date and to_date and from_date >= to_date:
                 raise ValueError(
-                    "from_date must be earlier than and not equal to to_date."
+                    "from_date must be earlier than and not equal to to_date. Try again with valid dates."
                 )
 
             result = memory_service.retrieve_memory(
