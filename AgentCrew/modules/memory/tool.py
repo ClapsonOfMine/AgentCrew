@@ -1,4 +1,5 @@
 from typing import Dict, Any, Callable
+from datetime import datetime as dt
 
 from AgentCrew.modules.agents import AgentManager
 from .base_service import BaseMemoryService
@@ -101,20 +102,24 @@ def get_memory_retrieve_tool_definition(provider="claude") -> Dict[str, Any]:
     """Optimized memory retrieval tool definition."""
 
     tool_description = """Retrieves relevant information from conversation history using semantic search.
-
 Use for gathering context, accessing user preferences, finding similar problems, and maintaining conversation continuity. 
-
-Search with specific, descriptive keywords for better results."""
+Search with specific, descriptive keywords for better results.
+Use from_date and to_date to filter memories by time, Eg: yesterday: from_date = current_date - 1"""
 
     tool_arguments = {
         "phrases": {
             "type": "string",
             "description": "Search a phrases for finding relevant memories. Use specific semantic phrases like 'project alpha database issues' or 'user preferences communication style' rather than single words.",
         },
-        "limit": {
-            "type": "integer",
-            "default": 5,
-            "description": "Maximum results (1-15). Use 1-3 for quick facts, 4-7 for standard context, 8-15 for comprehensive background.",
+        "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter memories from this date (YYYY-MM-DD). Optional.",
+        },
+        "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter memories til this date (YYYY-MM-DD). Optional.",
         },
     }
 
@@ -179,7 +184,8 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
 
     def handle_memory_retrieve(**params) -> str:
         phrases = params.get("phrases", "").strip()
-        limit = max(1, min(params.get("limit", 5), 50))
+        from_date = params.get("from_date", None)
+        to_date = params.get("to_date", None)
 
         if not phrases:
             return "❌ Phrases required for memory search."
@@ -192,7 +198,14 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
         agent_name = current_agent.name if current_agent else ""
 
         try:
-            result = memory_service.retrieve_memory(phrases, limit, agent_name)
+            if from_date:
+                from_date = int(dt.strptime(from_date, "%Y-%m-%d").timestamp())
+            if to_date:
+                to_date = int(dt.strptime(to_date, "%Y-%m-%d").timestamp())
+
+            result = memory_service.retrieve_memory(
+                phrases, from_date, to_date, agent_name
+            )
 
             if not result or result.strip() == "":
                 return f"📝 No memories found for '{phrases}'. Try broader phrases or related terms."

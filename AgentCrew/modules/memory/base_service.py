@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from abc import ABC, abstractmethod
 
 
@@ -64,14 +64,19 @@ class BaseMemoryService(ABC):
 
     @abstractmethod
     def retrieve_memory(
-        self, keywords: str, limit: int = 5, agent_name: str = "None"
+        self,
+        keywords: str,
+        from_date: Optional[int] = None,
+        to_date: Optional[int] = None,
+        agent_name: str = "None",
     ) -> str:
         """
         Retrieve relevant memories based on keywords.
 
         Args:
             keywords: Keywords to search for
-            limit: Maximum number of results to return
+            from_date: Optional start date (timestamp) to filter memories
+            to_date: Optional end date (timestamp) to filter memories
 
         Returns:
             Formatted string of relevant memories

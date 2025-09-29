@@ -291,7 +291,7 @@ class ChromaMemoryService(BaseMemoryService):
 
             # Store in ChromaDB (existing logic)
             memory_id = str(uuid.uuid4())
-            timestamp = datetime.now().isoformat()
+            timestamp = datetime.now().timestamp()
             conversation_document = xmltodict.unparse(memory_data, pretty=True)
             self.current_conversation_context[session_id] = conversation_document
 
@@ -300,35 +300,27 @@ class ChromaMemoryService(BaseMemoryService):
             if len(self.context_embedding) > 5:
                 self.context_embedding.pop(0)
 
+            metadata = {
+                "date": timestamp,
+                "conversation_id": memory_id,
+                "session_id": session_id,
+                "agent": agent_name,
+                "type": "conversation",
+            }
+
             # Add to ChromaDB collection (existing logic)
             if ids:
                 self.collection.upsert(
                     ids=[ids[0]],
                     documents=[conversation_document],
                     embeddings=conversation_embedding,
-                    metadatas=[
-                        {
-                            "timestamp": timestamp,
-                            "conversation_id": memory_id,
-                            "session_id": session_id,
-                            "agent": agent_name,
-                            "type": "conversation",
-                        }
-                    ],
+                    metadatas=[metadata],
                 )
             else:
                 self.collection.add(
                     documents=[conversation_document],
                     embeddings=conversation_embedding,
-                    metadatas=[
-                        {
-                            "timestamp": timestamp,
-                            "conversation_id": memory_id,
-                            "session_id": session_id,
-                            "agent": agent_name,
-                            "type": "conversation",
-                        }
-                    ],
+                    metadatas=[metadata],
                     ids=[memory_id],
                 )
 
@@ -370,7 +362,7 @@ class ChromaMemoryService(BaseMemoryService):
         Returns:
             Formatted string containing relevant context from past conversations
         """
-        return self.retrieve_memory(user_input, 3, agent_name=agent_name)
+        return self.retrieve_memory(user_input, agent_name=agent_name)
 
     async def _semantic_extracting(self, input: str) -> str:
         if self.llm_service:
@@ -386,14 +378,19 @@ class ChromaMemoryService(BaseMemoryService):
             return input
 
     def retrieve_memory(
-        self, keywords: str, limit: int = 5, agent_name: str = ""
+        self,
+        keywords: str,
+        from_date: Optional[int] = None,
+        to_date: Optional[int] = None,
+        agent_name: str = "",
     ) -> str:
         """
         Retrieve relevant memories based on keywords.
 
         Args:
             keywords: Keywords to search for
-            limit: Maximum number of results to return
+            from_date: Optional start date (timestamp) to filter memories
+            to_date: Optional end date (timestamp) to filter memories
 
         Returns:
             Formatted string of relevant memories
@@ -406,9 +403,14 @@ class ChromaMemoryService(BaseMemoryService):
         if agent_name.strip():
             and_conditions.append({"agent": agent_name})
 
+        if from_date:
+            and_conditions.append({"date": {"$gte": from_date}})
+        if to_date:
+            and_conditions.append({"date": {"$lte": to_date}})
+
         results = self.collection.query(
             query_texts=[keywords],
-            n_results=limit,
+            n_results=10,
             where={"$and": and_conditions}
             if len(and_conditions) >= 2
             else and_conditions[0]
@@ -428,7 +430,8 @@ class ChromaMemoryService(BaseMemoryService):
             if conv_id not in conversation_chunks:
                 conversation_chunks[conv_id] = {
                     "chunks": [],
-                    "timestamp": metadata.get("timestamp", "unknown"),
+                    "timestamp": metadata.get("date", None)
+                    or metadata.get("timestamp", "unknown"),
                     "relevance": results["distances"][0][i]
                     if results["distances"]
                     else 99,
@@ -454,7 +457,10 @@ class ChromaMemoryService(BaseMemoryService):
             timestamp = "Unknown time"
             if conv_data["timestamp"] != "unknown":
                 try:
-                    dt = datetime.fromisoformat(conv_data["timestamp"])
+                    if isinstance(conv_data["timestamp"], int):
+                        dt = datetime.fromtimestamp(conv_data["timestamp"])
+                    else:
+                        dt = datetime.fromisoformat(conv_data["timestamp"])
                     timestamp = dt.strftime("%Y-%m-%d %H:%M")
                 except Exception:
                     timestamp = conv_data["timestamp"]
