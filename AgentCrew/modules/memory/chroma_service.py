@@ -538,7 +538,13 @@ class ChromaMemoryService(BaseMemoryService):
 
         return len(ids_to_remove)
 
-    def forget_topic(self, topic: str, agent_name: str = "None") -> Dict[str, Any]:
+    def forget_topic(
+        self,
+        topic: str,
+        from_date: Optional[int] = None,
+        to_date: Optional[int] = None,
+        agent_name: str = "None",
+    ) -> Dict[str, Any]:
         """
         Remove memories related to a specific topic based on keyword search.
 
@@ -550,8 +556,23 @@ class ChromaMemoryService(BaseMemoryService):
         """
         try:
             # Query for memories related to the topic
+            and_conditions: List[Dict[str, Any]] = []
+
+            if agent_name.strip():
+                and_conditions.append({"agent": agent_name})
+
+            if from_date:
+                and_conditions.append({"date": {"$gte": from_date}})
+            if to_date:
+                and_conditions.append({"date": {"$lte": to_date}})
             results = self.collection.query(
-                query_texts=[topic], n_results=100, where={"agent": agent_name}
+                query_texts=[topic],
+                n_results=100,
+                where={"$and": and_conditions}
+                if len(and_conditions) >= 2
+                else and_conditions[0]
+                if and_conditions
+                else None,
             )
 
             if not results["documents"] or not results["documents"][0]:

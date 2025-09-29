@@ -97,7 +97,13 @@ class BaseMemoryService(ABC):
         pass
 
     @abstractmethod
-    def forget_topic(self, topic: str, agent_name: str = "None") -> Dict[str, Any]:
+    def forget_topic(
+        self,
+        topic: str,
+        from_date: Optional[int] = None,
+        to_date: Optional[int] = None,
+        agent_name: str = "None",
+    ) -> Dict[str, Any]:
         """
         Remove memories related to a specific topic based on keyword search.
 

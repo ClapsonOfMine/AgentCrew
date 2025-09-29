@@ -12,17 +12,23 @@ def get_memory_forget_tool_definition(provider="claude") -> Dict[str, Any]:
 
 Use for clearing outdated information, removing sensitive data, resolving conflicting memories, or correcting errors.
 
-Be specific with topics to avoid over-deletion. Use IDs for precise removal when available."""
+Be specific with topics to avoid over-deletion. Use IDs for precise removal when available.
+Use date filters to limit scope whenever posible, Eg: yesterday: from_date = current_date - 1"""
 
     tool_arguments = {
         "topic": {
             "type": "string",
             "description": "Keywords describing what to forget. Use specific terms like 'project alpha 2024 credentials' or 'outdated api documentation v1'. Avoid broad terms like 'user' or 'project'.",
         },
-        "ids": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Optional list of specific memory IDs for precise removal. Takes precedence over topic when provided.",
+        "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter removing memories from this date (YYYY-MM-DD). Optional.",
+        },
+        "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter removing memories til this date (YYYY-MM-DD). Optional.",
         },
     }
 
@@ -58,27 +64,17 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
 
     def handle_memory_forget(**params) -> str:
         topic = params.get("topic", "").strip()
-        ids = params.get("ids", [])
+
+        from_date = params.get("from_date", None)
+        to_date = params.get("to_date", None)
 
         # Use provided agent_name or fallback to current agent
         current_agent = AgentManager.get_instance().get_current_agent()
         agent_name = current_agent.name if current_agent else "None"
 
-        # ID-based removal (preferred)
-        if ids:
-            try:
-                result = memory_service.forget_ids(ids, agent_name)
-                return (
-                    f"✅ Removed {len(ids)} memories: {result.get('message', 'Success')}"
-                    if result.get("success")
-                    else f"⚠️ Removal incomplete: {result.get('message', 'Unknown error')}"
-                )
-            except Exception as e:
-                return f"❌ ID removal failed: {str(e)}"
-
         # Topic-based removal
         if not topic:
-            return "❌ Topic or IDs required for memory removal."
+            return "❌ Topic required for memory removal."
 
         # Prevent overly broad deletion
         risky_terms = ["all", "everything", "user", "conversation", "memory"]
@@ -86,7 +82,15 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
             return f"⚠️ '{topic}' too broad. Use specific terms to avoid over-deletion."
 
         try:
-            result = memory_service.forget_topic(topic, agent_name)
+            if from_date:
+                from_date = int(dt.strptime(from_date, "%Y-%m-%d").timestamp())
+            if to_date:
+                to_date = int(dt.strptime(to_date, "%Y-%m-%d").timestamp())
+            if from_date and to_date and from_date >= to_date:
+                raise ValueError(
+                    "from_date must be earlier than and not equal to to_date."
+                )
+            result = memory_service.forget_topic(topic, from_date, to_date, agent_name)
             return (
                 f"✅ Removed memories for '{topic}': {result.get('message', 'Success')}"
                 if result.get("success")
@@ -104,7 +108,7 @@ def get_memory_retrieve_tool_definition(provider="claude") -> Dict[str, Any]:
     tool_description = """Retrieves relevant information from conversation history using semantic search.
 Use for gathering context, accessing user preferences, finding similar problems, and maintaining conversation continuity. 
 Search with specific, descriptive keywords for better results.
-Use from_date and to_date to filter memories by time, Eg: yesterday: from_date = current_date - 1"""
+Use from_date and to_date to filter memories by time whenever posible, Eg: yesterday: from_date = current_date - 1"""
 
     tool_arguments = {
         "phrases": {
@@ -114,12 +118,12 @@ Use from_date and to_date to filter memories by time, Eg: yesterday: from_date =
         "from_date": {
             "type": "string",
             "format": "date",
-            "description": "Filter memories from this date (YYYY-MM-DD). Optional.",
+            "description": "Filter retrieving memories from this date (YYYY-MM-DD). Optional.",
         },
         "to_date": {
             "type": "string",
             "format": "date",
-            "description": "Filter memories til this date (YYYY-MM-DD). Optional.",
+            "description": "Filter retrieving memories til this date (YYYY-MM-DD). Optional.",
         },
     }
 
@@ -202,6 +206,10 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
                 from_date = int(dt.strptime(from_date, "%Y-%m-%d").timestamp())
             if to_date:
                 to_date = int(dt.strptime(to_date, "%Y-%m-%d").timestamp())
+            if from_date and to_date and from_date >= to_date:
+                raise ValueError(
+                    "from_date must be earlier than and not equal to to_date."
+                )
 
             result = memory_service.retrieve_memory(
                 phrases, from_date, to_date, agent_name
