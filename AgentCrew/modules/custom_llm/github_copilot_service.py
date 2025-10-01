@@ -117,61 +117,6 @@ class GithubCopilotService(CustomLLMService):
 
         return messages
 
-    # def format_tool_result(
-    #     self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Format a tool result for OpenAI API.
-    #
-    #     Args:
-    #         tool_use: The tool use details
-    #         tool_result: The result from the tool execution
-    #         is_error: Whether the result is an error
-    #
-    #     Returns:
-    #         A formatted message for tool response
-    #     """
-    #     # Special treatment for GitHub Copilot GPT-4.1 model
-    #     # At the the time of writing, GitHub Copilot GPT-4.1 model cannot read tool results with array content
-    #     if isinstance(tool_result, list):
-    #         if self._is_github_provider() and self.model != "gpt-4.1":
-    #             # OpenAI format for tool responses
-    #             parsed_tool_result = []
-    #             for res in tool_result:
-    #                 if res.get("type", "text") == "image_url":
-    #                     if "vision" in ModelRegistry.get_model_capabilities(
-    #                         f"{self._provider_name}/{self.model}"
-    #                     ):
-    #                         parsed_tool_result.append(res)
-    #                 else:
-    #                     parsed_tool_result.append(res)
-    #             tool_result = parsed_tool_result
-    #         else:
-    #             parsed_tool_result = []
-    #             for res in tool_result:
-    #                 # Skipping vision/image tool results for Groq
-    #                 # if res.get("type", "text") == "image_url":
-    #                 #     if "vision" in ModelRegistry.get_model_capabilities(self.model):
-    #                 #         parsed_tool_result.append(res)
-    #                 # else:
-    #                 if res.get("type", "text") == "text":
-    #                     parsed_tool_result.append(res.get("text", ""))
-    #             tool_result = (
-    #                 "\n".join(parsed_tool_result) if parsed_tool_result else ""
-    #             )
-    #
-    #     message = {
-    #         "role": "tool",
-    #         "tool_call_id": tool_use["id"],
-    #         # "name": tool_use["name"],
-    #         "content": tool_result,  # Groq and deepinfra expects string content
-    #     }
-    #     # Add error indication if needed
-    #     if is_error:
-    #         message["content"] = f"ERROR: {message['content']}"
-    #
-    #     return message
-
     async def process_message(self, prompt: str, temperature: float = 0) -> str:
         if self._is_github_provider():
             self.base_url = self.base_url.rstrip("/")

@@ -193,6 +193,7 @@ class OpenAIService(BaseLLMService):
         stream_params = {
             "model": self.model,
             "messages": messages,
+            "parallel_tool_calls": False,
             "stream_options": {"include_usage": True},
             "max_tokens": 20000,
         }
@@ -340,83 +341,6 @@ class OpenAIService(BaseLLMService):
             chunk_text,
             thinking_content,
         )
-
-    # def format_tool_result(
-    #     self, tool_use: Dict, tool_result: Any, is_error: bool = False
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Format a tool result for OpenAI API.
-    #
-    #     Args:
-    #         tool_use: The tool use details
-    #         tool_result: The result from the tool execution
-    #         is_error: Whether the result is an error
-    #
-    #     Returns:
-    #         A formatted message for tool response
-    #     """
-    #     # OpenAI format for tool responses
-    #     message = {
-    #         "role": "tool",
-    #         "tool_call_id": tool_use["id"],
-    #         "content": tool_result,
-    #     }
-    #
-    #     # Add error indication if needed
-    #     if is_error:
-    #         message["content"] = f"ERROR: {str(message['content'])}"
-    #
-    #     return message
-
-    # def format_assistant_message(
-    #     self, assistant_response: str, tool_uses: Optional[List[Dict]] = None
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Format the assistant's response for OpenAI API.
-    #
-    #     Args:
-    #         assistant_response: The response text
-    #         tool_uses: List of tool use details
-    #
-    #     Returns:
-    #         Formatted assistant message
-    #     """
-    #     if tool_uses and any(tu.get("id") for tu in tool_uses):
-    #         return {
-    #             "role": "assistant",
-    #             "content": assistant_response,
-    #             "tool_calls": [
-    #                 {
-    #                     "id": tool_use["id"],
-    #                     "function": {
-    #                         "name": tool_use["name"],
-    #                         "arguments": json.dumps(tool_use["input"]),
-    #                     },
-    #                     "type": tool_use["type"],
-    #                 }
-    #                 for tool_use in tool_uses
-    #                 if tool_use.get("id")  # Only include tool calls with valid IDs
-    #             ],
-    #         }
-    #     else:
-    #         return {
-    #             "role": "assistant",
-    #             "content": assistant_response,
-    #         }
-
-    # def format_thinking_message(self, thinking_data) -> Optional[Dict[str, Any]]:
-    #     """
-    #     Format thinking content into the appropriate message format for OpenAI.
-    #
-    #     Args:
-    #         thinking_data: Tuple containing (thinking_content, thinking_signature)
-    #             or None if no thinking data is available
-    #
-    #     Returns:
-    #         Dict[str, Any]: A properly formatted message containing thinking blocks
-    #     """
-    #     # OpenAI doesn't support thinking blocks, so we return None
-    #     return None
 
     async def validate_spec(self, prompt: str) -> str:
         """

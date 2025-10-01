@@ -497,20 +497,6 @@ class LocalAgent(BaseAgent):
         if was_active:
             self.deactivate()
 
-        # Get the current provider
-        # current_provider = self.llm.provider_name
-
-        # If we're switching providers, convert messages
-        # if current_provider != new_llm_service.provider_name:
-        #     # Standardize messages from current provider
-        #     std_messages = MessageTransformer.standardize_messages(
-        #         self.history, current_provider, self.name
-        #     )
-        #     # Convert to new provider format
-        #     self.history = MessageTransformer.convert_messages(
-        #         std_messages, new_llm_service.provider_name
-        #     )
-
         # Update the LLM service
         self.llm = new_llm_service
 
