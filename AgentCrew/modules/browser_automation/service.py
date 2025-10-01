@@ -137,7 +137,10 @@ class BrowserAutomationService:
 
     def click_element(self, element_uuid: str) -> Dict[str, Any]:
         """
-        Click an element using UUID.
+        Click an element using UUID via Chrome DevTools Protocol.
+
+        This method uses CDP's Input.dispatchMouseEvent to simulate real mouse clicks
+        by calculating element coordinates and triggering mousePressed/mouseReleased events.
 
         Args:
             element_uuid: UUID of the element to click (from browser_get_content)
@@ -159,38 +162,91 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            # Load JavaScript code from external file
             js_code = js_loader.get_click_element_js(xpath)
 
             result = self.chrome_interface.Runtime.evaluate(
                 expression=js_code, returnByValue=True
             )
 
+            # Parse JavaScript result
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):
-                    click_result = (
+                    coord_result = (
                         result[1].get("result", {}).get("result", {}).get("value", {})
                     )
-                    click_result["success"] = True
                 elif isinstance(result[1], list) and len(result[1]) > 0:
-                    click_result = (
+                    coord_result = (
                         result[1][0]
                         .get("result", {})
                         .get("result", {})
                         .get("value", {})
                     )
-                    click_result["success"] = True
                 else:
-                    click_result = {
+                    return {
                         "success": False,
-                        "error": "Invalid response format",
+                        "error": "Invalid response format from coordinate calculation",
+                        "uuid": element_uuid,
+                        "xpath": xpath,
                     }
             else:
-                click_result = {"success": False, "error": "No response from browser"}
+                return {
+                    "success": False,
+                    "error": "No response from coordinate calculation",
+                    "uuid": element_uuid,
+                    "xpath": xpath,
+                }
 
-            time.sleep(2)
+            # Check if coordinate calculation was successful
+            if not coord_result.get("success", False):
+                return {
+                    "success": False,
+                    "error": coord_result.get(
+                        "error", "Failed to calculate coordinates"
+                    ),
+                    "uuid": element_uuid,
+                    "xpath": xpath,
+                }
 
-            return {"uuid": element_uuid, "xpath": xpath, **click_result}
+            # Extract coordinates
+            x = coord_result.get("x")
+            y = coord_result.get("y")
+
+            if x is None or y is None:
+                return {
+                    "success": False,
+                    "error": "Coordinates not found in calculation result",
+                    "uuid": element_uuid,
+                    "xpath": xpath,
+                }
+
+            # Wait a moment for scrollIntoView to complete
+            time.sleep(0.5)
+
+            # Step 2: Dispatch mousePressed event using Chrome DevTools Protocol
+            self.chrome_interface.Input.dispatchMouseEvent(
+                type="mousePressed", x=x, y=y, button="left", clickCount=1
+            )
+
+            # Small delay between press and release (simulate realistic click timing)
+            time.sleep(0.02)
+
+            # Step 3: Dispatch mouseReleased event using Chrome DevTools Protocol
+            self.chrome_interface.Input.dispatchMouseEvent(
+                type="mouseReleased", x=x, y=y, button="left", clickCount=1
+            )
+
+            # Wait for click to be processed
+            time.sleep(1)
+
+            return {
+                "success": True,
+                "message": f"Element clicked successfully using CDP at coordinates ({x:.2f}, {y:.2f})",
+                "uuid": element_uuid,
+                "xpath": xpath,
+                "coordinates": {"x": x, "y": y},
+                "elementInfo": coord_result.get("elementInfo", {}),
+                "method": "chrome_devtools_protocol",
+            }
 
         except Exception as e:
             logger.error(f"Click error: {e}")

@@ -1,8 +1,9 @@
 /**
- * Click an element using XPath selector.
+ * Calculate click coordinates for an element using XPath selector.
+ * Returns coordinates relative to the main frame's viewport in CSS pixels.
  *
  * @param {string} xpath - The XPath selector for the element to click
- * @returns {Object} Result object with success status and message
+ * @returns {Object} Result object with success status, coordinates, and message
  */
 function clickElement(xpath) {
   const result = document.evaluate(
@@ -28,64 +29,26 @@ function clickElement(xpath) {
     return { success: false, error: "Element is disabled" };
   }
 
-  // Scroll element into view
+  // Scroll element into view to ensure it's visible in viewport
   element.scrollIntoView({ behavior: "smooth", block: "center" });
 
-  // Get element's bounding rect for mouse coordinates
   const rect = element.getBoundingClientRect();
+
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
 
-  const mouseEventOptions = {
-    view: window,
-    bubbles: true,
-    cancelable: true,
-    clientX: centerX,
-    clientY: centerY,
-    screenX: centerX + window.screenX,
-    screenY: centerY + window.screenY,
-    button: 0, // Left mouse button
-    buttons: 1, // Left mouse button pressed
-    ctrlKey: false,
-    shiftKey: false,
-    altKey: false,
-    metaKey: false,
+  return {
+    success: true,
+    x: centerX,
+    y: centerY,
+    message: "Coordinates calculated successfully",
+    elementInfo: {
+      width: rect.width,
+      height: rect.height,
+      left: rect.left,
+      top: rect.top,
+    },
   };
-
-  try {
-    const mouseDownEvent = new MouseEvent("mousedown", mouseEventOptions);
-    element.dispatchEvent(mouseDownEvent);
-
-    if (element.focus) {
-      element.focus();
-    }
-
-    const mouseUpEvent = new MouseEvent("mouseup", mouseEventOptions);
-    element.dispatchEvent(mouseUpEvent);
-
-    const clickEvent = new MouseEvent("click", mouseEventOptions);
-    element.dispatchEvent(clickEvent);
-
-    element.click();
-
-    return { success: true, message: "Element clicked successfully" };
-  } catch (eventError) {
-    // Fallback to simple click if mouse events fail
-    try {
-      element.click();
-      return { success: true, message: "Element clicked successfully" };
-    } catch (fallbackError) {
-      return {
-        success: false,
-        error:
-          "Failed to click element: " +
-          eventError.message +
-          " (fallback also failed: " +
-          fallbackError.message +
-          ")",
-      };
-    }
-  }
 }
 
 // Export the function - when used in browser automation, wrap with IIFE and pass xpath
