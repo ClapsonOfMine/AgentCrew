@@ -47,6 +47,7 @@ function clickElement(xpath) {
       height: rect.height,
       left: rect.left,
       top: rect.top,
+      text: element.innerText,
     },
   };
 }

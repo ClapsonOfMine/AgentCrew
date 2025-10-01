@@ -47,6 +47,7 @@ class BrowserAutomationService:
         self._is_initialized = False
         # UUID to XPath mapping for element identification
         self.uuid_to_xpath_mapping: Dict[str, str] = {}
+        self._last_page_content: str = ""
 
     def _ensure_chrome_running(self, profile: str = "Default"):
         """Ensure Chrome browser is running and connected."""
@@ -240,7 +241,7 @@ class BrowserAutomationService:
 
             return {
                 "success": True,
-                "message": f"Element clicked successfully using CDP at coordinates ({x:.2f}, {y:.2f})",
+                "message": "Element clicked successfully",
                 "uuid": element_uuid,
                 "xpath": xpath,
                 "coordinates": {"x": x, "y": y},

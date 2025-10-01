@@ -14,6 +14,8 @@ Provides eight tools for browser automation:
 
 from typing import Dict, Any, Callable, Union, List
 from .service import BrowserAutomationService
+import difflib
+import time
 
 
 def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
@@ -147,7 +149,10 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
 
 def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]:
     """Get tool definition for browser content extraction."""
-    tool_description = "Extract page content as markdown with tables of clickable, input, and scrollable elements. UUIDs reset on each call."
+    tool_description = (
+        "Extract page content as markdown with tables of clickable, input, and scrollable elements. UUIDs reset on each call."
+        "browser_get_content result is UNIQUE in whole conversation. Remember to summarize important information before calling again."
+    )
     tool_arguments = {}
     tool_required = []
 
@@ -183,6 +188,7 @@ def get_browser_get_content_tool_handler(
 
     def handle_browser_get_content(**params) -> Union[List[Dict[str, Any]], str]:
         result = browser_service.get_page_content()
+        browser_service._last_page_content = result.get("content", "")
         context_image = browser_service.capture_screenshot(
             format="jpeg",
             quality=70,
@@ -244,8 +250,14 @@ def get_browser_click_tool_handler(
 
         result = browser_service.click_element(element_uuid)
 
+        diff_summary = _get_content_delta_changes(browser_service)
+
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\nUUID: {element_uuid}"
+            return (
+                f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\n"
+                f"UUID: {element_uuid}\nClickedElement: {result.get('elementInfo', {}).get('text', 'Unknown')}.\n"
+                f"Content delta changes:\n{diff_summary}"
+            )
         else:
             return f"❌ Click failed: {result['error']}\nUUID: {element_uuid}.\nUse `browser_get_content` to get the updated UUID"
 
@@ -337,9 +349,10 @@ def get_browser_input_tool_handler(
             return "Error: No value provided for input."
 
         result = browser_service.input_data(element_uuid, str(value))
+        diff_summary = _get_content_delta_changes(browser_service)
 
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}"
+            return f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}\nContent delta changes:\n{diff_summary}"
         else:
             raise RuntimeError(
                 f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
@@ -612,7 +625,8 @@ def get_browser_send_key_tool_handler(
                 if result.get("modifiers")
                 else ""
             )
-            success_msg = f"✅ {result.get('message', 'Success')}. {key_info}"
+            diff_summary = _get_content_delta_changes(browser_service)
+            success_msg = f"✅ {result.get('message', 'Success')}. {key_info}\nContent delta changes:\n{diff_summary}"
             if modifiers_info:
                 success_msg += f". {modifiers_info}"
             return success_msg
@@ -622,6 +636,22 @@ def get_browser_send_key_tool_handler(
             )
 
     return handle_browser_send_key
+
+
+def _get_content_delta_changes(browser_service: BrowserAutomationService):
+    time.sleep(1)  # wait for page to stabilize
+    current_content = browser_service.get_page_content()
+    differ = difflib.Differ()
+    _last_page_content_lines = browser_service._last_page_content.splitlines()
+    cutoff_idx = _last_page_content_lines.index("## Clickable Elements")
+    diffs = list(
+        differ.compare(
+            _last_page_content_lines[:cutoff_idx],
+            current_content.get("content", "").splitlines(),
+        )
+    )
+    diff_summary = "\n".join([d.lstrip("+- ") for d in diffs if d.startswith("+ ")])
+    return diff_summary
 
 
 def register(service_instance=None, agent=None):
