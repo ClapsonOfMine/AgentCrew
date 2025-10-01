@@ -62,8 +62,10 @@ class AgentManager:
         if not self._initialized:
             self.agents: Dict[str, BaseAgent] = {}
             self.current_agent: Optional[BaseAgent] = None
-            self.enforce_transfer: bool = True  # Flag to enforce agent transfers
-            self.one_turn_process: bool = False  # Flag for one-turn processing
+            self.enforce_transfer: bool = True
+            self.one_turn_process: bool = False
+            self.context_shrink_enabled: bool = True
+            self.shrink_excluded_list: List[str] = []
             self._initialized = True
 
     @classmethod
@@ -102,22 +104,13 @@ class AgentManager:
             True if the agent was selected, False otherwise
         """
         if agent_name in self.agents:
-            # Get the new agent
             new_agent = self.agents[agent_name]
 
-            # If there was a previous agent, deactivate it
             if self.current_agent:
                 self.current_agent.deactivate()
 
-            # Set the new agent as current
             self.current_agent = new_agent
 
-            # if self.current_agent and isinstance(self.current_agent, LocalAgent):
-            #     if not self.current_agent.custom_system_prompt:
-            #         self.current_agent.set_custom_system_prompt(
-            #             self.get_transfer_system_prompt()
-            #         )
-            # Activate the new agent
             if self.current_agent:
                 self.current_agent.activate()
 
@@ -227,7 +220,7 @@ class AgentManager:
         if source_agent:
             if target_agent_name not in source_agent.shared_context_pool:
                 source_agent.shared_context_pool[target_agent_name] = []
-            for i, msg in enumerate(source_agent.std_history):
+            for i, msg in enumerate(source_agent.history):
                 if i not in source_agent.shared_context_pool[target_agent_name]:
                     if "content" in msg:
                         content = ""
@@ -281,13 +274,7 @@ class AgentManager:
         self.select_agent(target_agent_name)
         if direct_injected_messages and self.current_agent:
             length_of_current_agent_history = len(self.current_agent.history)
-            self.current_agent.history.extend(
-                direct_injected_messages
-                # MessageTransformer.convert_messages(
-                #     direct_injected_messages, self.current_agent.get_provider()
-                # )
-            )
-            ## injected messages should not be transfered back to source agent
+            self.current_agent.history.extend(direct_injected_messages)
             if source_agent_name and self.current_agent:
                 if source_agent_name not in self.current_agent.shared_context_pool:
                     self.current_agent.shared_context_pool[source_agent_name] = []

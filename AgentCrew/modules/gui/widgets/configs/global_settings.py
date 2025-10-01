@@ -97,6 +97,8 @@ class SettingsTab(QWidget):
         self.api_key_inputs = {}
         self.theme_dropdown = None
         self.yolo_mode_checkbox = None
+        self.auto_context_shrink_checkbox = None
+        self.shrink_excluded_input = None
 
         self.init_ui()
         self.load_api_keys()
@@ -135,6 +137,19 @@ class SettingsTab(QWidget):
         self.yolo_mode_checkbox = QCheckBox()
         self.yolo_mode_checkbox.setChecked(False)  # Default to unchecked
         global_settings_form_layout.addRow(yolo_label, self.yolo_mode_checkbox)
+
+        # Auto Context Shrink checkbox
+        auto_context_shrink_label = QLabel("Auto Context Shrink:")
+        self.auto_context_shrink_checkbox = QCheckBox()
+        self.auto_context_shrink_checkbox.setChecked(False)  # Default to unchecked
+        global_settings_form_layout.addRow(auto_context_shrink_label, self.auto_context_shrink_checkbox)
+
+        # Shrink Excluded Tools input
+        shrink_excluded_label = QLabel("Shrink Excluded Tools:")
+        self.shrink_excluded_input = QLineEdit()
+        self.shrink_excluded_input.setPlaceholderText("e.g., web_search, code_analysis, browser_navigate")
+        self.shrink_excluded_input.setStyleSheet(style_provider.get_input_style())
+        global_settings_form_layout.addRow(shrink_excluded_label, self.shrink_excluded_input)
 
         global_settings_group.setLayout(global_settings_form_layout)
         form_layout.addWidget(global_settings_group)
@@ -187,6 +202,18 @@ class SettingsTab(QWidget):
         if self.yolo_mode_checkbox:
             self.yolo_mode_checkbox.setChecked(yolo_mode)
 
+        # Load Auto Context Shrink setting
+        auto_context_shrink = global_settings_data.get("auto_context_shrink", False)
+        if self.auto_context_shrink_checkbox:
+            self.auto_context_shrink_checkbox.setChecked(auto_context_shrink)
+
+        # Load Shrink Excluded Tools setting
+        shrink_excluded = global_settings_data.get("shrink_excluded", [])
+        if self.shrink_excluded_input:
+            # Convert array to comma-separated string
+            shrink_excluded_str = ", ".join(shrink_excluded) if shrink_excluded else ""
+            self.shrink_excluded_input.setText(shrink_excluded_str)
+
     def save_settings(self):
         if "api_keys" not in self.global_config:
             self.global_config["api_keys"] = {}
@@ -204,6 +231,18 @@ class SettingsTab(QWidget):
         self.global_config["global_settings"]["yolo_mode"] = (
             self.yolo_mode_checkbox.isChecked() if self.yolo_mode_checkbox else False
         )
+        self.global_config["global_settings"]["auto_context_shrink"] = (
+            self.auto_context_shrink_checkbox.isChecked() if self.auto_context_shrink_checkbox else False
+        )
+        
+        # Save Shrink Excluded Tools setting
+        shrink_excluded_str = self.shrink_excluded_input.text().strip() if self.shrink_excluded_input else ""
+        if shrink_excluded_str:
+            # Convert comma-separated string to array, trim whitespace from each item
+            shrink_excluded_list = [tool.strip() for tool in shrink_excluded_str.split(",") if tool.strip()]
+        else:
+            shrink_excluded_list = []
+        self.global_config["global_settings"]["shrink_excluded"] = shrink_excluded_list
 
         try:
             # Save the configuration

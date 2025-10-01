@@ -4,10 +4,12 @@ import time
 from typing import Dict, Any, List, Optional, Callable, Literal
 from AgentCrew.modules.llm import BaseLLMService
 
-# from AgentCrew.modules.llm.message import MessageTransformer
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules import logger
 import copy
+
+SHRINK_CONTEXT_THRESHOLD = 100000
+SHRINK_LENGTH_THRESHOLD = 15
 
 
 class LocalAgent(BaseAgent):
@@ -37,8 +39,6 @@ class LocalAgent(BaseAgent):
             voice_id: Voice ID to use for text-to-speech
         """
         super().__init__(name, description)
-        # self.name = name
-        # self.description = description
         self.llm = llm_service
         self.temperature = temperature
         self.services = services
@@ -47,14 +47,11 @@ class LocalAgent(BaseAgent):
         self.custom_system_prompt = None
         self.tool_prompts = []
         self.is_remoting_mode: bool = is_remoting_mode
-
-        # Voice configuration
+        self.input_tokens_usage = 0
+        self.output_tokens_usage = 0
         self.voice_enabled: Literal["full", "partial", "disabled"] = voice_enabled
         self.voice_id: Optional[str] = voice_id
 
-        # self.history = []
-        # self.shared_context_pool: Dict[str, List[int]] = {}
-        # Store tool definitions in the same format as ToolRegistry
         self.tool_definitions = {}  # {tool_name: (definition_func, handler_factory, service_instance)}
         self.registered_tools = (
             set()
@@ -344,14 +341,10 @@ class LocalAgent(BaseAgent):
             # Note: We don't clear self.tool_definitions as we want to keep the definitions
 
     @property
-    def std_history(self):
-        """
-        @DEPRECATED: Use self.history directly.
-        """
-        return self.history
-        # return MessageTransformer.standardize_messages(
-        #     self.history, self.llm.provider_name, self.name
-        # )
+    def clean_history(self):
+        clean_history = copy.deepcopy(self.history)
+        self._clean_shrinkable_tool_result(clean_history)
+        return clean_history
 
     def get_provider(self) -> str:
         return self.llm.provider_name
@@ -583,7 +576,7 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                 if len(adaptive_messages["content"]) > 0:
                     final_messages.insert(last_user_index, adaptive_messages)
 
-    def _clean_unique_tool_result(self, final_messages: List[Dict[str, Any]]):
+    def _clean_shrinkable_tool_result(self, final_messages: List[Dict[str, Any]]):
         """
         Clean unique tool results by replacing all but the last [UNIQUE] tool result with "[INVALIDATED]".
 
@@ -591,30 +584,45 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
             final_messages: List of message dictionaries to process
         """
         # Find all indices of tool messages that start with [UNIQUE]
-        unique_tool_indices = []
+        shrinked_tool_indices = []
+        agent_manager = self.services.get("agent_manager", None)
+
+        is_shrinkable = (
+            agent_manager.context_shrink_enabled if agent_manager else False
+        ) and self.input_tokens_usage > SHRINK_CONTEXT_THRESHOLD
+        shrink_excluded = agent_manager.shrink_excluded_list if agent_manager else []
 
         for i, msg in enumerate(final_messages):
             # Check different message formats for tool results
             content = None
 
-            # Check for direct content field (OpenAI/Groq format)
-            if msg.get("role") == "tool" and "content" in msg:
-                content = msg["content"]
+            if msg.get("role") != "tool":
+                continue
 
-            # Check for Claude format (content list with tool_result type)
-            elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
-                for content_item in msg["content"]:
-                    if (
-                        isinstance(content_item, dict)
-                        and content_item.get("type") == "tool_result"
-                        and "content" in content_item
-                    ):
-                        content = content_item["content"]
-                        break
+            tool_name = msg.get("tool_name", "")
+            if tool_name in shrink_excluded:
+                continue
+
+            content = msg.get("content", "")
+
+            if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                print("Shrinkable tool message found:")
+                shrinked_tool_indices.append(i)
+
+            # TODO: remove this since agent message already standardized
+            # elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
+            #     for content_item in msg["content"]:
+            #         if (
+            #             isinstance(content_item, dict)
+            #             and content_item.get("type") == "tool_result"
+            #             and "content" in content_item
+            #         ):
+            #             content = content_item["content"]
+            #             break
 
             # Check if content starts with [UNIQUE]
             if content and isinstance(content, str) and content.startswith("[UNIQUE]"):
-                unique_tool_indices.append(i)
+                shrinked_tool_indices.append(i)
             elif content and isinstance(content, list):
                 if (
                     len(
@@ -627,11 +635,11 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                     )
                     > 0
                 ):
-                    unique_tool_indices.append(i)
+                    shrinked_tool_indices.append(i)
 
         # Replace all but the last [UNIQUE] tool result with "[INVALIDATED]"
-        if len(unique_tool_indices) > 1:
-            for i in unique_tool_indices[:-1]:  # All except the last one
+        if len(shrinked_tool_indices) > 1:
+            for i in shrinked_tool_indices[:-1]:  # All except the last one
                 msg = final_messages[i]
 
                 # Update content based on message format
@@ -673,7 +681,7 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
         else:
             final_messages = copy.deepcopy(messages)
         self._enhance_agent_context_messages(final_messages)
-        self._clean_unique_tool_result(final_messages)
+        self._clean_shrinkable_tool_result(final_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 final_messages
@@ -698,12 +706,13 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                         _input_tokens_usage = chunk_input_tokens
                     if chunk_output_tokens > 0:
                         _output_tokens_usage = chunk_output_tokens
+
+            self.input_tokens_usage = _input_tokens_usage
+            self.output_tokens_usage = _output_tokens_usage
             if callback:
                 callback(_tool_uses, _input_tokens_usage, _output_tokens_usage)
             else:
                 self.tool_uses = _tool_uses
-                self.input_tokens_usage = _input_tokens_usage
-                self.output_tokens_usage = _output_tokens_usage
 
         except GeneratorExit as e:
             logger.warning(f"Stream processing interrupted: {e}")
@@ -713,4 +722,7 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
             raise e
 
     def get_process_result(self):
+        """
+        @DEPRECATED: Use the callback in process_messages instead.
+        """
         return (self.tool_uses, self.input_tokens_usage, self.output_tokens_usage)

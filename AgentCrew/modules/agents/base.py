@@ -42,7 +42,7 @@ class BaseAgent(ABC):
 
     @property
     @abstractmethod
-    def std_history(self) -> List:
+    def clean_history(self) -> List:
         pass
 
     @abstractmethod
@@ -94,4 +94,7 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def get_process_result(self) -> Tuple:
+        """
+        @DEPRECATED: Use the callback in process_messages instead.
+        """
         pass

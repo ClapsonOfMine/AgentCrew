@@ -129,9 +129,9 @@ def get_delegate_tool_handler(agent_manager: AgentManager) -> Callable:
 
             # Prepare context from current conversation
             context_messages = []
-            if original_agent and original_agent.std_history:
+            if original_agent and original_agent.history:
                 # Get conversation context to share with the delegated agent
-                for msg in original_agent.std_history:
+                for msg in original_agent.history:
                     if "content" in msg and msg.get("role") != "tool":
                         content = ""
                         processing_content = msg["content"]

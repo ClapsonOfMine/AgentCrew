@@ -483,6 +483,8 @@ class AnthropicService(BaseLLMService):
             }
             stream_params.pop("top_p", None)
             stream_params.pop("temperature", None)
+        if self.model == "claude-sonnet-4-5":
+            stream_params.pop("top_p", None)
         # else:
         #     stream_params["temperature"] = 0.7
 

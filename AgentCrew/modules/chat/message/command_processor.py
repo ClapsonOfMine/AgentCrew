@@ -46,7 +46,7 @@ class CommandProcessor:
             return CommandResult(handled=True, clear_flag=True)
         elif user_input.lower() == "/debug":
             self.message_handler._notify(
-                "debug_requested", self.message_handler.agent.history
+                "debug_requested", self.message_handler.agent.clean_history
             )
             self.message_handler._notify(
                 "debug_requested", self.message_handler.streamline_messages

@@ -50,7 +50,7 @@ class RemoteAgent(BaseAgent):
         return True
 
     @property
-    def std_history(self):
+    def clean_history(self):
         return self.history
         # return MessageTransformer.standardize_messages(
         #     self.history, "a2a_remote", self.name
@@ -167,4 +167,7 @@ class RemoteAgent(BaseAgent):
         # it signifies no textual content was streamed as artifacts.
 
     def get_process_result(self) -> Tuple:
+        """
+        @DEPRECATED: Use the callback in process_messages instead.
+        """
         return ([], 0, 0)

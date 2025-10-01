@@ -381,6 +381,14 @@ def setup_agents(services, config_path, remoting_provider=None, model_id=None):
     # Add agent_manager to services for tool registration
     services["agent_manager"] = agent_manager
 
+    global_config = ConfigManagement().read_global_config_data()
+    agent_manager.context_shrink_enabled = global_config.get("global_settings", {}).get(
+        "auto_context_shrink", True
+    )
+    agent_manager.shrink_excluded_list = global_config.get("global_settings", {}).get(
+        "shrink_excluded", []
+    )
+
     # Get the LLM service
     llm_service = services["llm"]
 

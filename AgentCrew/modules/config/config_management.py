@@ -235,6 +235,8 @@ class ConfigManagement:
             "global_settings": {
                 "theme": "dark",
                 "yolo_mode": False,
+                "auto_context_shrink": True,
+                "shrink_excluded": [],
             },
         }
         try:
@@ -273,6 +275,14 @@ class ConfigManagement:
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=2)
+            agent_manager = AgentManager.get_instance()
+            agent_manager.context_shrink_enabled = config_data.get(
+                "global_settings", {}
+            ).get("auto_context_shrink", True)
+            agent_manager.shrink_excluded_list = config_data.get(
+                "global_settings", {}
+            ).get("shrink_excluded", [])
+
         except Exception as e:
             raise ValueError(
                 f"Error writing global configuration to {config_path}: {str(e)}"
