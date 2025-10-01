@@ -277,12 +277,12 @@ _DEEPINFRA_MODELS = [
         output_token_price_1m=0.6,
     ),
     Model(
-        id="zai-org/GLM-4.5",
+        id="zai-org/GLM-4.6",
         provider="deepinfra",
-        name="Zai GLM-4.5",
-        description="The GLM-4.5 series models are foundation models designed for intelligent agents",
+        name="Zai GLM-4.6",
+        description="The GLM-4.6 series models are foundation models designed for intelligent agents",
         capabilities=["text-generation", "tool_use", "stream"],
-        input_token_price_1m=0.55,
+        input_token_price_1m=0.6,
         output_token_price_1m=2.0,
     ),
     Model(
