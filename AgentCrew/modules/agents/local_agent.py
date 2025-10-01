@@ -202,7 +202,7 @@ class LocalAgent(BaseAgent):
             prompt: The system prompt
         """
         return (
-            prompt.replace("{current_date}", datetime.today().strftime("%A, %d/%m/%Y"))
+            prompt.replace("{current_date}", datetime.today().strftime("%A, %d %B %Y"))
             .replace("{cwd}", os.getcwd())
             .replace("{current_agent_name}", self.name)
             .replace("{current_agent_description}", self.description)
