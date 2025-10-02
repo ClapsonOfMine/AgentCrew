@@ -603,11 +603,9 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
             if tool_name in shrink_excluded:
                 continue
 
-            content = msg.get("content", "")
-
             if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
-                print("Shrinkable tool message found:")
                 shrinked_tool_indices.append(i)
+                continue
 
             # TODO: remove this since agent message already standardized
             # elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
@@ -621,6 +619,7 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
             #             break
 
             # Check if content starts with [UNIQUE]
+            content = msg.get("content", "")
             if content and isinstance(content, str) and content.startswith("[UNIQUE]"):
                 shrinked_tool_indices.append(i)
             elif content and isinstance(content, list):
