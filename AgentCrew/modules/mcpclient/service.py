@@ -109,7 +109,20 @@ class MCPService:
                         logger.info(
                             f"MCPService: ClientSession established for {server_name}"
                         )
-                        server_info = await session.initialize()
+                        retried = 0
+                        server_info = None
+                        while retried < 3:
+                            try:
+                                server_info = await session.initialize()
+                                break
+                            except Exception:
+                                print("Retrying MCP connection...")
+                                await asyncio.sleep(retried * 2)
+                                retried += 1
+
+                        if not server_info:
+                            raise Exception("Failed to initialize MCP session.")
+
                         self.sessions[combined_server_id] = session
                         self.connected_servers[combined_server_id] = (
                             True  # Mark as connected before tool registration

@@ -99,7 +99,7 @@ class LoadingOverlay(QWidget):
         """Show the loading overlay."""
         if self.parent():
             # Resize to cover parent
-            self.resize(self.parent().size())
+            self.resize(self.parent().size())  # type: ignore
             self.raise_()
         self.show()
 
@@ -111,4 +111,4 @@ class LoadingOverlay(QWidget):
         """Keep overlay covering parent when resized."""
         super().resizeEvent(event)
         if self.parent() and self.isVisible():
-            self.resize(self.parent().size())
+            self.resize(self.parent().size())  # type: ignore

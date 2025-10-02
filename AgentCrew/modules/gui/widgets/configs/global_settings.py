@@ -142,14 +142,20 @@ class SettingsTab(QWidget):
         auto_context_shrink_label = QLabel("Auto Context Shrink:")
         self.auto_context_shrink_checkbox = QCheckBox()
         self.auto_context_shrink_checkbox.setChecked(False)  # Default to unchecked
-        global_settings_form_layout.addRow(auto_context_shrink_label, self.auto_context_shrink_checkbox)
+        global_settings_form_layout.addRow(
+            auto_context_shrink_label, self.auto_context_shrink_checkbox
+        )
 
         # Shrink Excluded Tools input
         shrink_excluded_label = QLabel("Shrink Excluded Tools:")
         self.shrink_excluded_input = QLineEdit()
-        self.shrink_excluded_input.setPlaceholderText("e.g., web_search, code_analysis, browser_navigate")
+        self.shrink_excluded_input.setPlaceholderText(
+            "e.g., web_search, code_analysis, browser_navigate"
+        )
         self.shrink_excluded_input.setStyleSheet(style_provider.get_input_style())
-        global_settings_form_layout.addRow(shrink_excluded_label, self.shrink_excluded_input)
+        global_settings_form_layout.addRow(
+            shrink_excluded_label, self.shrink_excluded_input
+        )
 
         global_settings_group.setLayout(global_settings_form_layout)
         form_layout.addWidget(global_settings_group)
@@ -232,14 +238,22 @@ class SettingsTab(QWidget):
             self.yolo_mode_checkbox.isChecked() if self.yolo_mode_checkbox else False
         )
         self.global_config["global_settings"]["auto_context_shrink"] = (
-            self.auto_context_shrink_checkbox.isChecked() if self.auto_context_shrink_checkbox else False
+            self.auto_context_shrink_checkbox.isChecked()
+            if self.auto_context_shrink_checkbox
+            else False
         )
-        
+
         # Save Shrink Excluded Tools setting
-        shrink_excluded_str = self.shrink_excluded_input.text().strip() if self.shrink_excluded_input else ""
+        shrink_excluded_str = (
+            self.shrink_excluded_input.text().strip()
+            if self.shrink_excluded_input
+            else ""
+        )
         if shrink_excluded_str:
             # Convert comma-separated string to array, trim whitespace from each item
-            shrink_excluded_list = [tool.strip() for tool in shrink_excluded_str.split(",") if tool.strip()]
+            shrink_excluded_list = [
+                tool.strip() for tool in shrink_excluded_str.split(",") if tool.strip()
+            ]
         else:
             shrink_excluded_list = []
         self.global_config["global_settings"]["shrink_excluded"] = shrink_excluded_list
