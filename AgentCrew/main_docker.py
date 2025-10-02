@@ -714,6 +714,10 @@ def copilot_auth():
         click.echo(f"📋 Please visit {verification_uri} and enter code: {user_code}")
         click.echo("⏳ Waiting for authentication...")
 
+        import webbrowser
+
+        webbrowser.open(verification_uri)
+
         # Step 2: Poll for access token
         while True:
             time.sleep(5)
