@@ -21,6 +21,8 @@ from AgentCrew.modules.config import ConfigManagement
 from AgentCrew.modules.agents import AgentManager
 from AgentCrew.modules.gui.widgets.json_editor import JsonEditor
 from AgentCrew.modules.gui.themes import StyleProvider
+from AgentCrew.modules.gui.widgets.loading_overlay import LoadingOverlay
+from .save_worker import SaveWorker
 
 
 class MCPsConfigTab(QWidget):
@@ -37,6 +39,9 @@ class MCPsConfigTab(QWidget):
         self.is_code_view = False  # Track current view mode
         self.current_server_data = None  # Store current server data for view switching
         self.style_provider = StyleProvider()
+
+        # Loading overlay for save operations
+        self.save_worker = None
 
         # Load MCP configuration
         self.mcps_config = self.config_manager.read_mcp_config()
@@ -247,6 +252,9 @@ class MCPsConfigTab(QWidget):
         main_layout = QHBoxLayout()
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)
+
+        # Create loading overlay (will be parented to the main widget)
+        self.loading_overlay = LoadingOverlay(self, "Saving MCP servers...")
 
         # Disable editor initially
         self.set_editor_enabled(False)
@@ -758,7 +766,17 @@ class MCPsConfigTab(QWidget):
         self.save_all_mcps()
 
     def save_all_mcps(self):
-        """Save all MCP servers to the configuration file."""
+        """Save all MCP servers to the configuration file with loading indicator."""
+        self.loading_overlay.set_message("Saving MCP servers...")
+        self.loading_overlay.show_loading()
+
+        # Disable UI during save
+        self.mcps_list.setEnabled(False)
+        self.save_btn.setEnabled(False)
+        self.add_mcp_btn.setEnabled(False)
+        self.remove_mcp_btn.setEnabled(False)
+        self.show_code_btn.setEnabled(False)
+
         mcps_config = {}
 
         for i in range(self.mcps_list.count()):
@@ -766,14 +784,54 @@ class MCPsConfigTab(QWidget):
             server_id, server_config = item.data(Qt.ItemDataRole.UserRole)
             mcps_config[server_id] = server_config
 
-        # Save to file
-        self.config_manager.write_mcp_config(mcps_config)
-
-        # Update local copy
         self.mcps_config = mcps_config
 
-        # Emit signal that configuration changed
+        self.save_worker = SaveWorker(self._perform_mcp_save, self.mcps_config)
+        self.save_worker.finished.connect(self._on_save_complete)
+        self.save_worker.error.connect(self._on_save_error)
+        self.save_worker.start()
+
+    def _perform_mcp_save(self, mcps_config):
+        """Perform the actual save operation (runs in worker thread)."""
+        self.config_manager.write_mcp_config(mcps_config)
+
+    def _on_save_complete(self):
+        """Handle successful save completion."""
+        self.loading_overlay.hide_loading()
+
+        self.mcps_list.setEnabled(True)
+        self.add_mcp_btn.setEnabled(True)
+
+        if self.mcps_list.currentItem():
+            self.remove_mcp_btn.setEnabled(True)
+            self.show_code_btn.setEnabled(True)
+
         self.config_changed.emit()
+
+        if self.save_worker:
+            self.save_worker.deleteLater()
+            self.save_worker = None
+
+    def _on_save_error(self, error_message: str):
+        """Handle save error."""
+        # Hide loading overlay
+        self.loading_overlay.hide_loading()
+
+        self.mcps_list.setEnabled(True)
+        self.add_mcp_btn.setEnabled(True)
+        if self.mcps_list.currentItem():
+            self.remove_mcp_btn.setEnabled(True)
+            self.show_code_btn.setEnabled(True)
+
+        QMessageBox.critical(
+            self,
+            "Save Error",
+            f"Failed to save MCP servers configuration:\n{error_message}",
+        )
+
+        if self.save_worker:
+            self.save_worker.deleteLater()
+            self.save_worker = None
 
     def _toggle_view_mode(self):
         """Toggle between form view and code view."""
@@ -781,7 +839,7 @@ class MCPsConfigTab(QWidget):
             return
 
         current_item = self.mcps_list.currentItem()
-        server_id, server_config = current_item.data(Qt.ItemDataRole.UserRole)
+        server_id, _ = current_item.data(Qt.ItemDataRole.UserRole)
 
         if self.is_code_view:
             try:

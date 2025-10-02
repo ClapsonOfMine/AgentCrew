@@ -425,6 +425,7 @@ class ConsoleUI(Observer):
                         or user_input.startswith("/file ")
                         or user_input.startswith("/consolidate ")
                         or user_input.startswith("/agent ")
+                        or user_input.startswith("/model ")
                     ):
                         self.start_loading_animation()
 

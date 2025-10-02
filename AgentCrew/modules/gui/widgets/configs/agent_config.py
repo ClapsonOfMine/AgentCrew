@@ -30,6 +30,8 @@ from AgentCrew.modules.memory.context_persistent import ContextPersistenceServic
 
 from AgentCrew.modules.gui.themes import StyleProvider
 from AgentCrew.modules.gui.widgets.markdown_editor import MarkdownEditor
+from AgentCrew.modules.gui.widgets.loading_overlay import LoadingOverlay
+from .save_worker import SaveWorker
 
 
 class AgentsConfigTab(QWidget):
@@ -56,6 +58,8 @@ class AgentsConfigTab(QWidget):
         self.agents_config = self.config_manager.read_agents_config()
         self._is_dirty = False
         self.current_agent_behaviors = {}  # Cache for current agent's behaviors
+
+        self.save_worker = None
 
         self.init_ui()
         self.load_agents()
@@ -367,6 +371,9 @@ class AgentsConfigTab(QWidget):
         self.editor_layout.addWidget(self.editor_stacked_widget)  # Changed
         self.editor_layout.addWidget(self.save_btn)
         # self.editor_layout.addStretch() # Removed, stretch is within individual editors
+
+        # Create loading overlay (will be parented to the main widget)
+        self.loading_overlay = LoadingOverlay(self, "Saving agents...")
 
         # Connect signals for editor fields to handle changes
         # Local agent fields
@@ -1120,7 +1127,18 @@ class AgentsConfigTab(QWidget):
             )
 
     def save_all_agents(self):
-        """Save all agents to the configuration file."""
+        """Save all agents to the configuration file with loading indicator."""
+        self.loading_overlay.set_message("Saving agents...")
+        self.loading_overlay.show_loading()
+
+        # Disable UI during save
+        self.agents_list.setEnabled(False)
+        self.save_btn.setEnabled(False)
+        self.add_agent_menu_btn.setEnabled(False)
+        self.import_agents_btn.setEnabled(False)
+        self.export_agents_btn.setEnabled(False)
+        self.remove_agent_btn.setEnabled(False)
+
         local_agents_list = []
         remote_agents_list = []
 
@@ -1139,8 +1157,48 @@ class AgentsConfigTab(QWidget):
         self.agents_config["agents"] = local_agents_list
         self.agents_config["remote_agents"] = remote_agents_list
 
-        self.config_manager.write_agents_config(self.agents_config)
+        self.save_worker = SaveWorker(self._perform_agent_save, self.agents_config)
+        self.save_worker.finished.connect(self._on_save_complete)
+        self.save_worker.error.connect(self._on_save_error)
+        self.save_worker.start()
+
+    def _perform_agent_save(self, config_data):
+        """Perform the actual save operation (runs in worker thread)."""
+        self.config_manager.write_agents_config(config_data)
+
+    def _on_save_complete(self):
+        """Handle successful save completion."""
+        self.loading_overlay.hide_loading()
+
+        self.agents_list.setEnabled(True)
+        self.add_agent_menu_btn.setEnabled(True)
+        self.import_agents_btn.setEnabled(True)
+
+        self.on_selection_changed()
+
         self.config_changed.emit()
+
+        if self.save_worker:
+            self.save_worker.deleteLater()
+            self.save_worker = None
+
+    def _on_save_error(self, error_message: str):
+        """Handle save error."""
+        # Hide loading overlay
+        self.loading_overlay.hide_loading()
+
+        self.agents_list.setEnabled(True)
+        self.add_agent_menu_btn.setEnabled(True)
+        self.import_agents_btn.setEnabled(True)
+        self.on_selection_changed()
+
+        QMessageBox.critical(
+            self, "Save Error", f"Failed to save agents configuration:\n{error_message}"
+        )
+
+        if self.save_worker:
+            self.save_worker.deleteLater()
+            self.save_worker = None
 
     def load_agent_behaviors(self, agent_name: str):
         """Load adaptive behaviors for the selected agent."""
