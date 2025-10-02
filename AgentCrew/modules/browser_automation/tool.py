@@ -643,7 +643,10 @@ def _get_content_delta_changes(browser_service: BrowserAutomationService):
     current_content = browser_service.get_page_content()
     differ = difflib.Differ()
     _last_page_content_lines = browser_service._last_page_content.splitlines()
-    cutoff_idx = _last_page_content_lines.index("## Clickable Elements")
+    try:
+        cutoff_idx = _last_page_content_lines.index("## Clickable Elements")
+    except ValueError:
+        cutoff_idx = len(_last_page_content_lines)
     diffs = list(
         differ.compare(
             _last_page_content_lines[:cutoff_idx],

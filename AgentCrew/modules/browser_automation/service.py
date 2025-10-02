@@ -358,8 +358,11 @@ class BrowserAutomationService:
 
             retry_count = 0
 
-            while not dom_data or not dom_data[0].get("result", {}).get("root", None):
+            while (
+                not dom_data or len(dom_data) < 1 or not dom_data[0].get("result", None)
+            ):
                 time.sleep(1)
+                _, dom_data = self.chrome_interface.DOM.getDocument(depth=1)
                 retry_count += 1
                 if retry_count >= 5:
                     break
@@ -389,6 +392,7 @@ class BrowserAutomationService:
             # Convert HTML to markdown
             raw_markdown_content = convert_to_markdown(
                 filtered_html,
+                source_encoding="utf-8",
                 strip_newlines=True,
                 extract_metadata=False,
                 remove_forms=False,
@@ -422,6 +426,10 @@ class BrowserAutomationService:
                 + clickable_elements_md
                 + input_elements_md
                 + scrollable_elements_md
+            )
+
+            final_content = final_content.encode("utf-8", "ignore").decode(
+                "utf-8", "ignore"
             )
 
             current_url = self._get_current_url()
