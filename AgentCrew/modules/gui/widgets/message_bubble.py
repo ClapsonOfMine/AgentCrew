@@ -564,7 +564,12 @@ class MessageBubble(QFrame):
             return
 
         if self.streaming_text and self.streaming_text != self.message_label.text():
-            self.message_label.setText(self.streaming_text)
+            chunked_streaming_text = self.streaming_text.splitlines(keepends=True)
+            self.message_label.setText(
+                "[...]" + "".join(chunked_streaming_text[-60:])
+                if len(chunked_streaming_text) > 60
+                else self.streaming_text
+            )
 
     def _finalize_streaming(self):
         """Convert to formatted text once streaming is complete."""
