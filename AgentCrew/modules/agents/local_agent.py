@@ -371,6 +371,7 @@ class LocalAgent(BaseAgent):
             "role": "tool",
             "agent": self.name,
             "tool_call_id": tool_use["id"],
+            "tool_name": tool_use["name"],
             "content": tool_result,
         }
 
@@ -596,45 +597,46 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
             # Check different message formats for tool results
             content = None
 
-            if msg.get("role") != "tool":
-                continue
+            if msg.get("role") == "assistant":
+                if len(msg.get("tool_calls", [])) == 0:
+                    continue
 
-            tool_name = msg.get("tool_name", "")
-            if tool_name in shrink_excluded:
-                continue
+                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                    for tool_call in msg.get("tool_calls", []):
+                        if tool_call.get("name") in shrink_excluded:
+                            continue
+                        tool_call["arguments"] = {}
 
-            if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
-                shrinked_tool_indices.append(i)
-                continue
+            elif msg.get("role") == "tool":
+                tool_name = msg.get("tool_name", "")
+                if tool_name in shrink_excluded:
+                    continue
 
-            # TODO: remove this since agent message already standardized
-            # elif msg.get("role") == "user" and isinstance(msg.get("content"), list):
-            #     for content_item in msg["content"]:
-            #         if (
-            #             isinstance(content_item, dict)
-            #             and content_item.get("type") == "tool_result"
-            #             and "content" in content_item
-            #         ):
-            #             content = content_item["content"]
-            #             break
+                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                    msg["content"] = "[REDACTED]"
+                    continue
 
-            # Check if content starts with [UNIQUE]
-            content = msg.get("content", "")
-            if content and isinstance(content, str) and content.startswith("[UNIQUE]"):
-                shrinked_tool_indices.append(i)
-            elif content and isinstance(content, list):
+                # Check if content starts with [UNIQUE]
+                content = msg.get("content", "")
                 if (
-                    len(
-                        [
-                            d.get("text", "")
-                            for d in content
-                            if isinstance(d, dict)
-                            and d.get("text", "").startswith("[UNIQUE]")
-                        ]
-                    )
-                    > 0
+                    content
+                    and isinstance(content, str)
+                    and content.startswith("[UNIQUE]")
                 ):
                     shrinked_tool_indices.append(i)
+                elif content and isinstance(content, list):
+                    if (
+                        len(
+                            [
+                                d.get("text", "")
+                                for d in content
+                                if isinstance(d, dict)
+                                and d.get("text", "").startswith("[UNIQUE]")
+                            ]
+                        )
+                        > 0
+                    ):
+                        shrinked_tool_indices.append(i)
 
         # Replace all but the last [UNIQUE] tool result with "[INVALIDATED]"
         if len(shrinked_tool_indices) > 1:
