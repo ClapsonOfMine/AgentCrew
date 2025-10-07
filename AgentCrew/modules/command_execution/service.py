@@ -1,147 +1,18 @@
-"""
-Command Execution Service
-
-Secure, platform-aware command execution with threading, timeout, and resource controls.
-"""
-
 import os
 import sys
 import time
 import uuid
 import queue
-import logging
 import threading
 import subprocess
 import re
 import atexit
 import hashlib
-from enum import Enum
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
-from collections import defaultdict
-from dataclasses import dataclass, field
-
-logger = logging.getLogger(__name__)
-
-
-class CommandState(Enum):
-    """Command lifecycle states"""
-
-    QUEUED = "queued"
-    STARTING = "starting"
-    RUNNING = "running"
-    WAITING_INPUT = "waiting_input"
-    COMPLETING = "completing"
-    COMPLETED = "completed"
-    TIMEOUT = "timeout"
-    ERROR = "error"
-    KILLED = "killed"
-
-
-@dataclass
-class CommandProcess:
-    """Represents a running command with its process and metadata"""
-
-    id: str
-    command: str
-    process: subprocess.Popen
-    platform: str
-    start_time: float
-    output_queue: queue.Queue = field(default_factory=queue.Queue)
-    error_queue: queue.Queue = field(default_factory=queue.Queue)
-    state: CommandState = CommandState.QUEUED
-    exit_code: Optional[int] = None
-    reader_threads: List[threading.Thread] = field(default_factory=list)
-    stop_event: threading.Event = field(default_factory=threading.Event)
-    total_output_size: int = 0
-    working_dir: Optional[str] = None
-
-    def transition_to(self, new_state: CommandState):
-        """Transition to new state with validation"""
-        valid_transitions = {
-            CommandState.QUEUED: [CommandState.STARTING, CommandState.ERROR],
-            CommandState.STARTING: [CommandState.RUNNING, CommandState.ERROR],
-            CommandState.RUNNING: [
-                CommandState.WAITING_INPUT,
-                CommandState.COMPLETING,
-                CommandState.TIMEOUT,
-                CommandState.ERROR,
-                CommandState.KILLED,
-            ],
-            CommandState.WAITING_INPUT: [
-                CommandState.RUNNING,
-                CommandState.COMPLETING,
-                CommandState.TIMEOUT,
-                CommandState.ERROR,
-                CommandState.KILLED,
-            ],
-            CommandState.COMPLETING: [CommandState.COMPLETED, CommandState.ERROR],
-            CommandState.COMPLETED: [],
-            CommandState.TIMEOUT: [],
-            CommandState.ERROR: [],
-            CommandState.KILLED: [],
-        }
-
-        if new_state not in valid_transitions.get(self.state, []):
-            logger.warning(
-                f"Invalid state transition: {self.state.value} -> {new_state.value}"
-            )
-            return
-
-        logger.debug(f"Command {self.id}: {self.state.value} -> {new_state.value}")
-        self.state = new_state
-
-
-class CommandMetrics:
-    """Track command execution metrics"""
-
-    def __init__(self):
-        self.total_executed = 0
-        self.total_timeouts = 0
-        self.total_errors = 0
-        self.total_killed = 0
-        self.avg_execution_time = 0.0
-        self.command_frequency = defaultdict(int)
-        self._lock = threading.Lock()
-
-    def record_execution(self, command: str, duration: float, status: str):
-        """Record command execution metrics"""
-        with self._lock:
-            self.total_executed += 1
-
-            if status == "timeout":
-                self.total_timeouts += 1
-            elif status == "error":
-                self.total_errors += 1
-            elif status == "killed":
-                self.total_killed += 1
-
-            # Update moving average execution time
-            if self.total_executed > 1:
-                self.avg_execution_time = (
-                    self.avg_execution_time * (self.total_executed - 1) + duration
-                ) / self.total_executed
-            else:
-                self.avg_execution_time = duration
-
-            # Track command frequency
-            cmd_name = command.split()[0] if command else "unknown"
-            self.command_frequency[cmd_name] += 1
-
-    def get_report(self) -> Dict[str, Any]:
-        """Get metrics report"""
-        with self._lock:
-            total = max(self.total_executed, 1)
-            return {
-                "total_executed": self.total_executed,
-                "timeout_rate": self.total_timeouts / total,
-                "error_rate": self.total_errors / total,
-                "kill_rate": self.total_killed / total,
-                "avg_execution_time_seconds": round(self.avg_execution_time, 2),
-                "top_commands": sorted(
-                    self.command_frequency.items(), key=lambda x: x[1], reverse=True
-                )[:10],
-            }
+from .metric import CommandMetrics
+from .types import CommandState, CommandProcess
+from AgentCrew.modules import logger
 
 
 class CommandExecutionService:
@@ -158,7 +29,7 @@ class CommandExecutionService:
 
     # Security configuration
     MAX_CONCURRENT_COMMANDS = 3  # Application-wide
-    MAX_COMMAND_LIFETIME = 60  # seconds
+    MAX_COMMAND_LIFETIME = 120  # seconds
     MAX_OUTPUT_SIZE = 1 * 1024 * 1024  # 1MB
     MAX_COMMANDS_PER_MINUTE = 10  # Application-wide
     DEFAULT_TIMEOUT = 5  # seconds
@@ -248,12 +119,6 @@ class CommandExecutionService:
         for pattern in self.BLOCKED_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
                 return False, f"Command contains blocked pattern: {pattern}"
-
-        # Check for shell injection attempts
-        # dangerous_chars = [";", "&&", "||", "|", "`", "$()"]
-        # for char in dangerous_chars:
-        #     if char in command and cmd_name not in ["echo", "grep"]:
-        #         return False, f"Potentially dangerous character '{char}' in command"
 
         return True, ""
 
@@ -453,10 +318,7 @@ class CommandExecutionService:
         try:
             shell_executable, shell_args = self._get_shell_config()
 
-            if self._is_windows:
-                full_command = [shell_executable] + shell_args + [command]
-            else:
-                full_command = [shell_executable] + shell_args + [command]
+            full_command = [shell_executable] + shell_args + [command]
 
             env = os.environ.copy()
             if env_vars:
