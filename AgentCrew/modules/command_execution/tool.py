@@ -91,9 +91,9 @@ def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
         },
         "working_dir": {
             "type": "string",
+            "default": "./",
             "description": (
-                "Working directory for command execution (optional). "
-                "Must be within project bounds for security. Example: './src'"
+                "Working directory for command execution. Default is current directory ('./'). "
             ),
         },
         "env_vars": {
@@ -324,7 +324,7 @@ def get_run_command_tool_handler(command_service: CommandExecutionService) -> Ca
         """
         command = params.get("command")
         timeout = params.get("timeout", 5)
-        working_dir = params.get("working_dir")
+        working_dir = params.get("working_dir", "./")
         env_vars = params.get("env_vars")
 
         if not command:

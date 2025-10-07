@@ -12,6 +12,17 @@ from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
 from .metric import CommandMetrics
 from .types import CommandState, CommandProcess
+from .constants import (
+    MAX_CONCURRENT_COMMANDS,
+    MAX_COMMAND_LIFETIME,
+    MAX_OUTPUT_SIZE,
+    MAX_COMMANDS_PER_MINUTE,
+    MAX_INPUT_SIZE,
+    BLOCKED_PATTERNS,
+    PROHIBITED_WORKING_PATHS,
+    USER_SENSITIVE_PATHS,
+    PROTECTED_ENV_VARS,
+)
 from AgentCrew.modules import logger
 
 
@@ -25,35 +36,9 @@ class CommandExecutionService:
     - Resource limits (concurrent, lifetime, output size)
     - Audit logging
     - Input sanitization
+
+    All security configuration constants are defined in constants.py
     """
-
-    # Security configuration
-    MAX_CONCURRENT_COMMANDS = 3  # Application-wide
-    MAX_COMMAND_LIFETIME = 120  # seconds
-    MAX_OUTPUT_SIZE = 1 * 1024 * 1024  # 1MB
-    MAX_COMMANDS_PER_MINUTE = 10  # Application-wide
-    DEFAULT_TIMEOUT = 5  # seconds
-    MAX_INPUT_SIZE = 1024  # characters
-
-    # Dangerous patterns blacklist (additional safety layer)
-    BLOCKED_PATTERNS = [
-        r"rm\s+-rf",  # Dangerous deletions
-        r"rm\s+--recursive",
-        r"sudo",  # Privilege escalation
-        r"su\s",
-        r"chmod\s+777",  # Dangerous permissions
-        r">\s*/dev/",  # Device access
-        r"mkfs",  # Filesystem formatting
-        r"dd\s+if",  # Disk operations
-        r":\(\)\{\s*:\|:\&\s*\};:",  # Fork bomb
-        r"reboot",
-        r"shutdown",
-        r"poweroff",
-        r"init\s+0",
-    ]
-
-    # Protected environment variables
-    PROTECTED_ENV_VARS = ["PATH", "HOME", "USER", "SHELL", "LOGNAME"]
 
     _instance = None
     _lock = threading.Lock()
@@ -116,7 +101,7 @@ class CommandExecutionService:
         if not command or not command.strip():
             return False, "Empty command not allowed"
 
-        for pattern in self.BLOCKED_PATTERNS:
+        for pattern in BLOCKED_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
                 return False, f"Command contains blocked pattern: {pattern}"
 
@@ -138,17 +123,17 @@ class CommandExecutionService:
                 if cmd.state == CommandState.RUNNING
             ]
 
-            if len(running_commands) >= self.MAX_CONCURRENT_COMMANDS:
+            if len(running_commands) >= MAX_CONCURRENT_COMMANDS:
                 return False, (
-                    f"Maximum concurrent commands ({self.MAX_CONCURRENT_COMMANDS}) "
+                    f"Maximum concurrent commands ({MAX_CONCURRENT_COMMANDS}) "
                     f"reached for application"
                 )
 
             self._rate_limiter = [ts for ts in self._rate_limiter if now - ts < 60]
 
-            if len(self._rate_limiter) >= self.MAX_COMMANDS_PER_MINUTE:
+            if len(self._rate_limiter) >= MAX_COMMANDS_PER_MINUTE:
                 return False, (
-                    f"Rate limit exceeded: maximum {self.MAX_COMMANDS_PER_MINUTE} "
+                    f"Rate limit exceeded: maximum {MAX_COMMANDS_PER_MINUTE} "
                     f"commands per minute for application"
                 )
 
@@ -160,7 +145,7 @@ class CommandExecutionService:
         self, working_dir: Optional[str]
     ) -> Tuple[bool, str, Optional[str]]:
         """
-        Validate and resolve working directory.
+        Validate and resolve working directory against security blacklist.
 
         Returns:
             Tuple[bool, str, Optional[str]]: (is_valid, error_message, resolved_path)
@@ -169,17 +154,41 @@ class CommandExecutionService:
             return True, "", None
 
         try:
-            # Resolve to absolute path
-            resolved = os.path.abspath(working_dir)
+            resolved = os.path.abspath(os.path.normpath(working_dir))
 
-            # Check if directory exists
             if not os.path.isdir(resolved):
                 return False, f"Working directory does not exist: {working_dir}", None
 
-            # Security: ensure within project bounds
-            project_root = os.path.abspath(".")
-            if not resolved.startswith(project_root):
-                return False, "Working directory must be within project", None
+            prohibited_paths = PROHIBITED_WORKING_PATHS.get(self.platform, [])
+
+            for prohibited in prohibited_paths:
+                prohibited_normalized = os.path.abspath(os.path.normpath(prohibited))
+
+                if resolved == prohibited_normalized or resolved.startswith(
+                    prohibited_normalized + os.sep
+                ):
+                    return (
+                        False,
+                        f"Access denied: '{working_dir}' is in prohibited system directory '{prohibited}'",
+                        None,
+                    )
+
+            user_sensitive = USER_SENSITIVE_PATHS.get(self.platform, [])
+            home_dir = os.path.expanduser("~")
+
+            for sensitive_rel in user_sensitive:
+                sensitive_full = os.path.abspath(
+                    os.path.normpath(os.path.join(home_dir, sensitive_rel))
+                )
+
+                if resolved == sensitive_full or resolved.startswith(
+                    sensitive_full + os.sep
+                ):
+                    return (
+                        False,
+                        f"Access denied: '{working_dir}' is in protected user directory '~/{sensitive_rel}'",
+                        None,
+                    )
 
             return True, "", resolved
 
@@ -199,7 +208,7 @@ class CommandExecutionService:
             return True, ""
 
         for key in env_vars.keys():
-            if key in self.PROTECTED_ENV_VARS:
+            if key in PROTECTED_ENV_VARS:
                 return False, f"Cannot override protected environment variable: {key}"
 
         return True, ""
@@ -362,7 +371,7 @@ class CommandExecutionService:
                     process.stdout,
                     cmd_process.output_queue,
                     cmd_process.stop_event,
-                    self.MAX_OUTPUT_SIZE,
+                    MAX_OUTPUT_SIZE,
                 ),
                 daemon=True,
                 name=f"stdout-reader-{command_id}",
@@ -374,7 +383,7 @@ class CommandExecutionService:
                     process.stderr,
                     cmd_process.error_queue,
                     cmd_process.stop_event,
-                    self.MAX_OUTPUT_SIZE,
+                    MAX_OUTPUT_SIZE,
                 ),
                 daemon=True,
                 name=f"stderr-reader-{command_id}",
@@ -509,7 +518,7 @@ class CommandExecutionService:
         error_output = "".join(error_lines)
         elapsed = time.time() - cmd_process.start_time
 
-        if elapsed > self.MAX_COMMAND_LIFETIME:
+        if elapsed > MAX_COMMAND_LIFETIME:
             logger.warning(f"Command {command_id} exceeded max lifetime, terminating")
             self.cleanup_command(command_id)
             cmd_process.transition_to(CommandState.TIMEOUT)
@@ -520,7 +529,7 @@ class CommandExecutionService:
                 "output": output,
                 "error": error_output if error_output else None,
                 "elapsed_seconds": round(elapsed, 3),
-                "message": f"Command exceeded maximum lifetime ({self.MAX_COMMAND_LIFETIME}s)",
+                "message": f"Command exceeded maximum lifetime ({MAX_COMMAND_LIFETIME}s)",
             }
 
         if exit_code is not None:
@@ -567,10 +576,10 @@ class CommandExecutionService:
         Returns:
             Dict with status and message
         """
-        if len(input_text) > self.MAX_INPUT_SIZE:
+        if len(input_text) > MAX_INPUT_SIZE:
             return {
                 "status": "error",
-                "error": f"Input too large (max {self.MAX_INPUT_SIZE} characters)",
+                "error": f"Input too large (max {MAX_INPUT_SIZE} characters)",
             }
 
         if any(ord(c) < 32 and c not in "\n\t\r" for c in input_text):
