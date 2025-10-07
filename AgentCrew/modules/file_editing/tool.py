@@ -132,14 +132,12 @@ def get_file_write_or_edit_tool_handler(
         if not text_or_search_replace_blocks:
             return "❌ Error: No content or search/replace blocks provided."
 
-        # Execute file editing
         result = file_editing_service.write_or_edit_file(
             file_path=file_path,
             percentage_to_change=float(percentage_to_change),
             text_or_search_replace_blocks=text_or_search_replace_blocks,
         )
 
-        # Format response based on status
         if result["status"] == "success":
             syntax_info = ""
             if result.get("syntax_check", {}).get("is_valid"):
@@ -219,11 +217,9 @@ def register(service_instance: Optional[FileEditingService] = None, agent=None):
     """
     from AgentCrew.modules.tools.registration import register_tool
 
-    # Create service if not provided
     if service_instance is None:
         service_instance = FileEditingService()
 
-    # Register file_write_or_edit tool
     register_tool(
         get_file_write_or_edit_tool_definition,
         get_file_write_or_edit_tool_handler,

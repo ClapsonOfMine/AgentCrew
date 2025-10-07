@@ -219,7 +219,7 @@ class CommandExecutionService:
             "timestamp": datetime.now().isoformat(),
             "command_id": command_id,
             "command_hash": hashlib.sha256(command.encode()).hexdigest(),
-            "command": command,  # Consider encrypting in production
+            "command": command,
             "status": status,
             "duration_seconds": round(duration, 3),
             "output_size_bytes": output_size,

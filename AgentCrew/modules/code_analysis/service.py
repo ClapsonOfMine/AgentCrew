@@ -1219,12 +1219,12 @@ class CodeAnalysisService:
     ) -> Dict[str, str]:
         """
         Return the content of a file, optionally reading only a specific line range.
-        
+
         Args:
             file_path: Path to the file to read
             start_line: Optional starting line number (1-indexed)
             end_line: Optional ending line number (1-indexed, inclusive)
-            
+
         Returns:
             Dictionary with file content (key: "file", value: file content string)
         """
@@ -1241,10 +1241,10 @@ class CodeAnalysisService:
                 raise ValueError("start_line must be >= 1")
             if end_line < start_line:
                 raise ValueError("end_line must be >= start_line")
-            
+
             lines = decoded_content.split("\n")
             total_lines = len(lines)
-            
+
             # Validate bounds
             if start_line > total_lines:
                 raise ValueError(
@@ -1254,7 +1254,7 @@ class CodeAnalysisService:
                 raise ValueError(
                     f"end_line {end_line} exceeds file length ({total_lines} lines)"
                 )
-            
+
             # Extract the line range (convert to 0-indexed)
             selected_lines = lines[start_line - 1 : end_line]
             return {"file": "\n".join(selected_lines)}

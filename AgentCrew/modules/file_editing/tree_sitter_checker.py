@@ -108,22 +108,18 @@ class TreeSitterChecker:
         language = self.EXTENSION_TO_LANGUAGE.get(ext)
 
         if not language:
-            # Unknown file type - assume valid
             return SyntaxCheckResult(
                 is_valid=True, errors=[], language="unknown", parse_tree_available=False
             )
 
         if language not in self._parsers:
-            # Parser not available - assume valid
             return SyntaxCheckResult(
                 is_valid=True, errors=[], language=language, parse_tree_available=False
             )
 
-        # Parse content with tree-sitter
         parser = self._parsers[language]
         tree = parser.parse(bytes(content, "utf8"))
 
-        # Check for syntax errors
         errors = self._extract_errors(tree, content)
 
         return SyntaxCheckResult(
@@ -145,11 +141,9 @@ class TreeSitterChecker:
         def visit_node(node):
             """Recursively visit tree nodes to find errors."""
             if node.type == "ERROR":
-                # Found a syntax error node
                 line = node.start_point[0] + 1  # tree-sitter uses 0-indexed lines
                 column = node.start_point[1]
 
-                # Get error context
                 error_text = content[node.start_byte : node.end_byte]
                 error_preview = (
                     error_text[:50] + "..." if len(error_text) > 50 else error_text
@@ -165,7 +159,6 @@ class TreeSitterChecker:
                     )
                 )
 
-            # Check for MISSING nodes (incomplete syntax)
             if node.is_missing:
                 line = node.start_point[0] + 1
                 column = node.start_point[1]
@@ -180,11 +173,9 @@ class TreeSitterChecker:
                     )
                 )
 
-            # Recursively check children
             for child in node.children:
                 visit_node(child)
 
-        # Start recursive traversal from root
         visit_node(tree.root_node)
 
         return errors

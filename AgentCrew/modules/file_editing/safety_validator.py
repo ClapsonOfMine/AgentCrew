@@ -64,7 +64,6 @@ class SafetyValidator:
         Returns:
             ValidationResult indicating if write is allowed
         """
-        # Normalize path
         file_path = str(Path(file_path).resolve())
 
         # Check denied paths first (higher priority)

@@ -81,12 +81,10 @@ class SearchReplaceEngine:
 
         while i < len(lines):
             if lines[i].strip() == self.SEARCH_DELIMITER:
-                # Found search block start
                 search_start = i + 1
                 search_lines = []
                 i += 1
 
-                # Collect search lines until middle delimiter
                 while i < len(lines) and lines[i].strip() != self.MIDDLE_DELIMITER:
                     search_lines.append(lines[i])
                     i += 1
@@ -97,11 +95,9 @@ class SearchReplaceEngine:
                         f"Each SEARCH block must be followed by '=======' delimiter."
                     )
 
-                # Skip middle delimiter
                 i += 1
                 replace_lines = []
 
-                # Collect replace lines until replace delimiter
                 while i < len(lines) and lines[i].strip() != self.REPLACE_DELIMITER:
                     replace_lines.append(lines[i])
                     i += 1
@@ -112,7 +108,6 @@ class SearchReplaceEngine:
                         f"Each block must end with '>>>>>>> REPLACE' delimiter."
                     )
 
-                # Create block
                 blocks.append(
                     SearchReplaceBlock(
                         search_text="\n".join(search_lines),
@@ -161,7 +156,6 @@ class SearchReplaceEngine:
             matches = self._find_all_matches(result_content, block.search_text)
 
             if len(matches) == 0:
-                # No match found - fail with clear error
                 return result_content, [
                     BlockResult(
                         block=block,
@@ -174,7 +168,6 @@ class SearchReplaceEngine:
                 ]
 
             elif len(matches) == 1:
-                # Unique match - apply replacement
                 match = matches[0]
                 result_content = (
                     result_content[: match.start_index]
@@ -193,7 +186,6 @@ class SearchReplaceEngine:
                 last_match_end = match.start_index + len(block.replace_text)
 
             else:
-                # Multiple matches - try context disambiguation
                 disambiguated = self._disambiguate_match(
                     matches, last_match_end, result_content
                 )
@@ -240,7 +232,6 @@ class SearchReplaceEngine:
             if index == -1:
                 break
 
-            # Calculate line numbers
             line_start = content[:index].count("\n") + 1
             line_end = content[: index + len(search_text)].count("\n") + 1
 
@@ -264,16 +255,13 @@ class SearchReplaceEngine:
 
         Select first match after last_match_end position (top-to-bottom order).
         """
-        # Filter matches that come after the last applied block
         valid_matches = [m for m in matches if m.start_index >= last_match_end]
 
         if len(valid_matches) == 1:
             return valid_matches[0]
         elif len(valid_matches) > 1:
-            # Return first match (top-to-bottom order)
             return valid_matches[0]
         else:
-            # All matches are before last position - cannot disambiguate
             return None
 
     def _generate_no_match_error(self, block: SearchReplaceBlock, content: str) -> str:

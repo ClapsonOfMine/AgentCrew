@@ -61,10 +61,8 @@ class FileEditingService:
         Returns:
             Dict with status, errors, and results
         """
-        # Resolve and normalize path
         file_path = self._resolve_path(file_path)
 
-        # Safety validation
         validation = self.safety_validator.validate_write_permission(
             file_path, agent_name
         )
@@ -76,7 +74,6 @@ class FileEditingService:
                 "suggestion": validation.suggestion,
             }
 
-        # Additional safety checks
         safety_check = self.safety_validator.validate_file_safety(file_path)
         if not safety_check.allowed:
             return {
@@ -85,7 +82,6 @@ class FileEditingService:
                 "suggestion": safety_check.suggestion,
             }
 
-        # Create backup if file exists
         backup_path = None
         if os.path.exists(file_path) and self.safety_validator.config.create_backups:
             try:
@@ -98,7 +94,6 @@ class FileEditingService:
                 }
 
         try:
-            # Execute operation based on percentage
             if percentage_to_change > 50:
                 result = self._write_full_file(file_path, text_or_search_replace_blocks)
             else:
@@ -109,13 +104,11 @@ class FileEditingService:
             if result["status"] != "success":
                 return result
 
-            # Syntax validation using tree-sitter
             syntax_result = self.syntax_checker.check_syntax(
                 file_path, result["new_content"]
             )
 
             if not syntax_result.is_valid:
-                # Rollback on syntax error
                 if backup_path and os.path.exists(backup_path):
                     shutil.copy2(backup_path, file_path)
 
@@ -135,7 +128,6 @@ class FileEditingService:
                     "backup_restored": backup_path is not None,
                 }
 
-            # Write to disk (atomic operation)
             self._atomic_write(file_path, result["new_content"])
 
             return {
@@ -147,7 +139,6 @@ class FileEditingService:
             }
 
         except Exception as e:
-            # Restore backup on any error
             if backup_path and os.path.exists(backup_path):
                 try:
                     shutil.copy2(backup_path, file_path)
@@ -171,7 +162,6 @@ class FileEditingService:
         Returns:
             Dict with status and new_content
         """
-        # Read current file content
         if not os.path.exists(file_path):
             return {
                 "status": "error",
@@ -199,12 +189,10 @@ class FileEditingService:
                 "suggestion": "Check search/replace block format",
             }
 
-        # Apply blocks
         new_content, results = self.search_replace_engine.apply_blocks(
             original_content, blocks
         )
 
-        # Check for failures
         failed_results = [r for r in results if r.status != "success"]
         if failed_results:
             failure = failed_results[0]
@@ -232,7 +220,6 @@ class FileEditingService:
         Returns:
             Dict with status and new_content
         """
-        # Ensure parent directory exists
         parent_dir = os.path.dirname(file_path)
         if parent_dir and not os.path.exists(parent_dir):
             try:
@@ -260,10 +247,8 @@ class FileEditingService:
             with open(temp_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
-            # Atomic rename (POSIX guarantee)
             os.replace(temp_path, file_path)
         finally:
-            # Clean up temp file if it still exists
             if os.path.exists(temp_path):
                 try:
                     os.unlink(temp_path)
@@ -300,10 +285,8 @@ class FileEditingService:
         Returns:
             Absolute normalized path
         """
-        # Expand ~ to home directory
         file_path = os.path.expanduser(file_path)
 
-        # Resolve relative paths
         if not os.path.isabs(file_path):
             file_path = os.path.abspath(file_path)
 
