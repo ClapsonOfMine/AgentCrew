@@ -161,6 +161,12 @@ class LocalAgent(BaseAgent):
                         )
 
                         register_file_editing(service, self)
+                    elif tool_name == "command_execution":
+                        from AgentCrew.modules.command_execution.tool import (
+                            register as register_command_execution,
+                        )
+
+                        register_command_execution(service, self)
                     else:
                         logger.warning(f"⚠️ Tool {tool_name} not found in services")
             else:
