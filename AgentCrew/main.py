@@ -308,7 +308,6 @@ def setup_services(provider, memory_llm=None):
         # Don't fail startup if restoration fails
         click.echo(f"⚠️  Could not restore last used model: {e}")
 
-    # Initialize services
     if memory_llm:
         memory_service = ChromaMemoryService(
             llm_service=llm_manager.initialize_standalone_service(memory_llm)
@@ -320,23 +319,19 @@ def setup_services(provider, memory_llm=None):
 
     context_service = ContextPersistenceService()
     clipboard_service = ClipboardService()
-    # Try to create search service if API key is available
     try:
         search_service = TavilySearchService()
     except Exception as e:
         click.echo(f"⚠️ Web search tools not available: {str(e)}")
         search_service = None
 
-    # Initialize code analysis service
     try:
         code_analysis_service = CodeAnalysisService()
     except Exception as e:
         click.echo(f"⚠️ Code analysis tool not available: {str(e)}")
         code_analysis_service = None
 
-    # Initialize image generation service
     try:
-        # Use OpenAI by default if API key is available
         if os.getenv("OPENAI_API_KEY"):
             image_gen_service = ImageGenerationService()
         else:
@@ -346,12 +341,19 @@ def setup_services(provider, memory_llm=None):
         click.echo(f"⚠️ Image generation service not available: {str(e)}")
         image_gen_service = None
 
-    # Initialize browser automation service
     try:
         browser_automation_service = BrowserAutomationService()
     except Exception as e:
         click.echo(f"⚠️ Browser automation service not available: {str(e)}")
         browser_automation_service = None
+
+    try:
+        from AgentCrew.modules.file_editing import FileEditingService
+
+        file_editing_service = FileEditingService()
+    except Exception as e:
+        click.echo(f"⚠️ File editing service not available: {str(e)}")
+        file_editing_service = None
 
     # Register all tools with their respective services
     services = {
@@ -363,6 +365,7 @@ def setup_services(provider, memory_llm=None):
         "context_persistent": context_service,
         "image_generation": image_gen_service,
         "browser": browser_automation_service,
+        "file_editing": file_editing_service,
     }
     return services
 

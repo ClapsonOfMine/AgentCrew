@@ -155,6 +155,12 @@ class LocalAgent(BaseAgent):
                         )
 
                         register_browser(service, self)
+                    elif tool_name == "file_editing":
+                        from AgentCrew.modules.file_editing.tool import (
+                            register as register_file_editing,
+                        )
+
+                        register_file_editing(service, self)
                     else:
                         logger.warning(f"⚠️ Tool {tool_name} not found in services")
             else:
