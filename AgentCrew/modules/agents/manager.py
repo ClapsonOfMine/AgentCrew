@@ -140,6 +140,8 @@ class AgentManager:
         for _, agent in self.agents.items():
             agent.history = []
             agent.shared_context_pool = {}
+            if isinstance(agent, LocalAgent):
+                agent._last_shrinked_message_index = -1
 
     def rebuild_agents_messages(self, streamline_messages):
         """

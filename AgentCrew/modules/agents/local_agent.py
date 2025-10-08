@@ -51,6 +51,7 @@ class LocalAgent(BaseAgent):
         self.output_tokens_usage = 0
         self.voice_enabled: Literal["full", "partial", "disabled"] = voice_enabled
         self.voice_id: Optional[str] = voice_id
+        self._last_shrinked_message_index = -1
 
         self.tool_definitions = {}  # {tool_name: (definition_func, handler_factory, service_instance)}
         self.registered_tools = (
@@ -288,6 +289,7 @@ class LocalAgent(BaseAgent):
         self.tool_definitions = {}
         self.tool_prompts = []
         self.is_active = False
+        self._last_shrinked_message_index = -1
         self.mcps_loading = []
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
@@ -613,18 +615,30 @@ If `when` conditions in <BEHAVIOR> match, update your responses with behaviors i
                 if len(msg.get("tool_calls", [])) == 0:
                     continue
 
-                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                if (
+                    is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD
+                ) or (
+                    self._last_shrinked_message_index >= 0
+                    and i < self._last_shrinked_message_index
+                ):
                     for tool_call in msg.get("tool_calls", []):
                         if tool_call.get("name") in shrink_excluded:
                             continue
                         tool_call["arguments"] = {}
+                    self._last_shrinked_message_index = i
 
             elif msg.get("role") == "tool":
                 tool_name = msg.get("tool_name", "")
                 if tool_name in shrink_excluded:
                     continue
 
-                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                if (
+                    is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD
+                ) or (
+                    self._last_shrinked_message_index >= 0
+                    and i < self._last_shrinked_message_index
+                ):
+                    self._last_shrinked_message_index = i
                     msg["content"] = "[REDACTED]"
                     continue
 
