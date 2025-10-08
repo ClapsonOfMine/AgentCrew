@@ -56,6 +56,7 @@ class LocalAgent(BaseAgent):
         self.registered_tools = (
             set()
         )  # Set of tool names that are registered with the LLM
+        self._defer_tool_registration = False
         self.mcps_loading = []
 
     def _extract_tool_name(self, tool_def: Any) -> str:
@@ -275,9 +276,7 @@ class LocalAgent(BaseAgent):
 
         self.llm.set_system_prompt(self._parse_system_prompt(system_prompt))
         self.llm.temperature = self.temperature if self.temperature is not None else 0.4
-        while len(self.mcps_loading) > 0:
-            time.sleep(0.2)
-        self._register_tools_with_llm()
+        self._defer_tool_registration = True
         self.is_active = True
         return True
 
@@ -349,6 +348,7 @@ class LocalAgent(BaseAgent):
                 self.registered_tools.add(tool_name)
             except Exception as e:
                 logger.error(f"Error registering tool {tool_name}: {e}")
+        self._defer_tool_registration = False
 
     def _clear_tools_from_llm(self):
         """
@@ -700,6 +700,11 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         Returns:
             The processed messages with the agent's response
         """
+
+        if self._defer_tool_registration:
+            while len(self.mcps_loading) > 0:
+                time.sleep(0.2)
+            self._register_tools_with_llm()
 
         assistant_response = ""
         _tool_uses = []
