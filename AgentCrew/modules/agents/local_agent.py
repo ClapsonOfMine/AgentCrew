@@ -6,7 +6,6 @@ from AgentCrew.modules.llm import BaseLLMService
 
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules import logger
-import copy
 
 SHRINK_CONTEXT_THRESHOLD = 90_000
 SHRINK_LENGTH_THRESHOLD = 15
@@ -51,7 +50,6 @@ class LocalAgent(BaseAgent):
         self.output_tokens_usage = 0
         self.voice_enabled: Literal["full", "partial", "disabled"] = voice_enabled
         self.voice_id: Optional[str] = voice_id
-        self._last_shrinked_message_index = -1
 
         self.tool_definitions = {}  # {tool_name: (definition_func, handler_factory, service_instance)}
         self.registered_tools = (
@@ -289,7 +287,6 @@ class LocalAgent(BaseAgent):
         self.tool_definitions = {}
         self.tool_prompts = []
         self.is_active = False
-        self._last_shrinked_message_index = -1
         self.mcps_loading = []
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
@@ -356,9 +353,7 @@ class LocalAgent(BaseAgent):
 
     @property
     def clean_history(self):
-        clean_history = copy.deepcopy(self.history)
-        self._clean_shrinkable_tool_result(clean_history)
-        return clean_history
+        return self.history
 
     def get_provider(self) -> str:
         return self.llm.provider_name
@@ -604,7 +599,7 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
             final_messages: List of message dictionaries to process
         """
         # Find all indices of tool messages that start with [UNIQUE]
-        shrinked_tool_indices = []
+        unique_tool_indices = []
         agent_manager = self.services.get("agent_manager", None)
 
         is_shrinkable = (
@@ -620,30 +615,18 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
                 if len(msg.get("tool_calls", [])) == 0:
                     continue
 
-                if (
-                    is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD
-                ) or (
-                    self._last_shrinked_message_index >= 0
-                    and i < self._last_shrinked_message_index
-                ):
+                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
                     for tool_call in msg.get("tool_calls", []):
                         if tool_call.get("name") in shrink_excluded:
                             continue
                         tool_call["arguments"] = {}
-                    self._last_shrinked_message_index = i
 
             elif msg.get("role") == "tool":
                 tool_name = msg.get("tool_name", "")
                 if tool_name in shrink_excluded:
                     continue
 
-                if (
-                    is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD
-                ) or (
-                    self._last_shrinked_message_index >= 0
-                    and i < self._last_shrinked_message_index
-                ):
-                    self._last_shrinked_message_index = i
+                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
                     msg["content"] = "[REDACTED]"
                     continue
 
@@ -654,7 +637,7 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
                     and isinstance(content, str)
                     and content.startswith("[UNIQUE]")
                 ):
-                    shrinked_tool_indices.append(i)
+                    unique_tool_indices.append(i)
                 elif content and isinstance(content, list):
                     if (
                         len(
@@ -667,11 +650,11 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
                         )
                         > 0
                     ):
-                        shrinked_tool_indices.append(i)
+                        unique_tool_indices.append(i)
 
         # Replace all but the last [UNIQUE] tool result with "[INVALIDATED]"
-        if len(shrinked_tool_indices) > 1:
-            for i in shrinked_tool_indices[:-1]:  # All except the last one
+        if len(unique_tool_indices) > 1:
+            for i in unique_tool_indices[:-1]:  # All except the last one
                 msg = final_messages[i]
 
                 # Update content based on message format
@@ -708,10 +691,7 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         _input_tokens_usage = 0
         _output_tokens_usage = 0
         # Ensure the first message is a system message with the agent's prompt
-        if not messages:
-            final_messages = copy.deepcopy(self.history)
-        else:
-            final_messages = copy.deepcopy(messages)
+        final_messages = messages[:] if messages else self.history[:]
         self._enhance_agent_context_messages(final_messages)
         self._clean_shrinkable_tool_result(final_messages)
         try:

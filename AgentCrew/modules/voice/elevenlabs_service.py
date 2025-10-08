@@ -34,7 +34,7 @@ class ElevenLabsVoiceService(BaseVoiceService):
 
         # TTS settings
         self.default_voice_id = "kHhWB9Fw3aF6ly7JvltC"
-        self.default_model = "eleven_turbo_v2_5"  # Low latency model
+        self.default_model = "eleven_v3"  # Low latency model
         self.voice_settings = VoiceSettings(
             stability=0.5,
             similarity_boost=1,

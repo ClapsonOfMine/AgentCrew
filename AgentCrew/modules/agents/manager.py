@@ -3,6 +3,7 @@ import json
 from typing import Dict, Any, Optional, List
 
 from AgentCrew.modules.agents import BaseAgent, LocalAgent
+import copy
 # from AgentCrew.modules.llm.message import MessageTransformer
 
 
@@ -140,8 +141,6 @@ class AgentManager:
         for _, agent in self.agents.items():
             agent.history = []
             agent.shared_context_pool = {}
-            if isinstance(agent, LocalAgent):
-                agent._last_shrinked_message_index = -1
 
     def rebuild_agents_messages(self, streamline_messages):
         """
@@ -180,7 +179,7 @@ class AgentManager:
             ]
 
             if agent_messages:
-                agent.history = agent_messages
+                agent.history = copy.deepcopy(agent_messages)
                 # MessageTransformer.convert_messages(
                 #     agent_messages,
                 #     agent.get_provider(),
