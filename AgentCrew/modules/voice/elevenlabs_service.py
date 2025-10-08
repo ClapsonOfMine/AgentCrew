@@ -34,7 +34,7 @@ class ElevenLabsVoiceService(BaseVoiceService):
 
         # TTS settings
         self.default_voice_id = "kHhWB9Fw3aF6ly7JvltC"
-        self.default_model = "eleven_v3"  # Low latency model
+        self.default_model = "eleven_turbo_v2_5"  # Low latency model
         self.voice_settings = VoiceSettings(
             stability=0.5,
             similarity_boost=1,
@@ -247,10 +247,8 @@ class ElevenLabsVoiceService(BaseVoiceService):
 
             # Queue the TTS request
             try:
-                sentences = text.split(". ")
-                for sentence in sentences:
-                    tts_request = (sentence, voice_id, model_id)
-                    self.tts_queue.put(tts_request, block=False)
+                tts_request = (text, voice_id, model_id)
+                self.tts_queue.put(tts_request, block=False)
                 logger.debug(f"TTS request queued for text: {text[:50]}...")
             except queue.Full:
                 logger.warning(

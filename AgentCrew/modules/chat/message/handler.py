@@ -278,22 +278,32 @@ class MessageHandler(Observable):
 
                     if (
                         voice_sentence
-                        and "\n" in voice_sentence.strip()
+                        and "\n" in voice_sentence.lstrip("\n ").strip("<>_-")
                         and self.voice_service
                         and voice_id
                     ):
-                        voice_sentence = voice_sentence.replace(
-                            "<agent_evaluation>", ""
-                        ).replace("</agent_evaluation>", "")
-                        self.voice_service.text_to_speech_stream(
-                            voice_sentence.strip().partition("\n")[0], voice_id=voice_id
+                        voice_sentence = (
+                            voice_sentence.replace("<agent_evaluation>", "")
+                            .replace("</agent_evaluation>", "")
+                            .replace("<agent", "")
+                            .replace("evaluation>", "")
+                            .lstrip("\n ")
+                            .strip("<>_-")
                         )
-                        if voice_mode == "partial":
-                            voice_sentence = None
-                        else:
-                            voice_sentence = (
-                                voice_sentence.strip().partition("\n")[-1].lstrip("\n")
+                        print(voice_sentence)
+                        if len(voice_sentence.split("\n")) > 1:
+                            self.voice_service.text_to_speech_stream(
+                                voice_sentence.strip().partition("\n")[0],
+                                voice_id=voice_id,
                             )
+                            if voice_mode == "partial":
+                                voice_sentence = None
+                            else:
+                                voice_sentence = (
+                                    voice_sentence.strip()
+                                    .partition("\n")[-1]
+                                    .lstrip("\n")
+                                )
 
             # End thinking when break the response stream
             if not end_thinking and start_thinking:
