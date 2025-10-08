@@ -726,10 +726,10 @@ class CommandExecutionService:
         """
         with self._instance_lock:
             running_commands = []
-            
+
             for cmd_id, cmd_process in self._instances.items():
                 elapsed = time.time() - cmd_process.start_time
-                
+
                 command_info = {
                     "command_id": cmd_id,
                     "command": cmd_process.command,
@@ -738,13 +738,13 @@ class CommandExecutionService:
                     "working_dir": cmd_process.working_dir or "./",
                     "platform": cmd_process.platform,
                 }
-                
+
                 # Add exit code if completed
                 if cmd_process.exit_code is not None:
                     command_info["exit_code"] = cmd_process.exit_code
-                
+
                 running_commands.append(command_info)
-        
+
         return {
             "status": "success",
             "count": len(running_commands),
@@ -754,7 +754,7 @@ class CommandExecutionService:
     def terminate_command(self, command_id: str) -> Dict[str, Any]:
         """
         Terminate a running command by its ID.
-        
+
         This is an alias for cleanup_command with clearer naming for external use.
 
         Args:

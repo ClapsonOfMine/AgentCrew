@@ -1,7 +1,8 @@
 from datetime import datetime
 import os
 import time
-from typing import Dict, Any, List, Optional, Callable, Literal
+import copy
+from typing import Dict, Any, List, Optional, Callable, Literal, Union
 from AgentCrew.modules.llm import BaseLLMService
 
 from AgentCrew.modules.agents.base import BaseAgent, MessageType
@@ -76,6 +77,13 @@ class LocalAgent(BaseAgent):
             return tool_def["function"]["name"]
         else:
             raise ValueError("Could not extract tool name from definition")
+
+    def append_message(self, messages: Union[Dict, List[Dict]]):
+        copy_messages = copy.deepcopy(messages)
+        if isinstance(copy_messages, List):
+            self.history.extend(copy_messages)
+        else:
+            self.history.append(copy_messages)
 
     def register_tools(self):
         """
@@ -509,87 +517,91 @@ class LocalAgent(BaseAgent):
 
         return True
 
-    def _enhance_agent_context_messages(self, final_messages: List[Dict[str, Any]]):
+    def _build_adaptive_behavior_context(self) -> Dict[str, Any]:
         from AgentCrew.modules.memory.context_persistent import (
             ContextPersistenceService,
         )
 
-        if "context_persistent" in self.services and isinstance(
+        adaptive_messages = {
+            "role": "user",
+            "content": [],
+        }
+        if "context_persistent" not in self.services or not isinstance(
             self.services["context_persistent"], ContextPersistenceService
         ):
-            adaptive_behaviors = self.services[
-                "context_persistent"
-            ].get_adaptive_behaviors(self.name)
-            # adaptive behaviors are only added if the last message is from the user
-            if len(final_messages) == 0:
-                return
-            if isinstance(final_messages[-1]["content"], str) or (
-                isinstance(final_messages[-1]["content"], list)
-                and final_messages[-1]["content"][0].get("type") != "tool_result"
-            ):
-                adaptive_messages = {
-                    "role": "user",
-                    "content": [],
-                }
-                if (
-                    self.services.get("agent_manager")
-                    and self.services["agent_manager"].one_turn_process
-                ):
-                    adaptive_messages["content"].append(
-                        {
-                            "type": "text",
-                            "text": """My next request is single-turn conversation.
+            return adaptive_messages
+        adaptive_behaviors = self.services["context_persistent"].get_adaptive_behaviors(
+            self.name
+        )
+        if (
+            self.services.get("agent_manager")
+            and self.services["agent_manager"].one_turn_process
+        ):
+            adaptive_messages["content"].append(
+                {
+                    "type": "text",
+                    "text": """My next request is single-turn conversation.
 You must analyze then execute it with your available tools and give answer without asking for confirmation or clarification.""",
-                        }
-                    )
+                }
+            )
 
-                if len(adaptive_behaviors.keys()) > 0:
-                    adaptive_text = "  \n".join(
-                        [
-                            f"<Behavior id='{key}'>{value}</Behavior>"
-                            for key, value in adaptive_behaviors.items()
-                        ]
-                    )
-                    adaptive_messages["content"].append(
-                        {
-                            "type": "text",
-                            "text": f"""# MANDATORY: APPLY list of <Adaptive_Behaviors> before responding. 
+        if len(adaptive_behaviors.keys()) > 0:
+            adaptive_text = "  \n".join(
+                [
+                    f"<Behavior id='{key}'>{value}</Behavior>"
+                    for key, value in adaptive_behaviors.items()
+                ]
+            )
+            adaptive_messages["content"].append(
+                {
+                    "type": "text",
+                    "text": f"""# MANDATORY: APPLY list of <Adaptive_Behaviors> before responding. 
 If `when` conditions in <Behavior> match, update your responses with behaviors immediately—they override default instruction.
 <Adaptive_Behaviors>
 {adaptive_text}
 </Adaptive_Behaviors>""",
-                        }
-                    )
-                last_user_index = -1
-                for i, msg in reversed(list(enumerate(final_messages))):
-                    if msg.get("role", "assistant") == "user":
-                        last_user_index = i
-                        break
-                if (
-                    len(final_messages[last_user_index].get("content", [])) > 0
-                    and final_messages[last_user_index]["content"][0]
-                    .get("text", "")
-                    .find("<Transfer_Tool>")
-                    != 0
-                ):
-                    if (
-                        self.services.get("agent_manager")
-                        and self.services["agent_manager"].enforce_transfer
-                    ):
-                        adaptive_messages["content"].insert(
-                            0,
-                            {
-                                "type": "text",
-                                "text": """Before processing my request:
+                }
+            )
+        return adaptive_messages
+
+    def _enhance_agent_context_messages(self, final_messages: List[Dict[str, Any]]):
+        last_user_index = next(
+            (
+                i
+                for i, msg in enumerate(reversed(final_messages))
+                if msg.get("role") == "user"
+            ),
+            None,
+        )
+        if last_user_index is None:
+            return
+        last_user_index = len(final_messages) - 1 - last_user_index
+        adaptive_messages = self._build_adaptive_behavior_context()
+        if (
+            len(final_messages[last_user_index].get("content", [])) > 0
+            and final_messages[last_user_index]["content"][0]
+            .get("text", "")
+            .find("<Transfer_Tool>")
+            != 0
+        ):
+            if (
+                self.services.get("agent_manager")
+                and self.services["agent_manager"].enforce_transfer
+            ):
+                adaptive_messages["content"].insert(
+                    0,
+                    {
+                        "type": "text",
+                        "text": """Before processing my request:
     - Break my request into sub-tasks when applicable.
     - For each sub-task, evaluate other agents capabilities.
     - Transfer sub-task to other agent if they are more suitable. 
     - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
     - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
-                            },
-                        )
-                if len(adaptive_messages["content"]) > 0:
-                    final_messages.insert(last_user_index, adaptive_messages)
+                    },
+                )
+        if len(adaptive_messages["content"]) > 0:
+            final_messages.insert(last_user_index, adaptive_messages)
 
     def _clean_shrinkable_tool_result(self, final_messages: List[Dict[str, Any]]):
         """
@@ -605,7 +617,10 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         is_shrinkable = (
             agent_manager.context_shrink_enabled if agent_manager else False
         ) and self.input_tokens_usage > SHRINK_CONTEXT_THRESHOLD
-        shrink_excluded = agent_manager.shrink_excluded_list if agent_manager else []
+        shrink_threshold = len(final_messages) - SHRINK_LENGTH_THRESHOLD
+        shrink_excluded = (
+            set(agent_manager.shrink_excluded_list) if agent_manager else []
+        )
 
         for i, msg in enumerate(final_messages):
             # Check different message formats for tool results
@@ -615,7 +630,7 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
                 if len(msg.get("tool_calls", [])) == 0:
                     continue
 
-                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                if is_shrinkable and i < shrink_threshold:
                     for tool_call in msg.get("tool_calls", []):
                         if tool_call.get("name") in shrink_excluded:
                             continue
@@ -626,7 +641,7 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
                 if tool_name in shrink_excluded:
                     continue
 
-                if is_shrinkable and i < len(final_messages) - SHRINK_LENGTH_THRESHOLD:
+                if is_shrinkable and i < shrink_threshold:
                     msg["content"] = "[REDACTED]"
                     continue
 
@@ -696,7 +711,9 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         self._clean_shrinkable_tool_result(final_messages)
         try:
             async with await self.llm.stream_assistant_response(
-                final_messages
+                copy.deepcopy(
+                    final_messages
+                )  # This will prevent llm converting message break the original format
             ) as stream:
                 async for chunk in stream:
                     # Process the chunk using the LLM service

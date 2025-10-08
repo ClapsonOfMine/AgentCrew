@@ -208,9 +208,7 @@ class ToolManager:
         ):
             self.message_handler.persistent_service.append_conversation_messages(
                 self.message_handler.current_conversation_id,
-                self.message_handler.agent.history[
-                    self.message_handler.last_assisstant_response_idx :
-                ],
+                self.message_handler.get_recent_agent_responses(),
                 # MessageTransformer.standardize_messages(
                 #     self.message_handler.agent.history[
                 #         self.message_handler.last_assisstant_response_idx :
@@ -244,7 +242,7 @@ class ToolManager:
                 ],
             )
         self.message_handler.last_assisstant_response_idx = len(
-            self.message_handler.agent.history
+            self.message_handler.streamline_messages
         )
 
         self.message_handler._notify(
