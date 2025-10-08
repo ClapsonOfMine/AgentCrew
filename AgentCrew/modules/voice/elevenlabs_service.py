@@ -199,7 +199,6 @@ class ElevenLabsVoiceService(BaseVoiceService):
         try:
             # Clean text for speech
             cleaned_text = self.clean_text_for_speech(text)
-            print(cleaned_text)
 
             if not cleaned_text.strip():
                 logger.warning("No speakable text after cleaning")

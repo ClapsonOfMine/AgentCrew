@@ -214,6 +214,162 @@ def get_check_command_status_tool_definition(provider="claude") -> Dict[str, Any
         }
 
 
+def get_list_running_commands_tool_definition(provider="claude") -> Dict[str, Any]:
+    """
+    Get the tool definition for listing running commands.
+
+    Args:
+        provider: The LLM provider ("claude" or "groq")
+
+    Returns:
+        Dict containing the tool definition
+    """
+    import sys
+
+    is_windows = sys.platform == "win32"
+
+    usage_info = (
+        "\n\n**Usage Pattern**:"
+        "\n1. Check what commands are currently running: list_running_commands()"
+        "\n2. Review command IDs, states, and elapsed times"
+        "\n3. Use terminate_command(command_id='cmd_xxx') to stop a specific command"
+        "\n4. Use check_command_status(command_id='cmd_xxx') to get detailed output"
+    )
+
+    if is_windows:
+        examples = (
+            "\n\n**Windows Use Cases**:"
+            "\n• Monitor long-running builds or installations"
+            "\n• Check status of background Python scripts"
+            "\n• Identify stuck or hanging processes"
+            "\n• Review active command pipeline"
+        )
+    else:
+        examples = (
+            "\n\n**Unix Use Cases**:"
+            "\n• Monitor long-running builds or installations"
+            "\n• Check status of background processes"
+            "\n• Identify stuck or hanging commands"
+            "\n• Review active command pipeline"
+        )
+
+    tool_description = (
+        f"List all currently running commands with their details. "
+        f"Returns command IDs, original commands, current states, elapsed times, and working directories. "
+        f"Use this to monitor active commands, identify long-running processes, or find command IDs "
+        f"for status checking or termination.{usage_info}{examples}"
+        "\n\n**Returns**: List of all active commands with metadata including command_id, command text, "
+        "state (running/completing/waiting_input), elapsed time, working directory, and platform."
+    )
+
+    tool_arguments = {}
+
+    tool_required = []
+
+    if provider == "claude":
+        return {
+            "name": "list_running_commands",
+            "description": tool_description,
+            "input_schema": {
+                "type": "object",
+                "properties": tool_arguments,
+                "required": tool_required,
+            },
+        }
+    else:  # provider == "groq" or others
+        return {
+            "type": "function",
+            "function": {
+                "name": "list_running_commands",
+                "description": tool_description,
+                "parameters": {
+                    "type": "object",
+                    "properties": tool_arguments,
+                    "required": tool_required,
+                },
+            },
+        }
+
+
+def get_terminate_command_tool_definition(provider="claude") -> Dict[str, Any]:
+    """
+    Get the tool definition for terminating running commands.
+
+    Args:
+        provider: The LLM provider ("claude" or "groq")
+
+    Returns:
+        Dict containing the tool definition
+    """
+    import sys
+
+    is_windows = sys.platform == "win32"
+
+    workflow = (
+        "\n\n**Workflow**:"
+        "\n1. Use list_running_commands() to see active commands"
+        "\n2. Identify the command_id of the process to terminate"
+        "\n3. Call terminate_command(command_id='cmd_xxx')"
+        "\n4. Command and all child processes will be terminated"
+    )
+
+    if is_windows:
+        termination_info = (
+            "\n\n**Windows Termination**: Uses TERMINATE then KILL with grace period. "
+            "Attempts graceful shutdown first, then forces termination if needed."
+        )
+    else:
+        termination_info = (
+            "\n\n**Unix Termination**: Sends SIGTERM to process group, then SIGKILL if needed. "
+            "Terminates the entire process group including child processes."
+        )
+
+    tool_description = (
+        f"Terminate a running command by its command ID. "
+        f"This forcefully stops command execution and cleans up all associated resources. "
+        f"Use this for stuck commands, hanging processes, or when cancellation is needed.{workflow}{termination_info}"
+        "\n\n**Safety**: Only terminates commands managed by this service. "
+        "Cannot affect external system processes. Command output up to termination point may be lost."
+    )
+
+    tool_arguments = {
+        "command_id": {
+            "type": "string",
+            "description": (
+                "Unique identifier for the command to terminate. "
+                "Format: 'cmd_xxxxxxxxxxxx'. Example: 'cmd_a1b2c3d4e5f6'. "
+                "Use list_running_commands() to find command IDs."
+            ),
+        },
+    }
+
+    tool_required = ["command_id"]
+
+    if provider == "claude":
+        return {
+            "name": "terminate_command",
+            "description": tool_description,
+            "input_schema": {
+                "type": "object",
+                "properties": tool_arguments,
+                "required": tool_required,
+            },
+        }
+    else:  # provider == "groq" or others
+        return {
+            "type": "function",
+            "function": {
+                "name": "terminate_command",
+                "description": tool_description,
+                "parameters": {
+                    "type": "object",
+                    "properties": tool_arguments,
+                    "required": tool_required,
+                },
+            },
+        }
+
+
 def get_send_command_input_tool_definition(provider="claude") -> Dict[str, Any]:
     """
     Get the tool definition for sending input to running commands.
@@ -328,13 +484,10 @@ def get_run_command_tool_handler(command_service: CommandExecutionService) -> Ca
         env_vars = params.get("env_vars")
 
         if not command:
-            return {"status": "error", "error": "Missing required parameter: command"}
+            raise ValueError("Missing required parameter: command")
 
         if timeout < 1 or timeout > 60:
-            return {
-                "status": "error",
-                "error": "Timeout must be between 1 and 60 seconds",
-            }
+            raise ValueError("Timeout must be between 1 and 60 seconds")
 
         result = command_service.execute_command(
             command=command,
@@ -398,10 +551,7 @@ def get_check_command_status_tool_handler(
         command_id = params.get("command_id")
 
         if not command_id:
-            return {
-                "status": "error",
-                "error": "Missing required parameter: command_id",
-            }
+            raise ValueError("Missing required parameter: command_id")
 
         result = command_service.get_command_status(
             command_id=command_id, consume_output=True
@@ -455,6 +605,101 @@ def get_check_command_status_tool_handler(
     return handle_check_command_status
 
 
+def get_list_running_commands_tool_handler(
+    command_service: CommandExecutionService,
+) -> Callable:
+    """
+    Get the handler function for the list_running_commands tool.
+
+    Args:
+        command_service: The command execution service instance
+
+    Returns:
+        Function that handles list running commands requests
+    """
+
+    def handle_list_running_commands(**params) -> str | Dict[str, Any]:
+        """
+        Handle list running commands request.
+
+        Returns:
+            Formatted string with all running commands
+        """
+        result = command_service.list_running_commands()
+
+        if result["status"] == "error":
+            return f"Error listing commands: {result.get('error', 'Unknown error')}"
+
+        count = result["count"]
+        commands = result["commands"]
+
+        if count == 0:
+            return "No commands are currently running."
+
+        response = f"Currently running commands: {count}\n\n"
+
+        for idx, cmd_info in enumerate(commands, 1):
+            response += f"{idx}. Command ID: {cmd_info['command_id']}\n"
+            response += f"   Command: {cmd_info['command']}\n"
+            response += f"   State: {cmd_info['state']}\n"
+            response += f"   Elapsed: {cmd_info['elapsed_seconds']}s\n"
+            response += f"   Working Dir: {cmd_info['working_dir']}\n"
+
+            if "exit_code" in cmd_info:
+                response += f"   Exit Code: {cmd_info['exit_code']}\n"
+
+            response += "\n"
+
+        response += (
+            "Use check_command_status(command_id='cmd_xxx') for detailed output.\n"
+        )
+        response += "Use terminate_command(command_id='cmd_xxx') to stop a command."
+
+        return response
+
+    return handle_list_running_commands
+
+
+def get_terminate_command_tool_handler(
+    command_service: CommandExecutionService,
+) -> Callable:
+    """
+    Get the handler function for the terminate_command tool.
+
+    Args:
+        command_service: The command execution service instance
+
+    Returns:
+        Function that handles command termination requests
+    """
+
+    def handle_terminate_command(**params) -> str | Dict[str, Any]:
+        """
+        Handle command termination request.
+
+        Returns:
+            Success message or error
+        """
+        command_id = params.get("command_id")
+
+        if not command_id:
+            raise ValueError("Missing required parameter: command_id")
+
+        result = command_service.terminate_command(command_id=command_id)
+
+        if result["status"] == "success":
+            return (
+                f"Command {command_id} has been terminated successfully.\n"
+                "All associated processes and resources have been cleaned up."
+            )
+        else:
+            return (
+                f"Failed to terminate command: {result.get('error', 'Unknown error')}"
+            )
+
+    return handle_terminate_command
+
+
 def get_send_command_input_tool_handler(
     command_service: CommandExecutionService,
 ) -> Callable:
@@ -479,17 +724,10 @@ def get_send_command_input_tool_handler(
         input_text = params.get("input_text")
 
         if not command_id:
-            return {
-                "status": "error",
-                "error": "Missing required parameter: command_id",
-            }
+            raise ValueError("Missing required parameter: command_id")
 
         if not input_text:
-            return {
-                "status": "error",
-                "error": "Missing required parameter: input_text",
-            }
-
+            raise ValueError("Missing required parameter: input_text")
         result = command_service.send_input(
             command_id=command_id, input_text=input_text
         )
@@ -535,6 +773,20 @@ def register(service_instance=None, agent=None):
     register_tool(
         get_send_command_input_tool_definition,
         get_send_command_input_tool_handler,
+        service_instance,
+        agent,
+    )
+
+    register_tool(
+        get_list_running_commands_tool_definition,
+        get_list_running_commands_tool_handler,
+        service_instance,
+        agent,
+    )
+
+    register_tool(
+        get_terminate_command_tool_definition,
+        get_terminate_command_tool_handler,
         service_instance,
         agent,
     )

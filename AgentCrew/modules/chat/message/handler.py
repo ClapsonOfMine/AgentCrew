@@ -274,7 +274,8 @@ class MessageHandler(Observable):
                             "<agent_evaluation>" in assistant_response
                             and "</agent_evaluation>" in assistant_response
                         ) or (
-                            "<agent_evaluation>" not in assistant_response
+                            # First token of agent evaluation
+                            "<agent" not in assistant_response
                             and "</agent_evaluation>" not in assistant_response
                         ):
                             voice_sentence += chunk_text

@@ -8,7 +8,7 @@ from AgentCrew.modules.agents.base import BaseAgent, MessageType
 from AgentCrew.modules import logger
 import copy
 
-SHRINK_CONTEXT_THRESHOLD = 100000
+SHRINK_CONTEXT_THRESHOLD = 90_000
 SHRINK_LENGTH_THRESHOLD = 15
 
 
