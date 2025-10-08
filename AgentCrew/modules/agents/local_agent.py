@@ -549,15 +549,20 @@ You must analyze then execute it with your available tools and give answer witho
                     )
 
                 if len(adaptive_behaviors.keys()) > 0:
-                    adaptive_text = "\n"
-                    for key, value in adaptive_behaviors.items():
-                        adaptive_text += f"<BEHAVIOR id='{key}'>{value}</BEHAVIOR>\n"
+                    adaptive_text = "  \n".join(
+                        [
+                            f"<Behavior id='{key}'>{value}</Behavior>"
+                            for key, value in adaptive_behaviors.items()
+                        ]
+                    )
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": f"""# MANDATORY: APPLY list of <ADAPTIVE_BEHAVIORS> before responding. 
-If `when` conditions in <BEHAVIOR> match, update your responses with behaviors immediately—they override default instruction.
-<ADAPTIVE_BEHAVIORS>{adaptive_text}</ADAPTIVE_BEHAVIORS>""",
+                            "text": f"""# MANDATORY: APPLY list of <Adaptive_Behaviors> before responding. 
+If `when` conditions in <Behavior> match, update your responses with behaviors immediately—they override default instruction.
+<Adaptive_Behaviors>
+{adaptive_text}
+</Adaptive_Behaviors>""",
                         }
                     )
                 last_user_index = -1
