@@ -140,6 +140,9 @@ class ChatCompleter(Completer):
             yield from self.file_completer.get_completions(document, complete_event)
         elif text.startswith("/drop "):
             yield from self.drop_completer.get_completions(document, complete_event)
+        elif text.startswith("/import_agent "):
+            # Use file completer for /import_agent command (supports both file paths and URLs)
+            yield from self.file_completer.get_completions(document, complete_event)
         elif text.startswith("/"):
             yield from self.get_command_completions(document)
 
@@ -181,6 +184,10 @@ class ChatCompleter(Completer):
             ),
             ("/file", "Process a file (usage: /file <path>)"),
             ("/drop", "Remove a queued file from processing (usage: /drop <file_id>)"),
+            (
+                "/import_agent",
+                "Import/replace agent configuration from file or URL (usage: /import_agent <file_or_url>)",
+            ),
             ("/list", "List available conversations"),
             ("/load", "Load a conversation (usage: /load <conversation_id>)"),
             ("/help", "Show help message"),

@@ -289,6 +289,10 @@ class DisplayHandlers:
                 style=RICH_STYLE_YELLOW,
             ),
             Text(
+                "Use '/import_agent <file_or_url>' to import/replace agent configuration from a file or URL.",
+                style=RICH_STYLE_YELLOW,
+            ),
+            Text(
                 "Use '/toggle_transfer' to toggle agent transfer enforcement.",
                 style=RICH_STYLE_YELLOW,
             ),

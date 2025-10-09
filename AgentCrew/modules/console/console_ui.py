@@ -6,6 +6,9 @@ Refactored to use separate modules for different responsibilities.
 import asyncio
 import sys
 import time
+import os
+import requests
+import tempfile
 from typing import Any
 from rich.console import Console
 from rich.text import Text
@@ -18,6 +21,7 @@ except ImportError:
 import AgentCrew
 from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
 from AgentCrew.modules import logger
+from AgentCrew.modules.config.config_management import ConfigManagement
 from .utils import agent_evaluation_remove
 
 from .constants import (
@@ -332,6 +336,185 @@ class ConsoleUI(Observer):
                 )
             )
 
+    def _handle_import_agent_command(self, file_or_url: str):
+        """
+        Handle the /import_agent command to import agent configurations from a file or URL.
+
+        Args:
+            file_or_url: Path to local file or URL to fetch agent configuration
+        """
+        temp_file = None
+        file_path = file_or_url.strip()
+        try:
+            if file_path.startswith(("http://", "https://")):
+                self.console.print(
+                    Text(
+                        f"📥 Fetching agent configuration from {file_path}...",
+                        style=RICH_STYLE_YELLOW,
+                    )
+                )
+
+                try:
+                    response = requests.get(file_path, timeout=30)
+                    response.raise_for_status()
+
+                    suffix = ".toml" if file_path.endswith(".toml") else ".json"
+                    temp_file = tempfile.NamedTemporaryFile(
+                        mode="w", suffix=suffix, delete=False
+                    )
+                    temp_file.write(response.text)
+                    temp_file.close()
+                    file_path = temp_file.name
+
+                except requests.RequestException as e:
+                    self.console.print(
+                        Text(
+                            f"❌ Failed to fetch agent configuration: {str(e)}",
+                            style="bold red",
+                        )
+                    )
+                    return
+            else:
+                file_path = os.path.expanduser(file_path)
+
+                if not os.path.exists(file_path):
+                    self.console.print(
+                        Text(f"❌ File not found: {file_path}", style="bold red")
+                    )
+                    return
+
+                self.console.print(
+                    Text(
+                        f"📖 Loading agent configuration from {file_path}...",
+                        style=RICH_STYLE_YELLOW,
+                    )
+                )
+
+            try:
+                import_config = ConfigManagement(file_path)
+                imported_data = import_config.get_config()
+
+                imported_agents = imported_data.get("agents", [])
+                imported_remote_agents = imported_data.get("remote_agents", [])
+
+                if not imported_agents and not imported_remote_agents:
+                    self.console.print(
+                        Text(
+                            "⚠️  No agent configurations found in the file.",
+                            style="bold yellow",
+                        )
+                    )
+                    return
+
+                existing_config_mgr = ConfigManagement()
+                existing_data = existing_config_mgr.read_agents_config()
+                existing_agents = existing_data.get("agents", [])
+                existing_remote_agents = existing_data.get("remote_agents", [])
+
+                added_local = 0
+                added_remote = 0
+                overridden_local = 0
+                overridden_remote = 0
+
+                existing_local_dict = {
+                    agent.get("name"): idx for idx, agent in enumerate(existing_agents)
+                }
+                existing_remote_dict = {
+                    agent.get("name"): idx
+                    for idx, agent in enumerate(existing_remote_agents)
+                }
+
+                for agent in imported_agents:
+                    agent_name = agent.get("name")
+                    if agent_name in existing_local_dict:
+                        idx = existing_local_dict[agent_name]
+                        existing_agents[idx] = agent
+                        overridden_local += 1
+                        self.console.print(
+                            Text(
+                                f"🔄 Overridden local agent: {agent_name}",
+                                style=RICH_STYLE_YELLOW,
+                            )
+                        )
+                    else:
+                        # Add new agent
+                        existing_agents.append(agent)
+                        added_local += 1
+                        self.console.print(
+                            Text(
+                                f"✅ Imported local agent: {agent_name}",
+                                style=RICH_STYLE_GREEN,
+                            )
+                        )
+
+                for agent in imported_remote_agents:
+                    agent_name = agent.get("name")
+                    if agent_name in existing_remote_dict:
+                        idx = existing_remote_dict[agent_name]
+                        existing_remote_agents[idx] = agent
+                        overridden_remote += 1
+                        self.console.print(
+                            Text(
+                                f"🔄 Overridden remote agent: {agent_name}",
+                                style=RICH_STYLE_YELLOW,
+                            )
+                        )
+                    else:
+                        existing_remote_agents.append(agent)
+                        added_remote += 1
+                        self.console.print(
+                            Text(
+                                f"✅ Imported remote agent: {agent_name}",
+                                style=RICH_STYLE_GREEN,
+                            )
+                        )
+
+                existing_data["agents"] = existing_agents
+                existing_data["remote_agents"] = existing_remote_agents
+
+                existing_config_mgr.write_agents_config(existing_data)
+
+                self.console.print("")
+                self.console.print(
+                    Text("🎉 Import completed!", style=RICH_STYLE_GREEN_BOLD)
+                )
+                self.console.print(
+                    Text(
+                        f"   • Local agents added: {added_local}",
+                        style=RICH_STYLE_GREEN,
+                    )
+                )
+                self.console.print(
+                    Text(
+                        f"   • Remote agents added: {added_remote}",
+                        style=RICH_STYLE_GREEN,
+                    )
+                )
+                if overridden_local > 0 or overridden_remote > 0:
+                    self.console.print(
+                        Text(
+                            f"   • Agents overridden: {overridden_local + overridden_remote}",
+                            style=RICH_STYLE_YELLOW,
+                        )
+                    )
+
+            except Exception as e:
+                self.console.print(
+                    Text(
+                        f"❌ Failed to import agent configuration: {str(e)}",
+                        style="bold red",
+                    )
+                )
+                logger.error(f"Import agent error: {str(e)}", exc_info=True)
+
+        finally:
+            # Clean up temporary file if created
+            if temp_file and os.path.exists(temp_file.name):
+                try:
+                    os.unlink(temp_file.name)
+                except Exception:
+                    pass
+
     def print_welcome_message(self):
         """Print the welcome message for the chat."""
         version = getattr(AgentCrew, "__version__", "Unknown")
@@ -417,6 +600,22 @@ class ConsoleUI(Observer):
                     if user_input.strip() == "/help":
                         self.console.print("\n")
                         self.print_welcome_message()
+                        continue
+
+                    # Handle import_agent command directly
+                    if user_input.strip().startswith("/import_agent "):
+                        file_or_url = user_input.strip()[
+                            14:
+                        ].strip()  # Extract argument after "/import_agent "
+                        if file_or_url:
+                            self._handle_import_agent_command(file_or_url)
+                        else:
+                            self.console.print(
+                                Text(
+                                    "Usage: /import_agent <file_path_or_url>\nImport/replace agents from file or URL.\nExample: /import_agent ./agents.toml or /import_agent https://example.com/agents.toml",
+                                    style=RICH_STYLE_YELLOW,
+                                )
+                            )
                         continue
 
                     # Start loading animation while waiting for response
