@@ -188,6 +188,8 @@ class ChatCompleter(Completer):
                 "/import_agent",
                 "Import/replace agent configuration from file or URL (usage: /import_agent <file_or_url>)",
             ),
+            ("/edit_agent", "Open agent configuration file in default editor"),
+            ("/edit_mcp", "Open MCP configuration file in default editor"),
             ("/list", "List available conversations"),
             ("/load", "Load a conversation (usage: /load <conversation_id>)"),
             ("/help", "Show help message"),

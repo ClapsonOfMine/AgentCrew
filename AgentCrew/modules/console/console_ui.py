@@ -7,6 +7,7 @@ import asyncio
 import sys
 import time
 import os
+import subprocess
 import requests
 import tempfile
 from typing import Any
@@ -336,6 +337,84 @@ class ConsoleUI(Observer):
                 )
             )
 
+    def _open_file_in_editor(self, file_path: str) -> bool:
+        """
+        Open a file in the system's default editor (cross-platform).
+
+        Args:
+            file_path: Path to the file to open
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            file_path = os.path.expanduser(file_path)
+
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            elif sys.platform == "darwin":  # macOS
+                subprocess.call(["open", file_path])
+            else:  # Linux and others
+                subprocess.call(["xdg-open", file_path])
+
+            self.console.print(
+                Text(f"📂 Opened {file_path} in default editor", style=RICH_STYLE_GREEN)
+            )
+            return True
+
+        except FileNotFoundError as e:
+            self.console.print(
+                Text(f"❌ File not found: {file_path}", style="bold red")
+            )
+            logger.error(f"File not found error: {str(e)}", exc_info=True)
+            return False
+        except PermissionError as e:
+            self.console.print(
+                Text(f"❌ Permission denied: {file_path}", style="bold red")
+            )
+            logger.error(f"Permission error: {str(e)}", exc_info=True)
+            return False
+        except Exception as e:
+            self.console.print(
+                Text(f"❌ Failed to open file: {str(e)}", style="bold red")
+            )
+            logger.error(f"Error opening file: {str(e)}", exc_info=True)
+            return False
+
+    def _handle_edit_agent_command(self):
+        """
+        Handle the /edit_agent command to open agents configuration in default editor.
+        """
+        agents_config_path = os.getenv(
+            "SW_AGENTS_CONFIG", os.path.expanduser("./agents.toml")
+        )
+
+        self.console.print(
+            Text(
+                f"📝 Opening agents configuration: {agents_config_path}",
+                style=RICH_STYLE_YELLOW,
+            )
+        )
+
+        self._open_file_in_editor(agents_config_path)
+
+    def _handle_edit_mcp_command(self):
+        """
+        Handle the /edit_mcp command to open MCP configuration in default editor.
+        """
+        mcp_config_path = os.getenv(
+            "MCP_CONFIG_PATH", os.path.expanduser("./mcp_servers.json")
+        )
+
+        self.console.print(
+            Text(
+                f"📝 Opening MCP configuration: {mcp_config_path}",
+                style=RICH_STYLE_YELLOW,
+            )
+        )
+
+        self._open_file_in_editor(mcp_config_path)
+
     def _handle_import_agent_command(self, file_or_url: str):
         """
         Handle the /import_agent command to import agent configurations from a file or URL.
@@ -596,13 +675,11 @@ class ConsoleUI(Observer):
                             )
                         continue
 
-                    # Handle help command directly
                     if user_input.strip() == "/help":
                         self.console.print("\n")
                         self.print_welcome_message()
                         continue
 
-                    # Handle import_agent command directly
                     if user_input.strip().startswith("/import_agent "):
                         file_or_url = user_input.strip()[
                             14:
@@ -616,6 +693,16 @@ class ConsoleUI(Observer):
                                     style=RICH_STYLE_YELLOW,
                                 )
                             )
+                        continue
+
+                    # Handle edit_agent command directly
+                    if user_input.strip() == "/edit_agent":
+                        self._handle_edit_agent_command()
+                        continue
+
+                    # Handle edit_mcp command directly
+                    if user_input.strip() == "/edit_mcp":
+                        self._handle_edit_mcp_command()
                         continue
 
                     # Start loading animation while waiting for response
