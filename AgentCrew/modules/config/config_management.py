@@ -778,7 +778,7 @@ class ConfigManagement:
                     else ".json"
                 )
                 temp_file = tempfile.NamedTemporaryFile(
-                    mode="w", suffix=suffix, delete=False
+                    mode="w", suffix=suffix, delete=False, encoding="utf-8"
                 )
                 temp_file.write(response.text)
                 temp_file.close()
