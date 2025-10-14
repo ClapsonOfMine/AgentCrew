@@ -128,6 +128,8 @@ class CommandHandlers:
         )
 
         self.open_file_in_editor(config_path)
+        config_mgmt = ConfigManagement()
+        config_mgmt.reload_agents_from_config()
 
     def handle_export_agent_command(
         self, agent_names_str: str, output_file: str
