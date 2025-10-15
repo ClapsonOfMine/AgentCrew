@@ -603,6 +603,29 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         if len(adaptive_messages["content"]) > 0:
             final_messages.insert(last_user_index, adaptive_messages)
 
+        agent_manager = self.services.get("agent_manager", None)
+        if agent_manager and agent_manager.defered_transfer:
+            last_assistant_index = next(
+                (
+                    i
+                    for i, msg in enumerate(reversed(final_messages))
+                    if msg.get("role") == "assistant"
+                ),
+                -1,
+            )
+            final_messages.insert(
+                last_assistant_index,
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"""<Transfer_Reminder>Make sure to transfer after the task is completed: {agent_manager.defered_transfer}</Transfer_Reminder>""",
+                        }
+                    ],
+                },
+            )
+
     def _clean_shrinkable_tool_result(self, final_messages: List[Dict[str, Any]]):
         """
         Clean unique tool results by replacing all but the last [UNIQUE] tool result with "[INVALIDATED]".
@@ -714,6 +737,7 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         final_messages = messages[:] if messages else self.history[:]
         self._enhance_agent_context_messages(final_messages)
         self._clean_shrinkable_tool_result(final_messages)
+        print(final_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 copy.deepcopy(
