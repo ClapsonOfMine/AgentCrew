@@ -129,6 +129,7 @@ class GuiCommandCompleter:
             "/list",
             "/load",
             "/help",
+            "/retry",
             "/toggle_transfer",
             "/exit",
             "/quit",

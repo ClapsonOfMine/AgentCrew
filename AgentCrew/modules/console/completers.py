@@ -212,6 +212,7 @@ class ChatCompleter(Completer):
             ("/list", "List available conversations"),
             ("/load", "Load a conversation (usage: /load <conversation_id>)"),
             ("/help", "Show help message"),
+            ("/retry", "Retry the last assistant response"),
             ("/toggle_transfer", "Toggle agent transfer enforcement on/off"),
             ("/exit", "Exit the application"),
             ("/quit", "Exit the application"),

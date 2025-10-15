@@ -257,7 +257,8 @@ class ChatWindow(QMainWindow, Observer):
             return  # Command was processed locally
 
         # Add user message to chat
-        self._add_user_message_bubble(user_input)
+        if user_input.strip() != "/retry":
+            self._add_user_message_bubble(user_input)
 
         # Update status bar
         self.display_status_message("Processing your message...")

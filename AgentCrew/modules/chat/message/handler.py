@@ -122,6 +122,8 @@ class MessageHandler(Observable):
         if user_input.startswith("/file "):
             self._prepare_files_processing(user_input)
             return False, True
+        if user_input.startswith("/retry"):
+            return False, False
 
         # Process commands first
         command_result = await self.command_processor.process_command(user_input)
@@ -212,6 +214,9 @@ class MessageHandler(Observable):
         voice_mode = self._is_voice_enabled()
         voice_sentence = "" if voice_mode != "disabled" else None
         voice_id = self._get_configured_voice_id() if self.voice_service else None
+
+        if len(self.agent.history) == 0:
+            return None, 0, 0
 
         # Create a reference to the streaming generator
         self.stream_generator = None
