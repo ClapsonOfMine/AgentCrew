@@ -16,13 +16,10 @@ from AgentCrew.modules.memory import (
     ContextPersistenceService,
 )
 from AgentCrew.modules.mcpclient import MCPSessionManager
-
-from AgentCrew.modules.chat.message import (
-    CommandProcessor,
-    ToolManager,
-    ConversationManager,
-    Observable,
-)
+from .command_processor import CommandProcessor
+from .tool_manager import ToolManager
+from .conversation import ConversationManager
+from .base import Observable
 
 
 class MessageHandler(Observable):

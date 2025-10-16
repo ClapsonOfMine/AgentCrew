@@ -5,7 +5,7 @@ import copy
 from typing import Dict, Any, List, Optional, Callable, Literal, Union
 from AgentCrew.modules.llm import BaseLLMService
 
-from AgentCrew.modules.agents.base import BaseAgent, MessageType
+from .base import BaseAgent, MessageType
 from AgentCrew.modules import logger
 
 SHRINK_CONTEXT_THRESHOLD = 90_000
@@ -260,7 +260,7 @@ class LocalAgent(BaseAgent):
 
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
-            from AgentCrew.modules.mcpclient.manager import MCPSessionManager
+            from AgentCrew.modules.mcpclient import MCPSessionManager
 
             mcp_manager = MCPSessionManager.get_instance()
             if mcp_manager.initialized:
@@ -297,7 +297,7 @@ class LocalAgent(BaseAgent):
         self.mcps_loading = []
         # Reinitialize MCP session manager for the current agent
         if not self.is_remoting_mode:
-            from AgentCrew.modules.mcpclient.manager import MCPSessionManager
+            from AgentCrew.modules.mcpclient import MCPSessionManager
 
             mcp_manager = MCPSessionManager.get_instance()
             if mcp_manager.initialized:

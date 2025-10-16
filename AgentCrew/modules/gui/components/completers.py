@@ -35,7 +35,7 @@ class GuiAgentCompleter:
     """GUI completer for agent commands."""
 
     def __init__(self):
-        from AgentCrew.modules.agents.manager import AgentManager
+        from AgentCrew.modules.agents import AgentManager
 
         self.agent_manager = AgentManager.get_instance()
 

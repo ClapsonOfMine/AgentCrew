@@ -13,7 +13,7 @@ import logging
 from rich.console import Console
 from rich.text import Text
 
-from AgentCrew.modules.console.constants import (
+from .constants import (
     RICH_STYLE_YELLOW,
 )
 from AgentCrew.modules.chat.message.handler import MessageHandler

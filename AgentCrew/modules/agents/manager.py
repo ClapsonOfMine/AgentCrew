@@ -2,7 +2,8 @@ import toml
 import json
 from typing import Dict, Any, Optional, List
 
-from AgentCrew.modules.agents import BaseAgent, LocalAgent
+from .base import BaseAgent
+from .local_agent import LocalAgent
 
 
 class AgentManager:

@@ -13,7 +13,7 @@ from starlette.requests import Request
 from starlette.middleware import Middleware
 from sse_starlette.sse import EventSourceResponse
 from pydantic import ValidationError
-from AgentCrew.modules.a2a.common.server import AuthMiddleware
+from .common.server.auth_middleware import AuthMiddleware
 
 from AgentCrew.modules.agents import AgentManager
 from .registry import AgentRegistry
@@ -139,6 +139,7 @@ class A2AServer:
 
         async def process_jsonrpc_request(request: Request):
             logger.debug(f"Received JSON-RPC request for agent {agent_name}")
+            body = None
             try:
                 # Get task manager for this agent
                 task_manager = self.task_manager.get_task_manager(agent_name)
@@ -188,7 +189,7 @@ class A2AServer:
                         return JSONResponse(result_stream.model_dump(exclude_none=True))
 
                     async def event_generator():
-                        async for item in result_stream:
+                        async for item in result_stream:  # type: ignore
                             yield {
                                 "data": json.dumps(item.model_dump(exclude_none=True))
                             }
@@ -214,7 +215,7 @@ class A2AServer:
                         return JSONResponse(result_stream.model_dump(exclude_none=True))
 
                     async def event_generator():
-                        async for item in result_stream:
+                        async for item in result_stream:  # type: ignore
                             yield {
                                 "data": json.dumps(item.model_dump(exclude_none=True))
                             }
@@ -236,7 +237,7 @@ class A2AServer:
                 else:
                     logger.error(f"Invalid method requested: {method}")
                     logger.error(f"Request ID: {json_rpc_request.root.id}")
-                    logger.error(f"Request params: {json_rpc_request.root.params}")
+                    logger.error(f"Request params: {json_rpc_request.root.params}")  # type: ignore
                     error = JSONRPCErrorResponse(
                         id=json_rpc_request.root.id,
                         error=JSONRPCError(code=-32601, message="Method not found"),
@@ -269,7 +270,7 @@ class A2AServer:
             except Exception as e:
                 logger.exception(f"Error processing request: {e}")
                 error = JSONRPCErrorResponse(
-                    id=body.get("id") if "body" in locals() else None,
+                    id=body.get("id") if body else None,
                     error=InternalError(),
                 )
                 return JSONResponse(

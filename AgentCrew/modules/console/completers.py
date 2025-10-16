@@ -76,7 +76,7 @@ class AgentCompleter(Completer):
     """Completer that shows available agents when typing /agent command."""
 
     def __init__(self):
-        from AgentCrew.modules.agents.manager import AgentManager
+        from AgentCrew.modules.agents import AgentManager
 
         self.agent_manager = AgentManager.get_instance()
 

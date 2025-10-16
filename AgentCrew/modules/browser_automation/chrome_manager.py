@@ -207,7 +207,7 @@ class ChromeManager:
                     chrome_args,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,  # type: ignore
                 )
             else:
                 # Unix: Use process session for process group management

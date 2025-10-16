@@ -24,14 +24,14 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QIcon
 from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
-from AgentCrew.modules.gui.widgets import ConversationSidebar, TokenUsageWidget
-from AgentCrew.modules.gui.widgets import MessageBubble
+from .widgets import ConversationSidebar, TokenUsageWidget
+from .widgets import MessageBubble
 import asyncio
 from AgentCrew.modules import logger
 
 
-from AgentCrew.modules.gui.worker import LLMWorker
-from AgentCrew.modules.gui.components import (
+from .worker import LLMWorker
+from .components import (
     MenuBuilder,
     KeyboardHandler,
     MessageEventHandler,
@@ -42,7 +42,7 @@ from AgentCrew.modules.gui.components import (
     ConversationComponents,
     CommandHandler,
 )
-from AgentCrew.modules.gui.themes import StyleProvider
+from .themes import StyleProvider
 
 
 class ChatWindow(QMainWindow, Observer):
