@@ -136,15 +136,22 @@ def check_and_update():
         click.echo(f"Latest version: {latest_version}")
 
         if version_is_older(current_version, latest_version):
-            # Add user confirmation prompt
-            if click.confirm(
-                "🔄 New version available! Do you want to update now?", default=False
-            ):
-                click.echo("🔄 Starting update...")
-                run_update_command()
-                sys.exit(0)  # Exit after update command
+            system = platform.system().lower()
+
+            if system == "linux" or system == "darwin":
+                if click.confirm(
+                    "🔄 New version available! Do you want to update now?",
+                    default=False,
+                ):
+                    click.echo("🔄 Starting update...")
+                    run_update_command()
+                    sys.exit(0)
+                else:
+                    click.echo("⏭️ Skipping update. Starting application...")
+            # Disable auto-update for Windows for now due to issues
             else:
-                click.echo("⏭️ Skipping update. Starting application...")
+                command = "uv tool install --python=3.12 --reinstall agentcrew-ai[cpu]@latest --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match"
+                click.echo(f"🔄 New version available!\nRun {command} to update.")
         else:
             click.echo("✅ You are running the latest version")
 
@@ -244,11 +251,6 @@ def run_update_command():
             # Linux/macOS update command
             command = "uv tool install --python=3.12 --reinstall agentcrew-ai[cpu]@latest --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match"
             click.echo("🐧 Running Linux/macOS update command...")
-
-        elif system == "windows":
-            # Windows update command
-            command = "uv tool install --python=3.12 --reinstall agentcrew-ai[cpu]@latest --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match"
-            click.echo("🪟 Running Windows update command...")
 
         else:
             click.echo(f"❌ Unsupported operating system: {system}", err=True)

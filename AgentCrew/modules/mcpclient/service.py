@@ -54,7 +54,7 @@ class MCPService:
                 # Backward compatible with SSE
                 # Get or create token storage for this specific server
                 token_storage = self._get_or_create_token_storage(server_name)
-                
+
                 if server_config.url.endswith("/sse"):
                     session_contenxt = sse_client(
                         server_config.url,
@@ -199,16 +199,18 @@ class MCPService:
     def _get_or_create_token_storage(self, server_name: str) -> FileTokenStorage:
         """
         Get or create a FileTokenStorage instance for a specific server.
-        
+
         Args:
             server_name: Name of the MCP server
-            
+
         Returns:
             FileTokenStorage instance for the server
         """
         if server_name not in self.tokens_storage_cache:
             self.tokens_storage_cache[server_name] = FileTokenStorage(server_name)
-            logger.info(f"MCPService: Created new FileTokenStorage for server '{server_name}'")
+            logger.info(
+                f"MCPService: Created new FileTokenStorage for server '{server_name}'"
+            )
         return self.tokens_storage_cache[server_name]
 
     async def start_server_connection_management(
