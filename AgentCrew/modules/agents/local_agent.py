@@ -737,7 +737,6 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
         final_messages = messages[:] if messages else self.history[:]
         self._enhance_agent_context_messages(final_messages)
         self._clean_shrinkable_tool_result(final_messages)
-        print(final_messages)
         try:
             async with await self.llm.stream_assistant_response(
                 copy.deepcopy(
