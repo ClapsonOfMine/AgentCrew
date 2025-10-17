@@ -52,9 +52,14 @@ def cli():
     """Agentcrew - AI Assistant and Agent Framework"""
     from AgentCrew.modules import logger
     import tempfile
+    import logging
 
     formatter = "{time} - {name} - {level} - {message}"
     log_level = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR").upper()
+
+    httpx_logger = logging.getLogger("httpx")
+    httpx_logger.setLevel(logging.ERROR)
+
     if os.getenv("AGENTCREW_ENV", "development") == "production":
         log_dir_path = os.getenv("AGENTCREW_LOG_PATH", tempfile.gettempdir())
         os.makedirs(log_dir_path, exist_ok=True)
