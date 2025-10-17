@@ -50,14 +50,29 @@ PROVIDER_LIST = [
 @click.group()
 def cli():
     """Agentcrew - AI Assistant and Agent Framework"""
-    pass
+    from AgentCrew.modules import logger
+    import tempfile
+
+    formatter = "{time} - {name} - {level} - {message}"
+    log_level = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR").upper()
+    if os.getenv("AGENTCREW_ENV", "development") == "production":
+        log_dir_path = os.getenv("AGENTCREW_LOG_PATH", tempfile.gettempdir())
+        os.makedirs(log_dir_path, exist_ok=True)
+        log_path = log_dir_path + "/agentcrew_log_{time}.log"
+
+        formatter = "{time} - {name} - {level} - {message}"
+        logger.add(log_path, level=log_level, format=formatter, rotation="10 MB")
+
+    else:
+        print(log_level)
+        logger.add(
+            sys.stderr,
+            level=log_level,
+            format=formatter,
+        )
 
 
 def cli_prod():
-    from AgentCrew.modules import FileLogIO
-
-    sys.stderr = FileLogIO()
-
     os.environ["AGENTCREW_LOG_PATH"] = os.path.expanduser("~/.AgentCrew/logs")
     os.environ["MEMORYDB_PATH"] = os.path.expanduser("~/.AgentCrew/memorydb")
     os.environ["MCP_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/mcp_servers.json")
@@ -66,8 +81,9 @@ def cli_prod():
         "~/.AgentCrew/persistents"
     )
     os.environ["AGENTCREW_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/config.json")
-
-    cli()  # Delegate to main CLI function
+    os.environ["AGENTCREW_ENV"] = "production"
+    os.environ["AGENTCREW_LOG_LEVEL"] = "ERROR"
+    cli()
 
 
 def load_api_keys_from_config():

@@ -4,7 +4,6 @@ A2A protocol server implementation for SwissKnife.
 
 import os
 import json
-import logging
 from typing import Callable, Optional
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
@@ -15,6 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 from pydantic import ValidationError
 from .common.server.auth_middleware import AuthMiddleware
 
+from AgentCrew.modules import logger
 from AgentCrew.modules.agents import AgentManager
 from .registry import AgentRegistry
 from .task_manager import MultiAgentTaskManager
@@ -31,8 +31,6 @@ from a2a.types import (
     GetTaskRequest,
     CancelTaskRequest,
 )
-
-from AgentCrew.modules import logger
 
 
 class A2AServer:
@@ -93,11 +91,7 @@ class A2AServer:
                         "/",
                         self._process_jsonrpc_request_factory(agent_name),
                         methods=["POST"],
-                        middleware=[
-                            Middleware(
-                                AuthMiddleware, api_key=self.api_key, logger=logger
-                            )
-                        ],
+                        middleware=[Middleware(AuthMiddleware, api_key=self.api_key)],
                     ),
                 ],
             )
@@ -157,7 +151,7 @@ class A2AServer:
                 try:
                     json_rpc_request = A2ARequest.model_validate(body)
                 except ValidationError as e:
-                    logging.debug(f"cannot validate_python {e} ")
+                    logger.debug(f"cannot validate_python {e} ")
                     error = JSONRPCErrorResponse(
                         id=body.get("id"),
                         error=InvalidRequestError(data=e.errors()),

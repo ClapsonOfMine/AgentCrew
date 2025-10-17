@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
@@ -42,7 +41,7 @@ from a2a.types import (
 )
 
 
-logger = logging.getLogger(__name__)
+from AgentCrew.modules import logger
 
 
 class TaskManager(ABC):

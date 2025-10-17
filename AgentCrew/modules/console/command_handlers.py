@@ -8,7 +8,6 @@ Extracted from ConsoleUI for better code maintainability and separation of conce
 import os
 import subprocess
 import sys
-import logging
 
 from rich.console import Console
 from rich.text import Text
@@ -18,9 +17,7 @@ from .constants import (
 )
 from AgentCrew.modules.chat.message.handler import MessageHandler
 from AgentCrew.modules.config.config_management import ConfigManagement
-
-
-logger = logging.getLogger(__name__)
+from AgentCrew.modules import logger
 
 
 class CommandHandlers:

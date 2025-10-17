@@ -53,6 +53,7 @@ dependencies = [
   "pychromedevtools>=0.3.3",
   "html-to-markdown>=1.14.0",
   "pip-system-certs>=5.2",
+  "loguru>=0.7.3",
 ]
 
 [project.optional-dependencies]
