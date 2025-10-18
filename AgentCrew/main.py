@@ -69,7 +69,6 @@ def cli():
         logger.add(log_path, level=log_level, format=formatter, rotation="10 MB")
 
     else:
-        print(log_level)
         logger.add(
             sys.stderr,
             level=log_level,

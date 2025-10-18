@@ -8,7 +8,8 @@ from mcp.client.sse import sse_client
 from AgentCrew.modules.agents import AgentManager, LocalAgent
 from AgentCrew.modules.tools.registry import ToolRegistry
 from .config import MCPServerConfig
-from .auth import get_oauth_client_provider, FileTokenStorage
+from .auth import OAuthClientResolver, FileTokenStorage
+import random
 import asyncio
 import threading
 from AgentCrew.modules import FileLogIO
@@ -54,25 +55,32 @@ class MCPService:
                 # Backward compatible with SSE
                 # Get or create token storage for this specific server
                 token_storage = self._get_or_create_token_storage(server_name)
+                client_info = await token_storage.get_client_info()
+                if client_info and client_info.redirect_uris:
+                    port = client_info.redirect_uris[0].port
+                else:
+                    port = random.randint(14100, 14200)
+
+                oauth_resolver = OAuthClientResolver(port=port)
 
                 if server_config.url.endswith("/sse"):
-                    session_contenxt = sse_client(
+                    session_context = sse_client(
                         server_config.url,
                         headers=headers,
-                        auth=get_oauth_client_provider(
+                        auth=oauth_resolver.get_oauth_client_provider(
                             server_config.url, token_storage
                         ),
                     )
                 else:
-                    session_contenxt = streamablehttp_client(
+                    session_context = streamablehttp_client(
                         server_config.url,
                         headers=headers,
-                        auth=get_oauth_client_provider(
+                        auth=oauth_resolver.get_oauth_client_provider(
                             server_config.url, token_storage
                         ),
                     )
 
-                async with session_contenxt as stream_context:
+                async with session_context as stream_context:
                     logger.info(
                         f"MCPService: streamablehttp_client established for {server_name}"
                     )
