@@ -78,6 +78,9 @@ def cli():
 
 
 def cli_prod():
+    if sys.argv[1] == "--version":
+        click.echo(f"AgentCrew version: {get_current_version()}")
+        exit(0)
     os.environ["AGENTCREW_LOG_PATH"] = os.path.expanduser("~/.AgentCrew/logs")
     os.environ["MEMORYDB_PATH"] = os.path.expanduser("~/.AgentCrew/memorydb")
     os.environ["MCP_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/mcp_servers.json")
@@ -86,8 +89,8 @@ def cli_prod():
         "~/.AgentCrew/persistents"
     )
     os.environ["AGENTCREW_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/config.json")
-    os.environ["AGENTCREW_ENV"] = "production"
-    os.environ["AGENTCREW_LOG_LEVEL"] = "ERROR"
+    os.environ["AGENTCREW_ENV"] = os.getenv("AGENTCREW_ENV", "production")
+    os.environ["AGENTCREW_LOG_LEVEL"] = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR")
     cli()
 
 
