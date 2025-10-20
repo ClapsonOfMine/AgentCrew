@@ -552,7 +552,13 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
     default=False,
     help="Use console interface instead of GUI",
 )
-def chat(provider, agent_config, mcp_config, memory_llm, console):
+@click.option(
+    "--with-voice",
+    is_flag=True,
+    default=False,
+    help="Enable voice input/output (if supported by the agent)",
+)
+def chat(provider, agent_config, mcp_config, memory_llm, console, with_voice):
     """Start an interactive chat session with LLM"""
     check_and_update()
     try:
@@ -641,7 +647,7 @@ def chat(provider, agent_config, mcp_config, memory_llm, console):
 
         # Create the message handler
         message_handler = MessageHandler(
-            services["memory"], services["context_persistent"]
+            services["memory"], services["context_persistent"], with_voice
         )
 
         # Choose between GUI and console based on the --gui flag

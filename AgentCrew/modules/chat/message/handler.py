@@ -33,6 +33,7 @@ class MessageHandler(Observable):
         self,
         memory_service: BaseMemoryService,
         context_persistent_service: ContextPersistenceService,
+        with_voice: bool = False,
     ):
         """
         Initializes the MessageHandler.
@@ -72,7 +73,7 @@ class MessageHandler(Observable):
         # Check if voice service is available
         from AgentCrew.modules.voice import AUDIO_AVAILABLE
 
-        if AUDIO_AVAILABLE:
+        if AUDIO_AVAILABLE and with_voice:
             if os.getenv("ELEVENLABS_API_KEY"):
                 from AgentCrew.modules.voice.elevenlabs_service import (
                     ElevenLabsVoiceService,
