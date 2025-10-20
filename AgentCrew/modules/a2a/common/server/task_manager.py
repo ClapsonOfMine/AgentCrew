@@ -41,7 +41,7 @@ from a2a.types import (
 )
 
 
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 class TaskManager(ABC):

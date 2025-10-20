@@ -3,7 +3,7 @@ from AgentCrew.modules.openai import OpenAIService
 from AgentCrew.modules.llm.base import AsyncIterator
 from typing import Dict, Any, List, Optional, Tuple
 import json
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 class CustomLLMService(OpenAIService):

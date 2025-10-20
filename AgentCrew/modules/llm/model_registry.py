@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 from .types import Model
 from .constants import AVAILABLE_MODELS
-from AgentCrew.modules import logger
+from loguru import logger
 from AgentCrew.modules.config import ConfigManagement
 
 

@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import re
 import json
 import base64
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 def read_text_file(file_path):

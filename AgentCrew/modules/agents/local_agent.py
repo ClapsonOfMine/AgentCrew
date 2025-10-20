@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional, Callable, Literal, Union
 from AgentCrew.modules.llm import BaseLLMService
 
 from .base import BaseAgent, MessageType
-from AgentCrew.modules import logger
+from loguru import logger
 
 SHRINK_CONTEXT_THRESHOLD = 90_000
 SHRINK_LENGTH_THRESHOLD = 15

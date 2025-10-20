@@ -27,7 +27,7 @@ from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
 from .widgets import ConversationSidebar, TokenUsageWidget
 from .widgets import MessageBubble
 import asyncio
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 from .worker import LLMWorker

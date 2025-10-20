@@ -17,7 +17,7 @@ except ImportError:
 
 import AgentCrew
 from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
-from AgentCrew.modules import logger
+from loguru import logger
 from .utils import agent_evaluation_remove
 
 from .constants import (

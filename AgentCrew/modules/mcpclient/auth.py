@@ -11,7 +11,7 @@ from pydantic import AnyUrl
 from mcp.client.auth import OAuthClientProvider, TokenStorage
 from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAuthToken
 
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 class FileTokenStorage(TokenStorage):

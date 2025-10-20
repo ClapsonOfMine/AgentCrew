@@ -16,7 +16,7 @@ from prompt_toolkit.formatted_text import HTML
 from rich.console import Console
 from rich.text import Text
 
-from AgentCrew.modules import logger
+from loguru import logger
 from AgentCrew.modules.chat import MessageHandler
 from AgentCrew.modules.clipboard.service import ClipboardService
 from .completers import ChatCompleter

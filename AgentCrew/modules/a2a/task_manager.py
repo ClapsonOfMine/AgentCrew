@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, AsyncIterable, Optional, Any, Union
 from AgentCrew.modules.agents import AgentManager, LocalAgent
 from AgentCrew.modules.agents.base import MessageType
-from AgentCrew.modules import logger
+from loguru import logger
 import tempfile
 import os
 

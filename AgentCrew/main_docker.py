@@ -17,11 +17,12 @@ PROVIDER_LIST = [
 @click.group()
 def cli():
     """Agentcrew - AI Assistant and Agent Framework"""
-    from AgentCrew.modules import logger
+    from loguru import logger
     import logging
 
     formatter = "{time} - {name} - {level} - {message}"
     log_level = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR").upper()
+    logger.remove(0)
 
     httpx_logger = logging.getLogger("httpx")
     httpx_logger.setLevel(logging.ERROR)

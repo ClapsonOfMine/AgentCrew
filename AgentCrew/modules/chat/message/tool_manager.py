@@ -1,7 +1,7 @@
 from typing import Dict, Any
 import asyncio
 
-from AgentCrew.modules import logger
+from loguru import logger
 from AgentCrew.modules.config import ConfigManagement
 
 # from AgentCrew.modules.llm.message import MessageTransformer

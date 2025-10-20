@@ -1,4 +1,4 @@
-from AgentCrew.modules import logger
+from loguru import logger
 from typing import Dict, Any, List, Optional, Callable
 from mcp import ClientSession, StdioServerParameters
 from mcp.types import Prompt, ContentBlock, TextContent, ImageContent, Tool

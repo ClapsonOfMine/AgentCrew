@@ -4,7 +4,7 @@ import shlex
 import traceback
 import time
 
-from AgentCrew.modules import logger
+from loguru import logger
 from AgentCrew.modules.agents.base import MessageType
 from AgentCrew.modules.chat.history import ChatHistoryManager
 from AgentCrew.modules.agents import AgentManager

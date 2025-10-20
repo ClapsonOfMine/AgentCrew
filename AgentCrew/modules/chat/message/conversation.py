@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 
-from AgentCrew.modules import logger
+from loguru import logger
 from AgentCrew.modules.chat.history import ConversationTurn
 from AgentCrew.modules.agents import RemoteAgent
 

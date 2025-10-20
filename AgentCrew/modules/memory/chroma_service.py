@@ -2,25 +2,20 @@ import os
 import chromadb
 import uuid
 from chromadb.config import Settings
-import numpy as np
 import queue
 import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from threading import Thread, Event
-from AgentCrew.modules import logger
+from loguru import logger
 import xmltodict
 
 from AgentCrew.modules.llm.base import BaseLLMService
-
 from .base_service import BaseMemoryService
-from .voyageai_ef import VoyageEmbeddingFunction
 from AgentCrew.modules.prompts.constants import (
     SEMANTIC_EXTRACTING,
     PRE_ANALYZE_PROMPT,
-    # POST_RETRIEVE_MEMORY,
 )
-from .github_copilot_ef import GithubCopilotEmbeddingFunction
 import chromadb.utils.embedding_functions as embedding_functions
 
 # Configuration constants
@@ -75,12 +70,16 @@ class ChromaMemoryService(BaseMemoryService):
 
         # Create or get collection for storing memories
         if os.getenv("VOYAGE_API_KEY"):
+            from .voyageai_ef import VoyageEmbeddingFunction
+
             voyage_ef = VoyageEmbeddingFunction(
                 api_key=os.getenv("VOYAGE_API_KEY"),
                 model_name="voyage-3.5",
             )
             self.embedding_function = voyage_ef
         elif os.getenv("GITHUB_COPILOT_API_KEY"):
+            from .github_copilot_ef import GithubCopilotEmbeddingFunction
+
             github_copilot_ef = GithubCopilotEmbeddingFunction(
                 api_key=os.getenv("GITHUB_COPILOT_API_KEY"),
                 model_name="text-embedding-3-small",
@@ -333,6 +332,8 @@ class ChromaMemoryService(BaseMemoryService):
             )
 
     async def need_generate_user_context(self, user_input: str) -> bool:
+        import numpy as np
+
         keywords = await self._semantic_extracting(user_input)
         if not self.loaded_conversation and self.current_embedding_context is None:
             self.current_embedding_context = self.embedding_function([keywords])
@@ -487,6 +488,7 @@ class ChromaMemoryService(BaseMemoryService):
 
     def _cosine_similarity(self, vec_a, vec_b):
         """Calculate cosine similarity between vectors"""
+        import numpy as np
 
         a = np.array(vec_a, dtype=np.float32)
         b = np.array(vec_b, dtype=np.float32)

@@ -16,7 +16,7 @@ from AgentCrew.modules.llm.base import (
     AsyncIterator,
 )
 from AgentCrew.modules.llm.model_registry import ModelRegistry
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 class GroqService(BaseLLMService):

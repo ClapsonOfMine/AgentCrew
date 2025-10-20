@@ -17,7 +17,7 @@ from .constants import (
 )
 from AgentCrew.modules.chat.message.handler import MessageHandler
 from AgentCrew.modules.config.config_management import ConfigManagement
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 class CommandHandlers:

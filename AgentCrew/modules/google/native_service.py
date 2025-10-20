@@ -13,7 +13,7 @@ from AgentCrew.modules.llm.base import (
     read_text_file,
     base64_to_bytes,
 )
-from AgentCrew.modules import logger
+from loguru import logger
 import traceback
 
 

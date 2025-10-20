@@ -7,7 +7,7 @@ from anthropic.types import TextBlock
 from dotenv import load_dotenv
 from AgentCrew.modules.llm.base import BaseLLMService, read_binary_file, read_text_file
 from AgentCrew.modules.llm.model_registry import ModelRegistry
-from AgentCrew.modules import logger
+from loguru import logger
 
 
 class AnthropicService(BaseLLMService):
