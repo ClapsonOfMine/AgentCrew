@@ -73,14 +73,17 @@ class MessageHandler(Observable):
         from AgentCrew.modules.voice import AUDIO_AVAILABLE
 
         if AUDIO_AVAILABLE:
-            from AgentCrew.modules.voice import (
-                DeepInfraVoiceService,
-                ElevenLabsVoiceService,
-            )
-
             if os.getenv("ELEVENLABS_API_KEY"):
+                from AgentCrew.modules.voice.elevenlabs_service import (
+                    ElevenLabsVoiceService,
+                )
+
                 self.voice_service = ElevenLabsVoiceService()
             elif os.getenv("DEEPINFRA_API_KEY"):
+                from AgentCrew.modules.voice.deepinfra_service import (
+                    DeepInfraVoiceService,
+                )
+
                 self.voice_service = DeepInfraVoiceService()
 
     def _messages_append(self, message):
