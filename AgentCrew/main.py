@@ -26,13 +26,14 @@ from AgentCrew.modules.code_analysis import CodeAnalysisService
 from AgentCrew.modules.llm.service_manager import ServiceManager
 from AgentCrew.modules.llm.model_registry import ModelRegistry
 from AgentCrew.modules.agents import AgentManager, LocalAgent, RemoteAgent
+from AgentCrew.modules.image_generation import ImageGenerationService
+from PySide6.QtWidgets import QApplication
+
 from AgentCrew.modules.agents.example import (
     DEFAULT_PROMPT,
     DEFAULT_NAME,
     DEFAULT_DESCRIPTION,
 )
-from AgentCrew.modules.image_generation import ImageGenerationService
-from PySide6.QtWidgets import QApplication
 
 nest_asyncio.apply()
 

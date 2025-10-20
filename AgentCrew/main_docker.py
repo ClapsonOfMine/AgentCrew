@@ -45,14 +45,23 @@ PROVIDER_LIST = [
 @click.group()
 def cli():
     """Agentcrew - AI Assistant and Agent Framework"""
-    pass
+    from AgentCrew.modules import logger
+    import logging
+
+    formatter = "{time} - {name} - {level} - {message}"
+    log_level = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR").upper()
+
+    httpx_logger = logging.getLogger("httpx")
+    httpx_logger.setLevel(logging.ERROR)
+
+    logger.add(
+        sys.stderr,
+        level=log_level,
+        format=formatter,
+    )
 
 
 def cli_prod():
-    from AgentCrew.modules import FileLogIO
-
-    sys.stderr = FileLogIO()
-
     os.environ["AGENTCREW_LOG_PATH"] = os.path.expanduser("~/.AgentCrew/logs")
     os.environ["MEMORYDB_PATH"] = os.path.expanduser("~/.AgentCrew/memorydb")
     os.environ["MCP_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/mcp_servers.json")
@@ -62,8 +71,9 @@ def cli_prod():
     )
     os.environ["AGENTCREW_CONFIG_PATH"] = os.path.expanduser("~/.AgentCrew/config.json")
     os.environ["AGENTCREW_DISABLE_GUI"] = "true"
-
-    cli()  # Delegate to main CLI function
+    os.environ["AGENTCREW_ENV"] = "production"
+    os.environ["AGENTCREW_LOG_LEVEL"] = "ERROR"
+    cli()
 
 
 def load_api_keys_from_config():
@@ -152,7 +162,6 @@ def setup_services(provider, memory_llm=None):
         # Don't fail startup if restoration fails
         click.echo(f"⚠️  Could not restore last used model: {e}")
 
-    # Initialize services
     if memory_llm:
         memory_service = ChromaMemoryService(
             llm_service=llm_manager.initialize_standalone_service(memory_llm)
@@ -164,23 +173,19 @@ def setup_services(provider, memory_llm=None):
 
     context_service = ContextPersistenceService()
     clipboard_service = ClipboardService()
-    # Try to create search service if API key is available
     try:
         search_service = TavilySearchService()
     except Exception as e:
         click.echo(f"⚠️ Web search tools not available: {str(e)}")
         search_service = None
 
-    # Initialize code analysis service
     try:
         code_analysis_service = CodeAnalysisService()
     except Exception as e:
         click.echo(f"⚠️ Code analysis tool not available: {str(e)}")
         code_analysis_service = None
 
-    # Initialize image generation service
     try:
-        # Use OpenAI by default if API key is available
         if os.getenv("OPENAI_API_KEY"):
             image_gen_service = ImageGenerationService()
         else:
@@ -190,7 +195,6 @@ def setup_services(provider, memory_llm=None):
         click.echo(f"⚠️ Image generation service not available: {str(e)}")
         image_gen_service = None
 
-    # Initialize browser automation service
     try:
         browser_automation_service = BrowserAutomationService()
     except Exception as e:
@@ -205,7 +209,6 @@ def setup_services(provider, memory_llm=None):
         click.echo(f"⚠️ File editing service not available: {str(e)}")
         file_editing_service = None
 
-    # Initialize command execution service
     try:
         from AgentCrew.modules.command_execution import CommandExecutionService
 
@@ -243,6 +246,14 @@ def setup_agents(services, config_path, remoting_provider=None, model_id=None):
 
     # Add agent_manager to services for tool registration
     services["agent_manager"] = agent_manager
+
+    global_config = ConfigManagement().read_global_config_data()
+    agent_manager.context_shrink_enabled = global_config.get("global_settings", {}).get(
+        "auto_context_shrink", True
+    )
+    agent_manager.shrink_excluded_list = global_config.get("global_settings", {}).get(
+        "shrink_excluded", []
+    )
 
     # Get the LLM service
     llm_service = services["llm"]
