@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.text import Text
 
 from .constants import (
+    RICH_STYLE_BLUE,
     RICH_STYLE_YELLOW,
     RICH_STYLE_GREEN,
     RICH_STYLE_RED,
@@ -55,7 +56,7 @@ class ConfirmationHandler:
             self.console.print(
                 Text(
                     "\nAllow this tool to run? [y]es/[n]o/[a]ll in this session/[f]orever (this and future sessions): ",
-                    style=RICH_STYLE_YELLOW,
+                    style=RICH_STYLE_BLUE,
                 ),
                 end="",
             )
@@ -70,8 +71,16 @@ class ConfirmationHandler:
                 )
                 break
             elif response in ["n", "no"]:
+                self.console.print(
+                    Text(
+                        "\nPlease tell me why you are denying this tool:",
+                        style=RICH_STYLE_BLUE,
+                    ),
+                    end="",
+                )
+                response = input()
                 message_handler.resolve_tool_confirmation(
-                    confirmation_id, {"action": "deny"}
+                    confirmation_id, {"action": "deny", "reason": response}
                 )
                 break
             elif response in ["a", "all"]:

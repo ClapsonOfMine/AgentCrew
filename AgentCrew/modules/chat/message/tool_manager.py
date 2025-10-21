@@ -31,6 +31,7 @@ class ToolManager:
     async def execute_tool(self, tool_use: Dict[str, Any]):
         """Execute a tool with proper confirmation flow."""
         tool_name = tool_use["name"]
+        tool_id = tool_use["id"]
 
         # Special handling for the transfer tool - always auto-approve
         if tool_name == "transfer":
@@ -81,14 +82,21 @@ class ToolManager:
             action = confirmation.get("action", "deny")
 
             if action == "deny":
+                reason = confirmation.get("reason", "")
+                reason_message = (
+                    f"Here is the reason: {reason}. Adjust your actions bases on user's reason."
+                    if reason
+                    else "Immediately STOP any tasks or any tool calls and WAIT for user reason and adjustment, adapt new behavior if needed. "
+                )
+                tool_result = (
+                    f"Tool: {tool_id} call has been rejected by user, {reason_message}"
+                )
                 error_message = self.message_handler.agent.format_message(
                     MessageType.ToolResult,
                     {
                         "tool_use": tool_use,
-                        "tool_result": (
-                            "This tool call has been rejected by user, "
-                            "Immediately STOP any tasks or any tool calls and WAIT for user reason and adjustment, adapt new behavior if needed. "
-                        ),
+                        "tool_result": tool_result,
+                        "is_rejected": True,
                         "is_error": True,
                     },
                 )
@@ -97,7 +105,7 @@ class ToolManager:
                     "tool_denied",
                     {
                         "tool_use": tool_use,
-                        "message": error_message,
+                        "message": tool_result,
                     },
                 )
                 return  # Skip to the next tool

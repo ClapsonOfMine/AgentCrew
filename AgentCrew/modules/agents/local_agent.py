@@ -370,7 +370,11 @@ class LocalAgent(BaseAgent):
         return self.llm.is_stream
 
     def _format_tool_result(
-        self, tool_use: Dict, tool_result: Any, is_error: bool = False
+        self,
+        tool_use: Dict,
+        tool_result: Any,
+        is_error: bool = False,
+        is_rejected: bool = False,
     ) -> Dict[str, Any]:
         """
         Format a tool result for OpenAI API.
@@ -395,6 +399,8 @@ class LocalAgent(BaseAgent):
         # Add error indication if needed
         if is_error:
             message["content"] = f"ERROR: {str(message['content'])}"
+        if is_rejected:
+            message["is_rejected"] = True
 
         return message
 
@@ -476,6 +482,7 @@ class LocalAgent(BaseAgent):
                 message_data.get("tool_use", {}),
                 message_data.get("tool_result", ""),
                 message_data.get("is_error", False),
+                message_data.get("is_rejected", False),
             )
         elif message_type == MessageType.FileContent:
             return self.llm.process_file_for_message(message_data.get("file_uri", ""))
@@ -661,6 +668,16 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
 
             elif msg.get("role") == "tool":
                 tool_name = msg.get("tool_name", "")
+                # Remove denied tools after agent correct it
+
+                if i < len(final_messages) - 2:
+                    if msg.get("is_rejected", False):
+                        last_assistant_msg = final_messages[i - 1]
+                        for tool_call in last_assistant_msg.get("tool_calls", []):
+                            if tool_call.get("name", "") == tool_name:
+                                tool_call["arguments"] = {}
+                                break
+
                 if tool_name in shrink_excluded:
                     continue
 

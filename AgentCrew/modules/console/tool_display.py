@@ -134,7 +134,6 @@ class ToolDisplayHandlers:
 
     def display_tool_denied(self, data):
         """Display information about a denied tool execution."""
-        tool_use = data["tool_use"]
         denied_text = Text("\n❌ Tool execution denied: ", style=RICH_STYLE_RED)
-        denied_text.append(tool_use["name"])
+        denied_text.append(f"{data['message']}")
         self.console.print(denied_text)
