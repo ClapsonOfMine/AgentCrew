@@ -44,6 +44,9 @@ class ToolDisplayHandlers:
         """Display information about a tool being used."""
         tool_icon = self.get_tool_icon(tool_use["name"])
 
+        if tool_use["name"] == "ask":
+            return
+
         # Display tool header with better formatting
         header = Text(f"\n┌───── {tool_icon} Tool: ", style=RICH_STYLE_YELLOW)
         header.append(tool_use["name"], style=RICH_STYLE_YELLOW_BOLD)

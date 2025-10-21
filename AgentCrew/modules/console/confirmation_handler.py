@@ -5,6 +5,7 @@ Handles tool confirmation requests and MCP prompt confirmations.
 
 from rich.console import Console
 from rich.text import Text
+import time
 
 from .constants import (
     RICH_STYLE_BLUE,
@@ -27,6 +28,11 @@ class ConfirmationHandler:
         """Display tool confirmation request and get user response."""
         tool_use = tool_info.copy()
         confirmation_id = tool_use.pop("confirmation_id")
+
+        # Special handling for 'ask' tool
+        if tool_use["name"] == "ask":
+            self._handle_ask_tool(tool_use, confirmation_id, message_handler)
+            return
 
         self.console.print(
             Text(
@@ -112,6 +118,98 @@ class ConfirmationHandler:
                 self.console.print(
                     Text("Please enter 'y', 'n', 'a', or 'f'.", style=RICH_STYLE_YELLOW)
                 )
+        self.input_handler._start_input_thread()
+        time.sleep(0.2)  # Small delay to between tool calls
+
+    def _handle_ask_tool(self, tool_use, confirmation_id, message_handler):
+        """Handle the ask tool - display question and guided answers."""
+        question = tool_use["input"].get("question", "")
+        guided_answers = tool_use["input"].get("guided_answers", [])
+        if isinstance(guided_answers, str):
+            guided_answers = guided_answers.strip("\n ").splitlines()
+
+        # Display the question
+        self.console.print(
+            Text("\n❓ Agent is asking for clarification:", style=RICH_STYLE_BLUE)
+        )
+        self.console.print(Text(f"\n{question}", style=RICH_STYLE_YELLOW))
+
+        # Display guided answers with numbers
+        self.console.print(Text("\nSuggested answers:", style=RICH_STYLE_BLUE))
+        for idx, answer in enumerate(guided_answers, 1):
+            answer_text = Text(f"  {idx}. ", style=RICH_STYLE_GREEN)
+            answer_text.append(answer)
+            self.console.print(answer_text)
+
+        # Get user response
+        self.input_handler._stop_input_thread()
+        while True:
+            self.console.print(
+                Text(
+                    "\nYour response (number(s) separated by comma, or custom text): ",
+                    style=RICH_STYLE_BLUE,
+                ),
+                end="",
+            )
+            try:
+                response = input().strip()
+            except KeyboardInterrupt:
+                message_handler.resolve_tool_confirmation(
+                    confirmation_id, {"action": "answer", "answer": "Cancelled by user"}
+                )
+                break
+
+            if not response:
+                self.console.print(
+                    Text("Please provide a response.", style=RICH_STYLE_RED)
+                )
+                continue
+
+            # Try to parse as number(s)
+            selected_answers = []
+            is_numeric_selection = True
+
+            # Check if response contains commas (multiple selections)
+            if "," in response:
+                try:
+                    indices = [int(x.strip()) for x in response.split(",")]
+                    for idx in indices:
+                        if 1 <= idx <= len(guided_answers):
+                            selected_answers.append(guided_answers[idx - 1])
+                        else:
+                            is_numeric_selection = False
+                            break
+                except ValueError:
+                    is_numeric_selection = False
+            else:
+                # Single selection
+                try:
+                    idx = int(response)
+                    if 1 <= idx <= len(guided_answers):
+                        selected_answers.append(guided_answers[idx - 1])
+                    else:
+                        is_numeric_selection = False
+                except ValueError:
+                    is_numeric_selection = False
+
+            # Determine final answer
+            if is_numeric_selection and selected_answers:
+                final_answer = ", ".join(selected_answers)
+                self.console.print(
+                    Text(f"✓ Selected: {final_answer}", style=RICH_STYLE_GREEN)
+                )
+            else:
+                # Treat as custom response
+                final_answer = response
+                self.console.print(
+                    Text(f"✓ Custom answer: {final_answer}", style=RICH_STYLE_GREEN)
+                )
+
+            message_handler.resolve_tool_confirmation(
+                confirmation_id, {"action": "answer", "answer": final_answer}
+            )
+            break
+
         self.input_handler._start_input_thread()
 
     def display_mcp_prompt_confirmation(self, prompt_data, input_queue):

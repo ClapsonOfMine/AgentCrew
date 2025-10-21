@@ -72,6 +72,54 @@ class ToolManager:
                 )
             return
 
+        elif tool_name == "ask":
+            self.message_handler._notify("tool_use", tool_use)
+            try:
+                # Wait for user response through confirmation flow
+                user_response = await self._wait_for_tool_confirmation(tool_use)
+
+                # Format the user's answer as the tool result
+                if user_response.get("action") == "answer":
+                    answer = user_response.get("answer", "")
+                    tool_result = f"User's answer: {answer}"
+                else:
+                    # User cancelled or error occurred
+                    tool_result = "User cancelled the question."
+
+                # Store the tool result in message history
+                tool_result_message = self.message_handler.agent.format_message(
+                    MessageType.ToolResult,
+                    {"tool_use": tool_use, "tool_result": tool_result},
+                )
+                self.message_handler._messages_append(tool_result_message)
+                self.message_handler._notify(
+                    "tool_result",
+                    {
+                        "tool_use": tool_use,
+                        "tool_result": tool_result,
+                        "message": tool_result_message,
+                    },
+                )
+            except Exception as e:
+                error_message = self.message_handler.agent.format_message(
+                    MessageType.ToolResult,
+                    {
+                        "tool_use": tool_use,
+                        "tool_result": str(e),
+                        "is_error": True,
+                    },
+                )
+                self.message_handler._messages_append(error_message)
+                self.message_handler._notify(
+                    "tool_error",
+                    {
+                        "tool_use": tool_use,
+                        "error": str(e),
+                        "message": error_message,
+                    },
+                )
+            return
+
         if (
             not self.message_handler.is_non_interactive
             and not self.yolo_mode
@@ -84,7 +132,7 @@ class ToolManager:
             if action == "deny":
                 reason = confirmation.get("reason", "")
                 reason_message = (
-                    f"Here is the reason: {reason}. Adjust your actions bases on user's reason."
+                    f"Here is the reason: {reason}. Adjust your actions bases on user's reason. Adapt behavior if it's recurring."
                     if reason
                     else "Immediately STOP any tasks or any tool calls and WAIT for user reason and adjustment, adapt new behavior if needed. "
                 )
