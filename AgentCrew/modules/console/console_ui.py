@@ -493,6 +493,7 @@ class ConsoleUI(Observer):
                         or user_input.startswith("/consolidate ")
                         or user_input.startswith("/agent ")
                         or user_input.startswith("/model ")
+                        or user_input.startswith("/retry ")
                     ):
                         self.start_loading_animation()
 
