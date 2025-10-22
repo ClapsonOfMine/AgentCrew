@@ -681,9 +681,10 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
 
                 if i < len(final_messages) - 2:
                     if msg.get("is_rejected", False):
+                        tool_id = msg.get("tool_call_id", "")
                         last_assistant_msg = final_messages[i - 1]
                         for tool_call in last_assistant_msg.get("tool_calls", []):
-                            if tool_call.get("name", "") == tool_name:
+                            if tool_call.get("id", "") == tool_id:
                                 tool_call["arguments"] = {}
                                 break
 
