@@ -34,52 +34,49 @@ class CustomLLMService(OpenAIService):
         self.extra_headers = extra_headers
 
     async def process_message(self, prompt: str, temperature: float = 0) -> str:
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                timeout=60,
-                max_tokens=3000,
-                temperature=temperature,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                extra_headers=self.extra_headers,
-            )
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            timeout=60,
+            max_tokens=3000,
+            temperature=temperature,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            extra_headers=self.extra_headers,
+        )
 
-            # Calculate and log token usage and cost
-            input_tokens = response.usage.prompt_tokens if response.usage else 0
-            output_tokens = response.usage.completion_tokens if response.usage else 0
-            total_cost = self.calculate_cost(input_tokens, output_tokens)
+        # Calculate and log token usage and cost
+        input_tokens = response.usage.prompt_tokens if response.usage else 0
+        output_tokens = response.usage.completion_tokens if response.usage else 0
+        total_cost = self.calculate_cost(input_tokens, output_tokens)
 
-            logger.info("\nToken Usage Statistics:")
-            logger.info(f"Input tokens: {input_tokens:,}")
-            logger.info(f"Output tokens: {output_tokens:,}")
-            logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
-            logger.info(f"Estimated cost: ${total_cost:.4f}")
-            analyze_result = response.choices[0].message.content or ""
-            if "thinking" in ModelRegistry.get_model_capabilities(
-                f"{self._provider_name}/{self.model}"
+        logger.info("\nToken Usage Statistics:")
+        logger.info(f"Input tokens: {input_tokens:,}")
+        logger.info(f"Output tokens: {output_tokens:,}")
+        logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
+        logger.info(f"Estimated cost: ${total_cost:.4f}")
+        analyze_result = response.choices[0].message.content or ""
+        if "thinking" in ModelRegistry.get_model_capabilities(
+            f"{self._provider_name}/{self.model}"
+        ):
+            THINK_STARTED = "<think>"
+            THINK_STOPED = "</think>"
+
+            if (
+                analyze_result.find(THINK_STARTED) >= 0
+                and analyze_result.find(THINK_STOPED) >= 0
             ):
-                THINK_STARTED = "<think>"
-                THINK_STOPED = "</think>"
+                analyze_result = (
+                    analyze_result[: analyze_result.find(THINK_STARTED)]
+                    + analyze_result[
+                        (analyze_result.find(THINK_STOPED) + len(THINK_STOPED)) :
+                    ]
+                )
 
-                if (
-                    analyze_result.find(THINK_STARTED) >= 0
-                    and analyze_result.find(THINK_STOPED) >= 0
-                ):
-                    analyze_result = (
-                        analyze_result[: analyze_result.find(THINK_STARTED)]
-                        + analyze_result[
-                            (analyze_result.find(THINK_STOPED) + len(THINK_STOPED)) :
-                        ]
-                    )
-
-            return analyze_result
-        except Exception as e:
-            raise Exception(f"Failed to process content: {str(e)}")
+        return analyze_result
 
     def _convert_internal_format(self, messages: List[Dict[str, Any]]):
         for msg in messages:
@@ -135,35 +132,32 @@ class CustomLLMService(OpenAIService):
         ):
             stream_params["reasoning_effort"] = "none"
 
-        try:
-            if "stream" in ModelRegistry.get_model_capabilities(
-                f"{self._provider_name}/{self.model}"
-            ):
-                self._is_thinking = False
-                return await self.client.chat.completions.create(
-                    **stream_params,
-                    stream=True,
-                    extra_headers=self.extra_headers,
-                )
+        if "stream" in ModelRegistry.get_model_capabilities(
+            f"{self._provider_name}/{self.model}"
+        ):
+            self._is_thinking = False
+            return await self.client.chat.completions.create(
+                **stream_params,
+                stream=True,
+                extra_headers=self.extra_headers,
+            )
 
+        else:
+            response = await self.client.chat.completions.create(
+                **stream_params,
+                stream=False,
+                extra_headers=self.extra_headers,
+            )
+
+            if response.usage:
+                self.current_input_tokens = response.usage.prompt_tokens
+                self.current_output_tokens = response.usage.completion_tokens
             else:
-                response = await self.client.chat.completions.create(
-                    **stream_params,
-                    stream=False,
-                    extra_headers=self.extra_headers,
-                )
+                self.current_input_tokens = 0
+                self.current_output_tokens = 0
 
-                if response.usage:
-                    self.current_input_tokens = response.usage.prompt_tokens
-                    self.current_output_tokens = response.usage.completion_tokens
-                else:
-                    self.current_input_tokens = 0
-                    self.current_output_tokens = 0
-
-                # Return an AsyncIterator wrapping response.choices
-                return AsyncIterator(response.choices)
-        except Exception as e:
-            logger.error(f"Error in stream_assistant_response: {str(e)}")
+            # Return an AsyncIterator wrapping response.choices
+            return AsyncIterator(response.choices)
 
     def process_stream_chunk(
         self, chunk, assistant_response: str, tool_uses: List[Dict]

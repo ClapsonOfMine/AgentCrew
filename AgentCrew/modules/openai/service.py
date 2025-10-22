@@ -79,33 +79,30 @@ class OpenAIService(BaseLLMService):
         return messages
 
     async def process_message(self, prompt: str, temperature: float = 0) -> str:
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=3000,
-                temperature=temperature,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-            )
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=3000,
+            temperature=temperature,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+        )
 
-            # Calculate and log token usage and cost
-            input_tokens = response.usage.prompt_tokens if response.usage else 0
-            output_tokens = response.usage.completion_tokens if response.usage else 0
-            total_cost = self.calculate_cost(input_tokens, output_tokens)
+        # Calculate and log token usage and cost
+        input_tokens = response.usage.prompt_tokens if response.usage else 0
+        output_tokens = response.usage.completion_tokens if response.usage else 0
+        total_cost = self.calculate_cost(input_tokens, output_tokens)
 
-            logger.info("\nToken Usage Statistics:")
-            logger.info(f"Input tokens: {input_tokens:,}")
-            logger.info(f"Output tokens: {output_tokens:,}")
-            logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
-            logger.info(f"Estimated cost: ${total_cost:.4f}")
+        logger.info("\nToken Usage Statistics:")
+        logger.info(f"Input tokens: {input_tokens:,}")
+        logger.info(f"Output tokens: {output_tokens:,}")
+        logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
+        logger.info(f"Estimated cost: ${total_cost:.4f}")
 
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            raise Exception(f"Failed to process content: {str(e)}")
+        return response.choices[0].message.content or ""
 
     def _process_file(self, file_path):
         mime_type, _ = mimetypes.guess_type(file_path)
@@ -354,32 +351,29 @@ class OpenAIService(BaseLLMService):
             Validation result as a JSON string
         """
 
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                response_format={"type": "json_object"},
-            )
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            response_format={"type": "json_object"},
+        )
 
-            # Calculate and log token usage and cost
-            input_tokens = response.usage.prompt_tokens if response.usage else 0
-            output_tokens = response.usage.completion_tokens if response.usage else 0
-            total_cost = self.calculate_cost(input_tokens, output_tokens)
+        # Calculate and log token usage and cost
+        input_tokens = response.usage.prompt_tokens if response.usage else 0
+        output_tokens = response.usage.completion_tokens if response.usage else 0
+        total_cost = self.calculate_cost(input_tokens, output_tokens)
 
-            logger.info("\nSpec Validation Token Usage:")
-            logger.info(f"Input tokens: {input_tokens:,}")
-            logger.info(f"Output tokens: {output_tokens:,}")
-            logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
-            logger.info(f"Estimated cost: ${total_cost:.4f}")
+        logger.info("\nSpec Validation Token Usage:")
+        logger.info(f"Input tokens: {input_tokens:,}")
+        logger.info(f"Output tokens: {output_tokens:,}")
+        logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
+        logger.info(f"Estimated cost: ${total_cost:.4f}")
 
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            raise Exception(f"Failed to validate specification: {str(e)}")
+        return response.choices[0].message.content or ""
 
     def set_system_prompt(self, system_prompt: str):
         """

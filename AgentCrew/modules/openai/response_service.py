@@ -110,40 +110,32 @@ class OpenAIResponseService(BaseLLMService):
 
     async def process_message(self, prompt: str, temperature: float = 0) -> str:
         """Process a single message using Response API."""
-        try:
-            request_params = {"model": self.model, "input": prompt, "stream": False}
-            if self._extra_headers:
-                request_params["extra_headers"] = self._extra_headers
+        request_params = {"model": self.model, "input": prompt, "stream": False}
+        if self._extra_headers:
+            request_params["extra_headers"] = self._extra_headers
 
-            # Add reasoning configuration if supported
-            if (
-                self.reasoning_effort
-                and "thinking"
-                in ModelRegistry.get_model_capabilities(
-                    f"{self._provider_name}/{self.model}"
-                )
-            ):
-                request_params["reasoning"] = {"effort": self.reasoning_effort}
+        # Add reasoning configuration if supported
+        if self.reasoning_effort and "thinking" in ModelRegistry.get_model_capabilities(
+            f"{self._provider_name}/{self.model}"
+        ):
+            request_params["reasoning"] = {"effort": self.reasoning_effort}
 
-            response = await self.client.responses.create(**request_params)
+        response = await self.client.responses.create(**request_params)
 
-            # Extract usage information from Response API format
-            input_tokens = getattr(response, "input_tokens", 0)
-            output_tokens = getattr(response, "output_tokens", 0)
-            total_cost = self.calculate_cost(input_tokens, output_tokens)
+        # Extract usage information from Response API format
+        input_tokens = getattr(response, "input_tokens", 0)
+        output_tokens = getattr(response, "output_tokens", 0)
+        total_cost = self.calculate_cost(input_tokens, output_tokens)
 
-            logger.info("\nResponse API Token Usage Statistics:")
-            logger.info(f"Input tokens: {input_tokens:,}")
-            logger.info(f"Output tokens: {output_tokens:,}")
-            logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
-            logger.info(f"Estimated cost: ${total_cost:.4f}")
-            logger.info(f"Response ID: {response.id}")
+        logger.info("\nResponse API Token Usage Statistics:")
+        logger.info(f"Input tokens: {input_tokens:,}")
+        logger.info(f"Output tokens: {output_tokens:,}")
+        logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
+        logger.info(f"Estimated cost: ${total_cost:.4f}")
+        logger.info(f"Response ID: {response.id}")
 
-            # Return the output_text helper
-            return response.output_text or ""
-
-        except Exception as e:
-            raise Exception(f"Failed to process content with Response API: {str(e)}")
+        # Return the output_text helper
+        return response.output_text or ""
 
     def _process_file(self, file_path):
         """Process file - same as original implementation."""
@@ -512,32 +504,26 @@ class OpenAIResponseService(BaseLLMService):
 
     async def validate_spec(self, prompt: str) -> str:
         """Validate a specification prompt using Response API."""
-        try:
-            request_params = {
-                "model": self.model,
-                "input": prompt,
-                "text": {"format": "json_object"},  # Response API structured output
-            }
+        request_params = {
+            "model": self.model,
+            "input": prompt,
+            "text": {"format": "json_object"},  # Response API structured output
+        }
 
-            response = await self.client.responses.create(**request_params)
+        response = await self.client.responses.create(**request_params)
 
-            # Calculate usage and cost
-            input_tokens = getattr(response, "input_tokens", 0)
-            output_tokens = getattr(response, "output_tokens", 0)
-            total_cost = self.calculate_cost(input_tokens, output_tokens)
+        # Calculate usage and cost
+        input_tokens = getattr(response, "input_tokens", 0)
+        output_tokens = getattr(response, "output_tokens", 0)
+        total_cost = self.calculate_cost(input_tokens, output_tokens)
 
-            logger.info("\nResponse API Spec Validation Token Usage:")
-            logger.info(f"Input tokens: {input_tokens:,}")
-            logger.info(f"Output tokens: {output_tokens:,}")
-            logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
-            logger.info(f"Estimated cost: ${total_cost:.4f}")
+        logger.info("\nResponse API Spec Validation Token Usage:")
+        logger.info(f"Input tokens: {input_tokens:,}")
+        logger.info(f"Output tokens: {output_tokens:,}")
+        logger.info(f"Total tokens: {input_tokens + output_tokens:,}")
+        logger.info(f"Estimated cost: ${total_cost:.4f}")
 
-            return response.output_text or ""
-
-        except Exception as e:
-            raise Exception(
-                f"Failed to validate specification with Response API: {str(e)}"
-            )
+        return response.output_text or ""
 
     def set_system_prompt(self, system_prompt: str):
         """Set the system prompt for the LLM service."""
