@@ -70,6 +70,7 @@ class MCPService:
                         auth=oauth_resolver.get_oauth_client_provider(
                             server_config.url, token_storage
                         ),
+                        sse_read_timeout=60 * 60 * 24,
                     )
                 else:
                     session_context = streamablehttp_client(
@@ -78,6 +79,7 @@ class MCPService:
                         auth=oauth_resolver.get_oauth_client_provider(
                             server_config.url, token_storage
                         ),
+                        sse_read_timeout=60 * 60 * 24,
                     )
 
                 async with session_context as stream_context:
