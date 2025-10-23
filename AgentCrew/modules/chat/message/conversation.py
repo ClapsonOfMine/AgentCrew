@@ -1,18 +1,21 @@
+from __future__ import annotations
 from typing import List, Dict, Any, Optional
 
 from loguru import logger
 from AgentCrew.modules.chat.history import ConversationTurn
 from AgentCrew.modules.agents import RemoteAgent
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from AgentCrew.modules.chat.message import MessageHandler
+
 
 class ConversationManager:
     """Manages conversation state and operations."""
 
-    def __init__(self, message_handler):
-        from AgentCrew.modules.chat.message import MessageHandler
-
-        if isinstance(message_handler, MessageHandler):
-            self.message_handler = message_handler
+    def __init__(self, message_handler: MessageHandler):
+        self.message_handler = message_handler
 
     def start_new_conversation(self):
         """Starts a new persistent conversation, clears history, and gets a new ID."""

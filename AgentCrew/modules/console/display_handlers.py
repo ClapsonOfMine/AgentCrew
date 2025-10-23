@@ -21,7 +21,7 @@ from .constants import (
     RICH_STYLE_GREEN_BOLD,
     RICH_STYLE_BLUE_BOLD,
     RICH_STYLE_FILE_ACCENT_BOLD,
-    RICH_STYLE_FILE_PATH,
+    RICH_STYLE_WHITE,
     CODE_THEME,
 )
 
@@ -241,9 +241,7 @@ class DisplayHandlers:
             return
 
         file_display = Text("📎 Added files: ", style=RICH_STYLE_FILE_ACCENT_BOLD)
-        file_display.append(
-            f"{', '.join(self._added_files)}", style=RICH_STYLE_FILE_PATH
-        )
+        file_display.append(f"{', '.join(self._added_files)}", style=RICH_STYLE_WHITE)
         self.console.print(file_display)
 
     def print_welcome_message(self, version: str):

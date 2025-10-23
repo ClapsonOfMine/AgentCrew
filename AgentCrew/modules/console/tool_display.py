@@ -13,6 +13,7 @@ from .constants import (
     RICH_STYLE_GREEN,
     RICH_STYLE_BLUE,
     RICH_STYLE_RED,
+    RICH_STYLE_WHITE,
     RICH_STYLE_YELLOW_BOLD,
     RICH_STYLE_GREEN_BOLD,
     RICH_STYLE_RED_BOLD,
@@ -64,17 +65,17 @@ class ToolDisplayHandlers:
                     formatted_lines = formatted_value.split("\n")
                     param_text = Text("│ • ", style=RICH_STYLE_YELLOW)
                     param_text.append(key, style=RICH_STYLE_BLUE)
-                    param_text.append(": " + formatted_lines[0])
+                    param_text.append(": " + formatted_lines[0], style=RICH_STYLE_WHITE)
                     self.console.print(param_text)
 
                     for line in formatted_lines[1:]:
                         indent_text = Text("│     ", style=RICH_STYLE_YELLOW)
-                        indent_text.append(line)
+                        indent_text.append(line, style=RICH_STYLE_WHITE)
                         self.console.print(indent_text)
                 else:
                     param_text = Text("│ • ", style=RICH_STYLE_YELLOW)
                     param_text.append(key, style=RICH_STYLE_BLUE)
-                    param_text.append(f": {value}")
+                    param_text.append(f": {value}", style=RICH_STYLE_WHITE)
                     self.console.print(param_text)
         else:
             input_text = Text("│ Input: ", style=RICH_STYLE_YELLOW)

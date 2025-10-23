@@ -1,15 +1,20 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple, List, Dict, Any
 import os
 
-from AgentCrew.modules.agents.local_agent import LocalAgent
 from AgentCrew.modules.chat.file_handler import FileHandler
 from AgentCrew.modules.llm.model_registry import ModelRegistry
 from AgentCrew.modules.llm.service_manager import ServiceManager
 from AgentCrew.modules.chat.consolidation import ConversationConsolidator
 from AgentCrew.modules.config import ConfigManagement
-from AgentCrew.modules.mcpclient import MCPService
+from AgentCrew.modules.agents.local_agent import LocalAgent
 import shlex
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from AgentCrew.modules.mcpclient import MCPService
+    from AgentCrew.modules.chat.message import MessageHandler
 
 
 @dataclass
@@ -25,11 +30,8 @@ class CommandResult:
 class CommandProcessor:
     """Handles command processing for the message handler."""
 
-    def __init__(self, message_handler):
-        from AgentCrew.modules.chat.message import MessageHandler
-
-        if isinstance(message_handler, MessageHandler):
-            self.message_handler = message_handler
+    def __init__(self, message_handler: MessageHandler):
+        self.message_handler = message_handler
 
     async def process_command(self, user_input: str) -> CommandResult:
         """Process a command and return the result."""

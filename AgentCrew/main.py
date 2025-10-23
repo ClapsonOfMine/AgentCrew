@@ -346,13 +346,12 @@ def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, f
             memory_llm=memory_llm,
         )
         click.echo(response)
-        sys.exit(0)
     except Exception as e:
         import traceback
 
         print(traceback.format_exc())
         click.echo(f"❌ Error: {str(e)}", err=True)
-        sys.exit(1)
+        raise SystemExit(1)
 
 
 @cli.command()

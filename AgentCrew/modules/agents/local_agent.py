@@ -677,10 +677,14 @@ If `when` conditions in <Behavior> match, update your responses with behaviors i
 
             elif msg.get("role") == "tool":
                 tool_name = msg.get("tool_name", "")
-                # Remove denied tools after agent correct it
 
-                if i < len(final_messages) - 2:
-                    if msg.get("is_rejected", False):
+                # Remove denied tools after agent correct it
+                if msg.get("is_rejected", False):
+                    has_last_user_message = next(
+                        (True for _ in final_messages[i:] if msg.get("role") == "user"),
+                        False,
+                    )
+                    if has_last_user_message:
                         tool_id = msg.get("tool_call_id", "")
                         last_assistant_msg = final_messages[i - 1]
                         for tool_call in last_assistant_msg.get("tool_calls", []):

@@ -96,7 +96,7 @@ def ask_tool_prompt() -> str:
     - Make guided answers clear, concise, and mutually exclusive
     - Frame questions positively and professionally
     - Ensure guided answers are actionable and relevant
-    - Omit custom answer option
+    - Prevent custom answer or user specify option
     - Always use plain text
   </Best_Practices>
 </Ask_Tool_Usage>

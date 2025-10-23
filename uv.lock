@@ -155,7 +155,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.65.2" },
     { name = "pillow", specifier = ">=11.0.0" },
     { name = "pip-system-certs", specifier = ">=5.2" },
-    { name = "prompt-toolkit", specifier = ">=3.0.50" },
+    { name = "prompt-toolkit", specifier = ">=3.0.52" },
     { name = "pychromedevtools", specifier = ">=0.3.3" },
     { name = "pyobjc", marker = "sys_platform == 'darwin'" },
     { name = "pyperclip", specifier = ">=1.9.0" },

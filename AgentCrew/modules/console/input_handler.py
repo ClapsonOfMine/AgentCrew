@@ -3,8 +3,9 @@ User input handling for console UI.
 Manages user input threads, key bindings, and prompt sessions.
 """
 
+from __future__ import annotations
+
 import asyncio
-import sys
 import time
 import threading
 import queue
@@ -13,20 +14,24 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 from prompt_toolkit.formatted_text import HTML
-from rich.console import Console
 from rich.text import Text
 
 from loguru import logger
-from AgentCrew.modules.chat import MessageHandler
 from AgentCrew.modules.clipboard.service import ClipboardService
 from .completers import ChatCompleter
-from .display_handlers import DisplayHandlers
 from .constants import (
     RICH_STYLE_YELLOW,
     RICH_STYLE_YELLOW_BOLD,
     RICH_STYLE_RED,
     RICH_STYLE_BLUE,
 )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from AgentCrew.modules.chat import MessageHandler
+    from rich.console import Console
+    from .display_handlers import DisplayHandlers
 
 
 class InputHandler:
@@ -213,6 +218,49 @@ class InputHandler:
             self._current_prompt_session.message = HTML("<ansiblue>👤 YOU:</ansiblue> ")
             self._current_prompt_session.app.invalidate()
 
+    def get_choice_input(self, message: str, values: list[str], default=None) -> str:
+        from prompt_toolkit.shortcuts import choice
+        from prompt_toolkit.styles import Style
+
+        style = Style.from_dict(
+            {
+                "frame.border": "#884444",
+                "selected-option": "bold",
+            }
+        )
+        kb = KeyBindings()
+
+        @kb.add(Keys.ControlC)
+        @kb.add("escape")
+        def _(event):
+            event.app.exit(result="", style="class:accepted")
+
+        return choice(
+            message=HTML(f"<ansiyellow>{message}</ansiyellow> "),
+            options=[(v, v) for v in values],
+            default=default,
+            style=style,
+            key_bindings=kb,
+            show_frame=True,
+        )
+
+    def get_prompt_input(self, prompt_message: str) -> str:
+        from prompt_toolkit import prompt
+
+        kb = KeyBindings()
+
+        @kb.add(Keys.ControlC)
+        @kb.add("escape")
+        def _(event):
+            event.current_buffer.text = ""
+            event.current_buffer.validate_and_handle()
+
+        return prompt(
+            HTML(f"<ansiblue>{prompt_message}</ansiblue> "),
+            key_bindings=kb,
+            completer=ChatCompleter(self.message_handler),
+        )
+
     def _input_thread_worker(self):
         """Worker thread for handling user input."""
         while not self._input_stop_event.is_set():
@@ -224,7 +272,6 @@ class InputHandler:
                 )
                 self._current_prompt_session = session
 
-                # Create a dynamic prompt that includes agent and model info using HTML formatting
                 prompt_text = (
                     HTML("<ansiblue>👤 YOU:</ansiblue> ")
                     if not self.is_message_processing
@@ -232,10 +279,8 @@ class InputHandler:
                 )
                 user_input = session.prompt(prompt_text)
 
-                # Reset history position after submission
                 self.message_handler.history_manager.reset_position()
 
-                # Put the input in the queue
                 self._input_queue.put(user_input)
                 time.sleep(0.4)  # Allow time for input processing
 
@@ -323,7 +368,7 @@ class InputHandler:
                         )
                     )
                     self._stop_input_thread()
-                    sys.exit(0)
+                    raise SystemExit(0)
                 elif user_input == "__INTERRUPT__":
                     self.console.print(
                         Text(
@@ -353,7 +398,8 @@ class InputHandler:
                         style=RICH_STYLE_YELLOW_BOLD,
                     )
                 )
-                sys.exit(0)
+                self._stop_input_thread()
+                raise SystemExit(0)
 
     def stop(self):
         """Stop the input handler and clean up."""
