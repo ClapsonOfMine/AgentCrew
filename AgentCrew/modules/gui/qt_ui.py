@@ -26,7 +26,6 @@ from PySide6.QtGui import QIcon
 from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
 from .widgets import ConversationSidebar, TokenUsageWidget
 from .widgets import MessageBubble
-import asyncio
 from loguru import logger
 
 
@@ -341,15 +340,11 @@ class ChatWindow(QMainWindow, Observer):
             self.ui_state_manager.stop_button_stopping_state()
             if self.message_handler.stream_generator:
                 try:
-                    asyncio.run(self.message_handler.stream_generator.aclose())
+                    self.message_handler.stop_streaming = True
                 except RuntimeError as e:
                     logger.warning(f"Error closing stream generator: {e}")
                 except Exception as e:
                     logger.warning(f"Exception closing stream generator: {e}")
-                finally:
-                    self.message_handler.stop_streaming = True
-                    self.message_handler.stream_generator = None
-            # Also stop UI streaming
         self.ui_state_manager.set_input_controls_enabled(True)
         if self.current_response_bubble:
             self.current_response_bubble.stop_streaming()

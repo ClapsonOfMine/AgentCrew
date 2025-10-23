@@ -243,7 +243,7 @@ class MessageHandler(Observable):
                     self.stop_streaming = False  # Reset flag
                     has_stop_interupted = True
                     self._notify("streaming_stopped", assistant_response)
-                    break
+                    await self.stream_generator.aclose()
 
                 # Accumulate thinking content if available
                 if thinking_chunk:

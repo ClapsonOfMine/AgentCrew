@@ -5,7 +5,6 @@ Manages user input threads, key bindings, and prompt sessions.
 
 from __future__ import annotations
 
-import asyncio
 import time
 import threading
 import queue
@@ -130,21 +129,19 @@ class InputHandler:
                 # Don't try to join from within the same thread - just exit
                 event.app.exit("__EXIT__")
             else:
-                self._last_ctrl_c_time = current_time
                 if (
                     hasattr(self.message_handler, "stream_generator")
                     and self.message_handler.stream_generator
                 ):
                     try:
-                        asyncio.run(self.message_handler.stream_generator.aclose())
+                        self.message_handler.stop_streaming = True
+                        # asyncio.run(self.message_handler.stream_generator.aclose())
                     except RuntimeError as e:
                         logger.warning(f"Error closing stream generator: {e}")
                     except Exception as e:
                         logger.warning(f"Exception closing stream generator: {e}")
-                    finally:
-                        self.message_handler.stop_streaming = True
-                        self.message_handler.stream_generator = None
                 else:
+                    self._last_ctrl_c_time = current_time
                     self.console.print(
                         Text(
                             "\nPress Ctrl+C again within 1 second to exit.",
