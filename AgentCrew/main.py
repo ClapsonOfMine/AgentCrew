@@ -319,6 +319,11 @@ def a2a_server(
     default=None,
     help="LLM Model use for analyzing and processing memory",
 )
+@click.option(
+    "--output-schema",
+    default=None,
+    help="JSON schema (file path or JSON string) to enforce structured output format",
+)
 @click.argument(
     "task",
     nargs=1,
@@ -329,7 +334,17 @@ def a2a_server(
     nargs=-1,
     type=click.Path(),
 )
-def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, files):
+def job(
+    agent,
+    provider,
+    model_id,
+    agent_config,
+    mcp_config,
+    memory_llm,
+    output_schema,
+    task,
+    files,
+):
     """Run a single job/task with an agent"""
     from AgentCrew.app import AgentCrewApplication
 
@@ -344,6 +359,7 @@ def job(agent, provider, model_id, agent_config, mcp_config, memory_llm, task, f
             agent_config=agent_config,
             mcp_config=mcp_config,
             memory_llm=memory_llm,
+            output_schema=output_schema,
         )
         click.echo(response)
     except Exception as e:

@@ -631,6 +631,87 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
         finally:
             MCPSessionManager.get_instance().cleanup()
 
+    def _parse_output_schema(self, schema_input: str) -> tuple[str, dict]:
+        """
+        Parse output schema from file or JSON string and create a custom system prompt.
+
+        Args:
+            schema_input: Either a file path to a JSON schema or a JSON schema string
+
+        Returns:
+            Custom system prompt instructing the agent to follow the schema
+
+        Raises:
+            ValueError: If schema is invalid JSON or file doesn't exist
+        """
+        try:
+            from AgentCrew.modules.prompts.constants import SCHEMA_ENFORCEMENT_PROMPT
+
+            # Try to parse as file path first
+            if os.path.exists(schema_input):
+                with open(schema_input, "r", encoding="utf-8") as f:
+                    schema_dict = json.load(f)
+            else:
+                # Try to parse as JSON string
+                schema_dict = json.loads(schema_input)
+
+            # Format the schema as a pretty-printed JSON string
+            schema_json = json.dumps(schema_dict, indent=2)
+
+            # Create enforcement prompt
+            enforcement_prompt = SCHEMA_ENFORCEMENT_PROMPT.replace(
+                "{schema_json}", schema_json
+            )
+            return enforcement_prompt, schema_dict
+
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON schema: {e}")
+        except Exception as e:
+            raise ValueError(f"Failed to load output schema: {e}")
+
+    def _validate_response_against_schema(
+        self, response: str, schema_dict: Dict[str, Any]
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Validate agent response against JSON schema.
+
+        Args:
+            response: Agent's response string (expected to be valid JSON)
+            schema_dict: JSON schema dictionary
+
+        Returns:
+            Tuple of (is_valid, error_message)
+            - is_valid: True if response matches schema, False otherwise
+            - error_message: Detailed error message if validation fails, None if valid
+        """
+        from jsonschema import validate, ValidationError
+
+        # Parse response as JSON
+        try:
+            response_json = json.loads(response)
+        except json.JSONDecodeError as e:
+            return (
+                False,
+                f"Response is not valid JSON: {e}\n\nResponse received:\n{response[:500]}",
+            )
+
+        # Validate against schema
+        try:
+            validate(instance=response_json, schema=schema_dict)
+            return True, None
+        except ValidationError as e:
+            error_details = (
+                "JSON Schema Validation Error:\n"
+                f"  - Path: {' -> '.join(str(p) for p in e.path) if e.path else 'root'}\n"
+                f"  - Error: {e.message}\n"
+                f"  - Failed value: {json.dumps(e.instance, indent=2)}\n"
+            )
+            if e.schema_path:
+                error_details += (
+                    f"  - Schema path: {' -> '.join(str(p) for p in e.schema_path)}\n"
+                )
+            return False, error_details
+
     def run_job(
         self,
         agent: str,
@@ -641,6 +722,7 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
         agent_config: Optional[str] = None,
         mcp_config: Optional[str] = None,
         memory_llm: Optional[str] = None,
+        output_schema: Optional[str] = None,
     ) -> str:
         """
         Run a single job/task with an agent.
@@ -654,6 +736,7 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
             agent_config: Path to agent configuration file
             mcp_config: Path to MCP servers configuration file
             memory_llm: LLM provider for memory service
+            output_schema: JSON schema (file path or JSON string) for enforcing structured output
 
         Returns:
             Agent response as string
@@ -699,12 +782,24 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
             self.agent_manager.enforce_transfer = False
             self.agent_manager.one_turn_process = True
 
-            if self.agent_manager.select_agent(agent):
+            current_agent = self.agent_manager.get_local_agent(agent)
+
+            if current_agent:
+                # Parse schema if provided
+                schema_dict = None
+                if output_schema and isinstance(current_agent, LocalAgent):
+                    schema_prompt, schema_dict = self._parse_output_schema(
+                        output_schema
+                    )
+                    current_agent.set_custom_system_prompt(schema_prompt)
+
+                self.agent_manager.select_agent(current_agent.name)
+
                 message_handler = MessageHandler(
                     services["memory"], services["context_persistent"]
                 )
                 message_handler.is_non_interactive = True
-                message_handler.agent = self.agent_manager.get_current_agent()
+                message_handler.agent = current_agent
 
                 # Process files if provided
                 if files:
@@ -713,12 +808,42 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
                             message_handler.process_user_input(f"/file {file_path}")
                         )
 
-                # Process task
+                # Process task with retry logic for schema validation
+                max_attempts = 4
+                attempt = 0
+                response = None
+
                 asyncio.run(message_handler.process_user_input(task))
-                response, _, _ = asyncio.run(message_handler.get_assistant_response())
+
+                while attempt < max_attempts:
+                    attempt += 1
+                    response, _, _ = asyncio.run(
+                        message_handler.get_assistant_response()
+                    )
+                    if not output_schema or not schema_dict:
+                        break  # No schema validation needed
+
+                    if response is None:
+                        asyncio.run(
+                            message_handler.process_user_input(
+                                "No response was generated. Please try again."
+                            )
+                        )
+                        continue  # No response, retry
+
+                    success, retry_message = self._validate_response_against_schema(
+                        response, schema_dict
+                    )
+                    if success:
+                        break  # Valid response
+                    else:
+                        if retry_message:
+                            asyncio.run(
+                                message_handler.process_user_input(retry_message)
+                            )
 
                 MCPSessionManager.get_instance().cleanup()
-                return response or ""
+                return response.strip() if response else ""
             else:
                 raise ValueError(f"Agent '{agent}' not found")
 

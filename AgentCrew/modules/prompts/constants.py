@@ -156,3 +156,25 @@ Return ONLY the processed content without explanations about your extraction pro
 
 WEB CONTENT: {content}
 """
+
+SCHEMA_ENFORCEMENT_PROMPT = """
+<OUTPUT_SCHEMA_ENFORCEMENT>
+<Instruction>
+You MUST format your response STRICTLY according to the following JSON schema.
+Do NOT include any text before or after the JSON output.
+Your entire response should be valid JSON that conforms to this schema:
+</Instruction>
+
+<schema>
+{schema_json}
+</schema>
+
+<Requirements>
+1. Output ONLY valid JSON - no markdown, no explanations, no additional text
+2. Follow the exact structure defined in the schema above
+3. Respect all required fields, types, and constraints
+4. Ensure all property names match exactly (case-sensitive)
+5. Do not add extra fields not defined in the schema
+</Requirements>
+</OUTPUT_SCHEMA_ENFORCEMENT>
+"""
