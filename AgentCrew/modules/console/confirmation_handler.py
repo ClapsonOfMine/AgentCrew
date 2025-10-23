@@ -6,10 +6,13 @@ Handles tool confirmation requests and MCP prompt confirmations.
 from __future__ import annotations
 
 from rich.text import Text
+from rich.panel import Panel
+from rich.console import Group
 import time
 
 from .constants import (
     RICH_STYLE_BLUE,
+    RICH_STYLE_BLUE_BOLD,
     RICH_STYLE_YELLOW,
     RICH_STYLE_GREEN,
     RICH_STYLE_RED,
@@ -42,26 +45,31 @@ class ConfirmationHandler:
             self._handle_ask_tool(tool_use, confirmation_id, message_handler)
             return
 
-        self.console.print(
-            Text(
-                "\n🔧 Tool execution requires your permission:", style=RICH_STYLE_YELLOW
-            )
-        )
-        tool_name = Text("Tool: ", style=RICH_STYLE_BLUE)
-        tool_name.append(tool_use["name"])
-        self.console.print(tool_name)
+        tool_texts_group = []
+        header = Text("🔧 Tool ", style=RICH_STYLE_YELLOW)
+        header.append(tool_use["name"], style=RICH_STYLE_BLUE_BOLD)
+        header.append(" execution requires your permission:", style=RICH_STYLE_YELLOW)
 
         # Display tool parameters
         if isinstance(tool_use["input"], dict):
-            self.console.print(Text("Parameters:", style=RICH_STYLE_BLUE))
+            tool_texts_group.append(Text("Parameters:", style=RICH_STYLE_BLUE))
             for key, value in tool_use["input"].items():
                 param_text = Text(f"  - {key}: ", style=RICH_STYLE_YELLOW)
                 param_text.append(str(value), style=RICH_STYLE_WHITE)
-                self.console.print(param_text)
+                tool_texts_group.append(param_text)
         else:
             input_text = Text("Input: ", style=RICH_STYLE_YELLOW)
             input_text.append(str(tool_use["input"]))
-            self.console.print(input_text)
+            tool_texts_group.append(input_text)
+
+        self.console.print(
+            Panel(
+                Group(*tool_texts_group),
+                title=header,
+                title_align="left",
+                border_style=RICH_STYLE_YELLOW,
+            )
+        )
 
         # Get user response
         self.input_handler._stop_input_thread()
@@ -127,7 +135,7 @@ class ConfirmationHandler:
         self.input_handler._stop_input_thread()
         # Display the question
         self.console.print(
-            Text("\n❓ Agent is asking for clarification:", style=RICH_STYLE_BLUE)
+            Text("\n❓ Agent is asking for clarification:", style=RICH_STYLE_BLUE_BOLD)
         )
         response = self.input_handler.get_choice_input(f"{question}", guided_answers)
 
