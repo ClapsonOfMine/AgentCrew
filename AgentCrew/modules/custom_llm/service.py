@@ -99,6 +99,15 @@ class CustomLLMService(OpenAIService):
                                     tool_content.get("text", "")
                                 )
                     msg["content"] = "\n".join(cleaned_tool_content)
+            elif msg.get("role") == "assistant":
+                if isinstance(msg.get("content", ""), List):
+                    for assistant_content in msg["content"]:
+                        if isinstance(assistant_content, dict):
+                            if assistant_content.get("type", "text") == "thinking":
+                                assistant_content["type"] = "text"
+                                assistant_content["text"] = (
+                                    f"<think>{assistant_content.get('text', '')}</think>"
+                                )
 
         return messages
 
