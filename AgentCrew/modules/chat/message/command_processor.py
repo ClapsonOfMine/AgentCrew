@@ -125,7 +125,10 @@ class CommandProcessor:
 
                     self.message_handler._notify("consolidation_completed", result)
 
-                    if self.message_handler.current_conversation_id:
+                    if (
+                        self.message_handler.current_conversation_id
+                        and self.message_handler.persistent_service
+                    ):
                         try:
                             self.message_handler.persistent_service.append_conversation_messages(
                                 self.message_handler.current_conversation_id,
@@ -186,7 +189,10 @@ class CommandProcessor:
 
                     self.message_handler._notify("unconsolidation_completed", result)
 
-                    if self.message_handler.current_conversation_id:
+                    if (
+                        self.message_handler.current_conversation_id
+                        and self.message_handler.persistent_service
+                    ):
                         try:
                             self.message_handler.persistent_service.append_conversation_messages(
                                 self.message_handler.current_conversation_id,
@@ -309,7 +315,10 @@ class CommandProcessor:
             self.message_handler.streamline_messages = (
                 self.message_handler.streamline_messages[: selected_turn.message_index]
             )
-            if self.message_handler.current_conversation_id:
+            if (
+                self.message_handler.current_conversation_id
+                and self.message_handler.persistent_service
+            ):
                 self.message_handler.persistent_service.append_conversation_messages(
                     self.message_handler.current_conversation_id,
                     self.message_handler.streamline_messages,

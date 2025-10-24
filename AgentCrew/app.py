@@ -171,7 +171,7 @@ class AgentCrewApplication:
         return None
 
     def setup_services(
-        self, provider: str, memory_llm: Optional[str] = None
+        self, provider: str, memory_llm: Optional[str] = None, need_memory: bool = True
     ) -> Dict[str, Any]:
         """
         Initialize and configure all AgentCrew services.
@@ -208,16 +208,19 @@ class AgentCrewApplication:
         except Exception as e:
             click.echo(f"⚠️  Could not restore last used model: {e}")
 
-        if memory_llm:
-            memory_service = ChromaMemoryService(
-                llm_service=llm_manager.initialize_standalone_service(memory_llm)
-            )
-        else:
-            memory_service = ChromaMemoryService(
-                llm_service=llm_manager.initialize_standalone_service(provider)
-            )
+        memory_service = None
+        context_service = None
+        if need_memory:
+            if memory_llm:
+                memory_service = ChromaMemoryService(
+                    llm_service=llm_manager.initialize_standalone_service(memory_llm)
+                )
+            else:
+                memory_service = ChromaMemoryService(
+                    llm_service=llm_manager.initialize_standalone_service(provider)
+                )
 
-        context_service = ContextPersistenceService()
+            context_service = ContextPersistenceService()
         clipboard_service = ClipboardService()
 
         try:
@@ -753,7 +756,7 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
                         "No LLM API key found. Please set either ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, or DEEPINFRA_API_KEY"
                     )
 
-            services = self.setup_services(provider, memory_llm)
+            services = self.setup_services(provider, memory_llm, need_memory=False)
 
             if mcp_config:
                 os.environ["MCP_CONFIG_PATH"] = mcp_config

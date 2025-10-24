@@ -31,8 +31,8 @@ class MessageHandler(Observable):
 
     def __init__(
         self,
-        memory_service: BaseMemoryService,
-        context_persistent_service: ContextPersistenceService,
+        memory_service: Optional[BaseMemoryService] = None,
+        context_persistent_service: Optional[ContextPersistenceService] = None,
         with_voice: bool = False,
     ):
         """
@@ -409,7 +409,7 @@ class MessageHandler(Observable):
                 try:
                     messages_for_this_turn = self.get_recent_agent_responses()
                     if (
-                        messages_for_this_turn
+                        messages_for_this_turn and self.persistent_service
                     ):  # Only save if there are messages for the turn
                         self.persistent_service.append_conversation_messages(
                             self.current_conversation_id,
@@ -469,7 +469,7 @@ class MessageHandler(Observable):
             if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
                 messages_for_this_turn = self.get_recent_agent_responses()
                 if (
-                    messages_for_this_turn
+                    messages_for_this_turn and self.persistent_service
                 ):  # Only save if there are messages for the turn
                     self.persistent_service.append_conversation_messages(
                         self.current_conversation_id,

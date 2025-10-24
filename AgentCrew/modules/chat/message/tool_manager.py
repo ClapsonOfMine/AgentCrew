@@ -259,7 +259,8 @@ class ToolManager:
     def _post_tool_transfer(self, tool_use, tool_result):
         """Handle post-transfer operations."""
         if (
-            self.message_handler.current_conversation_id
+            self.message_handler.persistent_service
+            and self.message_handler.current_conversation_id
             and self.message_handler.last_assisstant_response_idx >= 0
         ):
             self.message_handler.persistent_service.append_conversation_messages(
@@ -286,7 +287,10 @@ class ToolManager:
                 "content": [{"type": "text", "text": tool_result}],
             }
         )
-        if self.message_handler.current_conversation_id:
+        if (
+            self.message_handler.persistent_service
+            and self.message_handler.current_conversation_id
+        ):
             self.message_handler.persistent_service.append_conversation_messages(
                 self.message_handler.current_conversation_id,
                 [
