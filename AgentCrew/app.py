@@ -419,18 +419,6 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
                     f"⚠️ Unknown agent: {first_agent_name}. Using default agent. Available agents: {available_agents}"
                 )
 
-    def cleanup_old_memories(self, services: Dict[str, Any], months: int = 1) -> None:
-        if "memory" in services and services["memory"]:
-            # Clean up old memories (older than 1 month)
-            try:
-                removed_count = services["memory"].cleanup_old_memories(months=months)
-                if removed_count > 0:
-                    click.echo(
-                        f"🧹 Cleaned up {removed_count} old conversation memories"
-                    )
-            except Exception as e:
-                click.echo(f"⚠️ Memory cleanup failed: {str(e)}")
-
     def run_console(
         self,
         provider: Optional[str] = None,
@@ -468,8 +456,6 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
 
             self.setup_agents(services, agent_config)
             self.restore_last_agent()
-
-            self.cleanup_old_memories(services, months=1)
 
             # Create the message handler
             message_handler = MessageHandler(
@@ -533,8 +519,6 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
             # Set up the agent system
             self.setup_agents(services, agent_config)
             self.restore_last_agent()
-
-            self.cleanup_old_memories(services, months=1)
 
             # Create the message handler
             message_handler = MessageHandler(
