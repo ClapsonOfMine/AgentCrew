@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 from loguru import logger
-from typing import Dict, Any, List, Optional, Callable
+from typing import TYPE_CHECKING
 from mcp import ClientSession, StdioServerParameters
-from mcp.types import Prompt, ContentBlock, TextContent, ImageContent, Tool
+from mcp.types import ImageContent, TextContent
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 from mcp.client.sse import sse_client
-from AgentCrew.modules.agents import AgentManager, LocalAgent
+from AgentCrew.modules.agents import LocalAgent, AgentManager
 from AgentCrew.modules.tools.registry import ToolRegistry
-from .config import MCPServerConfig
 from .auth import OAuthClientResolver, FileTokenStorage
 import random
 import asyncio
 import threading
 from AgentCrew.modules import FileLogIO
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Dict, List, Optional
+    from mcp.types import ContentBlock, Prompt, Tool
+    from .config import MCPServerConfig
 
 # Initialize the logger
 mcp_log_io = FileLogIO("mcpclient_agentcrew")

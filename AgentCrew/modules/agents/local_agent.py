@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 from datetime import datetime
 import os
 import time
 import copy
-from typing import Dict, Any, List, Optional, Callable, Literal, Union
+from typing import List, TYPE_CHECKING
 from AgentCrew.modules.llm import BaseLLMService
 
 from .base import BaseAgent, MessageType
 from loguru import logger
+
+if TYPE_CHECKING:
+    from typing import Dict, Any, Optional, Callable, Literal, Union
 
 SHRINK_CONTEXT_THRESHOLD = 90_000
 SHRINK_LENGTH_THRESHOLD = 15

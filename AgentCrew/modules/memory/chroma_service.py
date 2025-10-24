@@ -1,11 +1,9 @@
 from __future__ import annotations
 import os
-import chromadb
 import uuid
-from chromadb.config import Settings
 import queue
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
 from threading import Thread, Event
 from loguru import logger
@@ -16,10 +14,9 @@ from AgentCrew.modules.prompts.constants import (
     SEMANTIC_EXTRACTING,
     PRE_ANALYZE_PROMPT,
 )
-import chromadb.utils.embedding_functions as embedding_functions
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import List, Dict, Any, Optional
     from chromadb import Collection
     from AgentCrew.modules.llm.base import BaseLLMService
 
@@ -51,11 +48,6 @@ class ChromaMemoryService(BaseMemoryService):
         # Ensure the persist directory exists
         self.db_path = os.getenv("MEMORYDB_PATH", MEMORY_DB_PATH)
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-
-        # Initialize ChromaDB client with persistence
-        self.client = chromadb.PersistentClient(
-            path=self.db_path, settings=Settings(anonymized_telemetry=False)
-        )
 
         self.llm_service = llm_service
         ## set to groq if key available
@@ -92,7 +84,14 @@ class ChromaMemoryService(BaseMemoryService):
         self._start_memory_worker()
 
     def _initialize_collection(self) -> Collection:
-        # Create or get collection for storing memories
+        # Initialize ChromaDB client with persistence
+        import chromadb
+        import chromadb.utils.embedding_functions as embedding_functions
+        from chromadb.config import Settings
+
+        self.client = chromadb.PersistentClient(
+            path=self.db_path, settings=Settings(anonymized_telemetry=False)
+        )
 
         if self._collection is not None:
             return self._collection
@@ -155,6 +154,7 @@ class ChromaMemoryService(BaseMemoryService):
     def _memory_worker_thread(self):
         """Worker thread for processing conversation storage operations."""
         loop = asyncio.new_event_loop()
+        self._initialize_collection()
         while not self._memory_stop_event.is_set():
             try:
                 # Get operation from queue with timeout

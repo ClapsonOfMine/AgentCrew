@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import json
 import mimetypes
@@ -6,7 +8,7 @@ import itertools
 import rich
 import re
 from rich.live import Live
-from typing import Dict, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING
 from groq import AsyncGroq
 from dotenv import load_dotenv
 from AgentCrew.modules.llm.base import (
@@ -17,6 +19,9 @@ from AgentCrew.modules.llm.base import (
 )
 from AgentCrew.modules.llm.model_registry import ModelRegistry
 from loguru import logger
+
+if TYPE_CHECKING:
+    from typing import Dict, Any, List, Optional, Tuple
 
 
 class GroqService(BaseLLMService):

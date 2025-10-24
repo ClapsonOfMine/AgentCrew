@@ -1,20 +1,16 @@
+from __future__ import annotations
 import os
 from typing import Any, Optional
 
 from PySide6.QtWidgets import (
     QApplication,
-    QCompleter,
-    QLabel,
-    QPushButton,
     QWidget,
     QVBoxLayout,
     QMessageBox,
     QMainWindow,
     QStatusBar,
-    QScrollArea,
     QMenu,
     QSplitter,
-    QTextEdit,
 )
 from PySide6.QtCore import (
     Qt,
@@ -23,9 +19,7 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtGui import QIcon
-from AgentCrew.modules.chat.message_handler import MessageHandler, Observer
-from .widgets import ConversationSidebar, TokenUsageWidget
-from .widgets import MessageBubble
+from AgentCrew.modules.chat.message_handler import Observer
 from loguru import logger
 
 
@@ -42,6 +36,19 @@ from .components import (
     CommandHandler,
 )
 from .themes import StyleProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .widgets import MessageBubble
+    from AgentCrew.modules.chat.message_handler import MessageHandler
+    from PySide6.QtWidgets import (
+        QPushButton,
+        QLabel,
+        QCompleter,
+        QScrollArea,
+        QTextEdit,
+    )
+    from .widgets import ConversationSidebar, TokenUsageWidget
 
 
 class ChatWindow(QMainWindow, Observer):
