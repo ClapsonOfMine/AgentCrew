@@ -89,12 +89,12 @@ class ChromaMemoryService(BaseMemoryService):
         import chromadb.utils.embedding_functions as embedding_functions
         from chromadb.config import Settings
 
+        if self._collection is not None:
+            return self._collection
+
         self.client = chromadb.PersistentClient(
             path=self.db_path, settings=Settings(anonymized_telemetry=False)
         )
-
-        if self._collection is not None:
-            return self._collection
         if os.getenv("VOYAGE_API_KEY"):
             from .voyageai_ef import VoyageEmbeddingFunction
 
