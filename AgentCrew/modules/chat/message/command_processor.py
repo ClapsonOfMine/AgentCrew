@@ -343,6 +343,21 @@ class CommandProcessor:
             self.message_handler.last_assisstant_response_idx = len(
                 self.message_handler.streamline_messages
             )
+            if last_message and last_message.get("role", "") == "assistant":
+                last_message_content = last_message.get("content", "")
+                if isinstance(last_message_content, list):
+                    self.message_handler.latest_assistant_response = next(
+                        (
+                            c.get("text", "")
+                            for c in last_message_content
+                            if isinstance(c, dict) and c.get("type", "") == "text"
+                        ),
+                        "",
+                    )
+                else:
+                    self.message_handler.latest_assistant_response = (
+                        last_message_content
+                    )
 
             self.message_handler._notify(
                 "jump_performed",

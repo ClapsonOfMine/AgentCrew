@@ -67,8 +67,14 @@ class InputHandler:
         @kb.add("escape", "enter")
         def _(event):
             """Submit on Ctrl+S."""
-            if event.current_buffer.text.strip() and not self.is_message_processing:
-                event.current_buffer.validate_and_handle()
+            if event.current_buffer.text.strip():
+                # Allow exit commands to be submitted anytime
+                if (
+                    event.current_buffer.text == "/exit"
+                    or event.current_buffer.text == "/quit"
+                    or not self.is_message_processing
+                ):
+                    event.current_buffer.validate_and_handle()
 
         @kb.add(Keys.Enter)
         def _(event):
@@ -182,7 +188,10 @@ class InputHandler:
         @kb.add(Keys.Backspace)
         def _(event):
             if not event.current_buffer.text:
-                prompt = Text("👤 YOU: ", style=RICH_STYLE_BLUE)
+                prompt = Text(
+                    "👤 YOU: " if not self.is_message_processing else "",
+                    style=RICH_STYLE_BLUE,
+                )
                 self.console.print("", end="\r")
                 self.console.print(prompt, end="")
             else:
