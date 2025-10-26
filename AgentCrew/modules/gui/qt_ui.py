@@ -22,20 +22,7 @@ from PySide6.QtGui import QIcon
 from AgentCrew.modules.chat.message_handler import Observer
 from loguru import logger
 
-
 from .worker import LLMWorker
-from .components import (
-    MenuBuilder,
-    KeyboardHandler,
-    MessageEventHandler,
-    ToolEventHandler,
-    ChatComponents,
-    UIStateManager,
-    InputComponents,
-    ConversationComponents,
-    CommandHandler,
-)
-from .themes import StyleProvider
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -48,7 +35,7 @@ if TYPE_CHECKING:
         QScrollArea,
         QTextEdit,
     )
-    from .widgets import ConversationSidebar, TokenUsageWidget
+    from .widgets import TokenUsageWidget
 
 
 class ChatWindow(QMainWindow, Observer):
@@ -75,6 +62,8 @@ class ChatWindow(QMainWindow, Observer):
     current_thinking_bubble: Optional[MessageBubble]
 
     def __init__(self, message_handler: MessageHandler):
+        from .widgets import ConversationSidebar
+
         super().__init__()
         self.setWindowTitle("AgentCrew - Interactive Chat")
         self.setGeometry(100, 100, 1000, 700)  # Adjust size for sidebar
@@ -223,6 +212,21 @@ class ChatWindow(QMainWindow, Observer):
 
     def _setup_components(self):
         """Initialize all component handlers."""
+
+        from .components import (
+            MenuBuilder,
+            KeyboardHandler,
+            MessageEventHandler,
+            ToolEventHandler,
+            ChatComponents,
+            UIStateManager,
+            InputComponents,
+            ConversationComponents,
+            CommandHandler,
+        )
+
+        from .themes import StyleProvider
+
         self.style_provider = StyleProvider()
         self.menu_builder = MenuBuilder(self)
         self.keyboard_handler = KeyboardHandler(self)
