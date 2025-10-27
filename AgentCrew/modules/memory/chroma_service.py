@@ -11,6 +11,7 @@ import xmltodict
 
 from .base_service import BaseMemoryService
 from AgentCrew.modules.prompts.constants import (
+    PRE_ANALYZE_WITH_CONTEXT_PROMPT,
     SEMANTIC_EXTRACTING,
     PRE_ANALYZE_PROMPT,
 )
@@ -242,26 +243,34 @@ class ChromaMemoryService(BaseMemoryService):
             # Use the existing storage logic but make it synchronous
             ids = []
             memory_data = {}
-            avaialble_ids = collection.get(
-                where={
-                    "agent": agent_name,
-                },
-                include=[],
-            )["ids"]
+            # avaialble_ids = collection.get(
+            #     where={
+            #         "agent": agent_name,
+            #     },
+            #     include=[],
+            # )["ids"]
             if self.llm_service:
                 try:
                     # Process with LLM using asyncio.run to handle async call in worker thread
-                    analyzed_text = await self.llm_service.process_message(
-                        PRE_ANALYZE_PROMPT.replace(
-                            "{current_date}", datetime.today().strftime("%Y-%m-%d")
+                    if self.current_conversation_context.get(session_id, ""):
+                        analyzed_prompt = PRE_ANALYZE_WITH_CONTEXT_PROMPT.replace(
+                            "{conversation_context}",
+                            f"""<PREVIOUS_CONVERSATION_CONTEXT>
+    {self.current_conversation_context[session_id]}
+    </PREVIOUS_CONVERSATION_CONTEXT>""",
                         )
-                        .replace(
-                            "{current_conversation_context}",
-                            self.current_conversation_context.get(session_id, ""),
+                    else:
+                        analyzed_prompt = PRE_ANALYZE_PROMPT
+                    analyzed_prompt = (
+                        analyzed_prompt.replace(
+                            "{current_date}",
+                            datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
                         )
-                        .replace("{existing_ids}", ", ".join(avaialble_ids))
                         .replace("{user_message}", user_message)
                         .replace("{assistant_response}", assistant_response)
+                    )
+                    analyzed_text = await self.llm_service.process_message(
+                        analyzed_prompt
                     )
                     start_xml = analyzed_text.index("<MEMORY>")
                     end_xml = analyzed_text.index("</MEMORY>")
@@ -269,16 +278,16 @@ class ChromaMemoryService(BaseMemoryService):
                     memory_data = xmltodict.parse(xml_content)
                     if "MEMORY" in memory_data and "ID" in memory_data["MEMORY"]:
                         ids.append(memory_data["MEMORY"]["ID"])
-                    if (
-                        "MEMORY" in memory_data
-                        and "USER_REQUEST" not in memory_data["MEMORY"]
-                    ):
-                        memory_data["MEMORY"]["USER_REQUEST"] = user_message
-                    if (
-                        "MEMORY" in memory_data
-                        and "ASSISTANT_RESPONSE" not in memory_data["MEMORY"]
-                    ):
-                        memory_data["MEMORY"]["ASSISTANT_RESPONSE"] = assistant_response
+                    # if (
+                    #     "MEMORY" in memory_data
+                    #     and "USER_REQUEST" not in memory_data["MEMORY"]
+                    # ):
+                    #     memory_data["MEMORY"]["USER_REQUEST"] = user_message
+                    # if (
+                    #     "MEMORY" in memory_data
+                    #     and "ASSISTANT_RESPONSE" not in memory_data["MEMORY"]
+                    # ):
+                    #     memory_data["MEMORY"]["ASSISTANT_RESPONSE"] = assistant_response
 
                 except Exception as e:
                     logger.warning(f"Error processing conversation with LLM: {e}")
@@ -307,7 +316,9 @@ class ChromaMemoryService(BaseMemoryService):
             # Store in ChromaDB (existing logic)
             memory_id = str(uuid.uuid4())
             timestamp = datetime.now().timestamp()
-            conversation_document = xmltodict.unparse(memory_data, pretty=True)
+            conversation_document = xmltodict.unparse(
+                memory_data, pretty=True, full_document=False
+            )
             self.current_conversation_context[session_id] = conversation_document
 
             conversation_embedding = self.embedding_function([conversation_document])
@@ -475,11 +486,12 @@ class ChromaMemoryService(BaseMemoryService):
             timestamp = "Unknown time"
             if conv_data["timestamp"] != "unknown":
                 try:
-                    if isinstance(conv_data["timestamp"], int):
+                    try:
                         dt = datetime.fromtimestamp(conv_data["timestamp"])
-                    else:
+                        timestamp = dt.strftime("%Y-%m-%d %H:%M")
+                    except Exception:
                         dt = datetime.fromisoformat(conv_data["timestamp"])
-                    timestamp = dt.strftime("%Y-%m-%d %H:%M")
+                        timestamp = dt.strftime("%Y-%m-%d %H:%M")
                 except Exception:
                     timestamp = conv_data["timestamp"]
 
