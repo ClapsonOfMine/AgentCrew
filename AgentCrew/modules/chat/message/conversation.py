@@ -111,6 +111,9 @@ class ConversationManager:
                         self.message_handler.current_conversation_id
                     )
                     self.message_handler.memory_service.loaded_conversation = True
+                    self.message_handler.memory_service.load_conversation_context(
+                        self.message_handler.current_conversation_id
+                    )
                 last_agent_name = history[-1].get("agent", "")
                 if last_agent_name and self.message_handler.agent_manager.select_agent(
                     last_agent_name

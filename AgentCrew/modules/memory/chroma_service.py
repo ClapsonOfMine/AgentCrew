@@ -378,7 +378,20 @@ class ChromaMemoryService(BaseMemoryService):
 
     def clear_conversation_context(self):
         self.current_embedding_context = None
+        self.current_conversation_context = {}
         self.context_embedding = []
+
+    def load_conversation_context(self, session_id: str):
+        collection = self._initialize_collection()
+        latest_memory = collection.get(
+            where={
+                "session_id": session_id,
+            },
+        )
+        if latest_memory["documents"]:
+            self.current_conversation_context[session_id] = latest_memory["documents"][
+                -1
+            ]
 
     def generate_user_context(self, user_input: str, agent_name: str = "None") -> str:
         """
