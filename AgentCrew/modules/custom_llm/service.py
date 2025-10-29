@@ -129,21 +129,21 @@ class CustomLLMService(OpenAIService):
                 [{"role": "system", "content": self.system_prompt}] + messages
             )
 
+        full_model_id = f"{self._provider_name}/{self.model}"
+
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
+            full_model_id
         ):
             stream_params["tools"] = self.tools
 
         if (
-            "thinking" in ModelRegistry.get_model_capabilities(self.model)
+            "thinking" in ModelRegistry.get_model_capabilities(full_model_id)
             and self.reasoning_effort is None
         ):
             stream_params["reasoning_effort"] = "none"
 
-        if "stream" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
-        ):
+        if "stream" in ModelRegistry.get_model_capabilities(full_model_id):
             self._is_thinking = False
             return await self.client.chat.completions.create(
                 **stream_params,

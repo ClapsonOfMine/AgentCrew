@@ -188,6 +188,7 @@ class OpenAIService(BaseLLMService):
 
     async def stream_assistant_response(self, messages) -> Any:
         """Stream the assistant's response with tool support."""
+        full_model_id = f"{self._provider_name}/{self.model}"
         stream_params = {
             "model": self.model,
             "messages": messages,
@@ -195,9 +196,7 @@ class OpenAIService(BaseLLMService):
             "stream_options": {"include_usage": True},
             "max_tokens": 20000,
         }
-        if "thinking" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
-        ):
+        if "thinking" in ModelRegistry.get_model_capabilities(full_model_id):
             stream_params.pop("max_tokens", None)
             if self.reasoning_effort:
                 stream_params["reasoning_effort"] = self.reasoning_effort
@@ -213,7 +212,7 @@ class OpenAIService(BaseLLMService):
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
+            full_model_id
         ):
             stream_params["tools"] = self.tools
 

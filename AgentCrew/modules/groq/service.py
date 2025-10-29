@@ -221,6 +221,7 @@ class GroqService(BaseLLMService):
             "temperature": 0.4,
             "top_p": 0.95,
         }
+        full_model_id = f"{self._provider_name}/{self.model}"
 
         # Add system message if provided
         if self.system_prompt:
@@ -236,9 +237,7 @@ class GroqService(BaseLLMService):
                 + messages
             )
 
-        if "thinking" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
-        ):
+        if "thinking" in ModelRegistry.get_model_capabilities(full_model_id):
             stream_params["reasoning_format"] = "parsed"
             # stream_params["messages"].append(
             #     {"role": "assistant", "content": "<think>\n"}
@@ -246,7 +245,7 @@ class GroqService(BaseLLMService):
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
+            full_model_id
         ):
             stream_params["tools"] = self.tools
 

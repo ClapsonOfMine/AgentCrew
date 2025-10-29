@@ -218,6 +218,7 @@ class OpenAIResponseService(BaseLLMService):
 
         # Convert messages to Response API input format
         input_data = self._convert_internal_format(messages)
+        full_model_id = f"{self._provider_name}/{self.model}"
 
         stream_params = {
             "model": self.model,
@@ -227,9 +228,7 @@ class OpenAIResponseService(BaseLLMService):
         }
 
         # Add reasoning configuration for thinking models
-        if "thinking" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
-        ):
+        if "thinking" in ModelRegistry.get_model_capabilities(full_model_id):
             if self.reasoning_effort:
                 stream_params["reasoning"] = {"effort": self.reasoning_effort}
 
@@ -238,7 +237,7 @@ class OpenAIResponseService(BaseLLMService):
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
+            full_model_id
         ):
             # Include both custom tools and built-in tools
             all_tools = self.tools.copy()

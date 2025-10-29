@@ -320,6 +320,7 @@ class ChromaMemoryService(BaseMemoryService):
                 memory_data, pretty=True, full_document=False
             )
             self.current_conversation_context[session_id] = conversation_document
+            print(conversation_document)
 
             conversation_embedding = self.embedding_function([conversation_document])
             self.context_embedding.append(conversation_embedding)
