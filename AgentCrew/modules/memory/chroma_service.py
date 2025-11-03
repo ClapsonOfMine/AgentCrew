@@ -275,8 +275,15 @@ class ChromaMemoryService(BaseMemoryService):
                     start_xml = analyzed_text.index("<MEMORY>")
                     end_xml = analyzed_text.index("</MEMORY>")
                     xml_content = analyzed_text[start_xml : end_xml + len("</MEMORY>")]
+                    xml_content.replace("&", "&amp;").replace("'", "&apos;").replace(
+                        '"', "&quot;"
+                    )
                     memory_data = xmltodict.parse(xml_content)
-                    if "MEMORY" in memory_data and "ID" in memory_data["MEMORY"]:
+                    if (
+                        "MEMORY" in memory_data
+                        and "ID" in memory_data["MEMORY"]
+                        and memory_data["MEMORY"]["ID"]
+                    ):
                         ids.append(memory_data["MEMORY"]["ID"])
                     # if (
                     #     "MEMORY" in memory_data
@@ -320,7 +327,6 @@ class ChromaMemoryService(BaseMemoryService):
                 memory_data, pretty=True, full_document=False
             )
             self.current_conversation_context[session_id] = conversation_document
-            print(conversation_document)
 
             conversation_embedding = self.embedding_function([conversation_document])
             self.context_embedding.append(conversation_embedding)

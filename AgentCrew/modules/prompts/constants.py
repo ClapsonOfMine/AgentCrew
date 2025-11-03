@@ -53,16 +53,17 @@ PRE_ANALYZE_PROMPT = """
 
 PRE_ANALYZE_WITH_CONTEXT_PROMPT = """
 <MEMORY_PROCESSING_REQUEST>
-    Extract this conversation for AI memory storage. Create a comprehensive xml record that includes all fields in <OUTPUT_FORMAT> below.
-    <OUTPUT_FORMAT>
-    1. ID: use existed id from <PREVIOUS_CONVERSATION_CONTEXT>.
+    Extract this conversation for AI memory storage. Create a comprehensive xml record following INSTRUCTIONS that includes all fields in <OUTPUT_FORMAT> below. No explanations or additional text.
+
+    <INSTRUCTIONS>
+    1. ID: use existed id from <PREVIOUS_CONVERSATION_CONTEXT> if available or create one.
     2. DATE: {current_date}
     3. SUMMARY: Merge the SUMMARY of <PREVIOUS_CONVERSATION_CONTEXT> with new CONVERSATION_TURN (3-6 sentences)
     4. CONTEXT: Merge the CONTEXT of <PREVIOUS_CONVERSATION_CONTEXT> with new context in CONVERSATION_TURN
     5. ENTITIES: Add to the ENTITIES of <PREVIOUS_CONVERSATION_CONTEXT> for new important people, organizations, products, or concepts mentioned in CONVERSATION_TURN including essential facts, concepts, or data points discussed about that entity
     6. DOMAINS: Add to the DOMAINS of <PREVIOUS_CONVERSATION_CONTEXT> for new subject domain(s) in CONVERSATION_TURN related
     7. CONVERSATION_NOTES: Add the CONVERSATION_NOTES of <PREVIOUS_CONVERSATION_CONTEXT> for new key notes extracted information from CONVERSATION_TURN. PREVIOUS_CONVERSATION_CONTEXT CONVERSATION_NOTES must be keep intact.
-    </OUTPUT_FORMAT>
+    </INSTRUCTIONS>
 
     {conversation_context}
 
@@ -74,6 +75,27 @@ PRE_ANALYZE_WITH_CONTEXT_PROMPT = """
         {assistant_response}
         </ASSISTANT>
     </CONVERSATION_TURN>
+
+    <OUTPUT_FORMAT>
+        <MEMORY>
+            <ID>[existed_id]</ID>
+            <DATE>[current_date]</DATE>
+            <SUMMARY>[merged_summary]</SUMMARY>
+            <CONTEXT>[merged_context]</CONTEXT>
+            <ENTITIES>
+                <ENTITY>
+                    <NAME>[added_entity_name]</NAME>
+                    <DESC>[added_entity_description]</DESC>
+                </ENTITY>
+            </ENTITIES>
+            <DOMAINS>
+                <DOMAIN>[added_domain]</DOMAIN>
+            </DOMAINS>
+            <CONVERSATION_NOTES>
+                <NOTE>[added_notes]</NOTE>
+            </CONVERSATION_NOTES>
+        </MEMORY>
+    </OUTPUT_FORMAT>
 </MEMORY_PROCESSING_REQUEST>
 """
 
