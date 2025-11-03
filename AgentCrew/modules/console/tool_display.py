@@ -92,7 +92,6 @@ class ToolDisplayHandlers:
             Panel(
                 Group(*tool_texts_group),
                 title=header,
-                border_style=RICH_STYLE_GREEN,
                 title_align="left",
             )
         )
@@ -118,7 +117,6 @@ class ToolDisplayHandlers:
 
             truncated_line = Text(
                 f"(Output truncated, total length: {len(result_str)} characters)",
-                style=RICH_STYLE_GREEN,
             )
             tool_texts_group.append(truncated_line)
         else:
@@ -147,7 +145,12 @@ class ToolDisplayHandlers:
         tool_texts_group.append(error_line)
 
         self.console.print(
-            Panel(Group(*tool_texts_group), title=header, title_align="left")
+            Panel(
+                Group(*tool_texts_group),
+                title=header,
+                title_align="left",
+                border_style=RICH_STYLE_RED,
+            )
         )
 
     def display_tool_denied(self, data):
