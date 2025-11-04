@@ -139,9 +139,9 @@ class CustomLLMService(OpenAIService):
 
         if (
             "thinking" in ModelRegistry.get_model_capabilities(full_model_id)
-            and self.reasoning_effort is None
+            and self.reasoning_effort
         ):
-            stream_params["reasoning_effort"] = "none"
+            stream_params["reasoning_effort"] = self.reasoning_effort
 
         if "stream" in ModelRegistry.get_model_capabilities(full_model_id):
             self._is_thinking = False
