@@ -9,8 +9,6 @@ import time
 from typing import Any
 from rich.console import Console
 from rich.text import Text
-
-import AgentCrew
 from AgentCrew.modules.chat.message_handler import Observer
 from loguru import logger
 
@@ -340,6 +338,8 @@ class ConsoleUI(Observer):
 
     def print_welcome_message(self):
         """Print the welcome message for the chat."""
+        import AgentCrew
+
         version = getattr(AgentCrew, "__version__", "Unknown")
         self.display_handlers.print_welcome_message(version)
 

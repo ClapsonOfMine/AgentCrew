@@ -67,6 +67,7 @@ class MessageHandler(Observable):
         self.conversation_manager = ConversationManager(self)
 
         self.conversation_manager.start_new_conversation()  # Initialize first conversation
+        self._yolo_mode_check()
 
         # Voice integration
         self.voice_service = None
@@ -86,6 +87,15 @@ class MessageHandler(Observable):
                 )
 
                 self.voice_service = DeepInfraVoiceService()
+
+    def _yolo_mode_check(self):
+        # This should allows YOLO can be configured on-the-fly without recalled to config too many times
+        config_management = ConfigManagement()
+        global_config = config_management.read_global_config_data()
+
+        self.tool_manager.yolo_mode = global_config.get("global_settings", {}).get(
+            "yolo_mode", False
+        )
 
     def _messages_append(self, message):
         """Append a message to the agent history and streamline messages."""
@@ -358,13 +368,7 @@ class MessageHandler(Observable):
                     self._messages_append(assistant_message)
                 self._notify("assistant_message_added", assistant_response)
 
-                # This should allows YOLO can be configured on-the-fly without recalled to config too many times
-                config_management = ConfigManagement()
-                global_config = config_management.read_global_config_data()
-
-                self.tool_manager.yolo_mode = global_config.get(
-                    "global_settings", {}
-                ).get("yolo_mode", False)
+                self._yolo_mode_check()
 
                 # Process each tool use
                 for tool_use in tool_uses:
