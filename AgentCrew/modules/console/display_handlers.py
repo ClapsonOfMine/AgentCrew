@@ -329,6 +329,10 @@ class DisplayHandlers:
                 "Use '/toggle_transfer' to toggle agent transfer enforcement.",
                 style=RICH_STYLE_YELLOW,
             ),
+            Text(
+                "Use '/toggle_session_yolo' to toggle YOLO mode (auto-approval of tool calls) in this session only.",
+                style=RICH_STYLE_YELLOW,
+            ),
             Text("Use '/list' to list saved conversations.", style=RICH_STYLE_YELLOW),
             Text(
                 "Use '/load <id>' or '/load <number>' to load a conversation.",
@@ -355,15 +359,22 @@ class DisplayHandlers:
         self.console.print(Panel(welcome_messages))
         self.display_divider()
 
-    def print_prompt_prefix(self, agent_name: str, model_name: str):
+    def print_prompt_prefix(
+        self, agent_name: str, model_name: str, yolo_mode_enabled: bool
+    ):
         """Print the prompt prefix with agent and model information."""
         title = Text(f"\n[{agent_name}", style=RICH_STYLE_RED)
         title.append(":")
         title.append(f"{model_name}]", style=RICH_STYLE_BLUE)
+
         title.append(
-            f"            [{datetime.now().strftime('%H:%M:%S')}]",
+            f"      [{datetime.now().strftime('%H:%M:%S')}]",
             style=RICH_STYLE_GRAY,
         )
+
+        if yolo_mode_enabled:
+            title.append("\n[YOLO mode enabled]", style=RICH_STYLE_YELLOW_BOLD)
+
         title.append(
             "\n(Press Enter for new line, Ctrl+S/Alt+Enter to Send, Ctrl+V to paste)\n",
             style=RICH_STYLE_YELLOW,

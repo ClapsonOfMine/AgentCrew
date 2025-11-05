@@ -13,6 +13,7 @@ from rich.text import Text
 import AgentCrew
 from AgentCrew.modules.chat.message_handler import Observer
 from loguru import logger
+
 from .utils import agent_evaluation_remove
 
 from .constants import (
@@ -421,6 +422,11 @@ class ConsoleUI(Observer):
                     elif user_input.strip() == "/help":
                         self.console.print("\n")
                         self.print_welcome_message()
+                        continue
+
+                    # Handle toggle_session_yolo command directly (console only, session-based)
+                    elif user_input.strip() == "/toggle_session_yolo":
+                        self.command_handlers.handle_toggle_session_yolo_command()
                         continue
 
                     elif user_input.strip().startswith("/export_agent "):
