@@ -19,7 +19,7 @@ class AgentManager:
         return cls._instance
 
     @staticmethod
-    def load_agents_from_config(config_path: str) -> list:
+    def load_agents_from_config(config_uri: str) -> list:
         """
         Load agent definitions from a TOML or JSON configuration file.
 
@@ -29,6 +29,29 @@ class AgentManager:
         Returns:
             List of agent dictionaries.
         """
+
+        if config_uri.startswith(("http://", "https://")):
+            import requests
+            import tempfile
+
+            response = requests.get(config_uri, timeout=30)
+            response.raise_for_status()
+
+            # Create temporary file
+            suffix = (
+                ".toml"
+                if "toml" in response.headers.get("content-type", "")
+                else ".json"
+            )
+            temp_file = tempfile.NamedTemporaryFile(
+                mode="w", suffix=suffix, delete=False, encoding="utf-8"
+            )
+            temp_file.write(response.text)
+            temp_file.close()
+            config_path = temp_file.name
+        else:
+            config_path = config_uri
+
         try:
             if config_path.endswith(".toml"):
                 with open(config_path, "r", encoding="utf-8") as file:
