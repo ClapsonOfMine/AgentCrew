@@ -773,9 +773,9 @@ class ConfigManagement:
 
                 # Create temporary file
                 suffix = (
-                    ".toml"
-                    if "toml" in response.headers.get("content-type", "")
-                    else ".json"
+                    ".json"
+                    if "json" in response.headers.get("content-type", "")
+                    else ".toml"
                 )
                 temp_file = tempfile.NamedTemporaryFile(
                     mode="w", suffix=suffix, delete=False, encoding="utf-8"
