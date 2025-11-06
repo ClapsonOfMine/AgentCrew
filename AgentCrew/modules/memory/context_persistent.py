@@ -52,6 +52,9 @@ class ContextPersistenceService:
         self.adaptive_behaviors_file_path = os.path.join(
             self.base_dir, self.ADAPTIVE_BEHAVIORS_FILE
         )
+        self.adaptive_behaviors_local_path = os.path.join(
+            ".agentcrew", self.ADAPTIVE_BEHAVIORS_FILE
+        )
 
         # _ensure_dir already raises OSError on failure
         self._ensure_dir(self.base_dir)
@@ -366,7 +369,7 @@ class ContextPersistenceService:
 
     # --- Adaptive Behavior Management ---
 
-    def get_adaptive_behaviors(self, agent_name: str) -> Dict[str, str]:
+    def get_adaptive_behaviors(self, agent_name: str, is_local=False) -> Dict[str, str]:
         """
         Retrieves all adaptive behaviors for a specific agent.
 
@@ -377,7 +380,10 @@ class ContextPersistenceService:
             Dictionary of behavior ID to behavior description mappings.
         """
         adaptive_data = self._read_json_file(
-            self.adaptive_behaviors_file_path, default_value={}
+            self.adaptive_behaviors_local_path
+            if is_local
+            else self.adaptive_behaviors_file_path,
+            default_value={},
         )
 
         if not isinstance(adaptive_data, dict):
@@ -389,7 +395,7 @@ class ContextPersistenceService:
         return adaptive_data.get(agent_name, {})
 
     def store_adaptive_behavior(
-        self, agent_name: str, behavior_id: str, behavior: str
+        self, agent_name: str, behavior_id: str, behavior: str, is_local=False
     ) -> bool:
         """
         Stores or updates an adaptive behavior for a specific agent.
@@ -415,7 +421,10 @@ class ContextPersistenceService:
             raise ValueError("Behavior must follow 'when..., [action]...' format")
 
         adaptive_data = self._read_json_file(
-            self.adaptive_behaviors_file_path, default_value={}
+            self.adaptive_behaviors_local_path
+            if is_local
+            else self.adaptive_behaviors_file_path,
+            default_value={},
         )
 
         if not isinstance(adaptive_data, dict):
@@ -432,7 +441,12 @@ class ContextPersistenceService:
         adaptive_data[agent_name][behavior_id] = behavior.strip()
 
         try:
-            self._write_json_file(self.adaptive_behaviors_file_path, adaptive_data)
+            self._write_json_file(
+                self.adaptive_behaviors_local_path
+                if is_local
+                else self.adaptive_behaviors_file_path,
+                adaptive_data,
+            )
             logger.info(
                 f"INFO: Stored adaptive behavior '{behavior_id}' for agent '{agent_name}'"
             )

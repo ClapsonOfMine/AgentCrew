@@ -248,6 +248,12 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
             "type": "string",
             "description": "Behavior pattern in 'when [condition], [action] [objective]' format. Example: 'when user asks about debugging, provide step-by-step troubleshooting with code examples'.",
         },
+        "scope": {
+            "type": "string",
+            "enum": ["global", "project"],
+            "default": "global",
+            "description": "Scope of the behavior. 'global' for all interactions, 'project' for current project only. Default is 'global'. Optional.",
+        },
     }
 
     tool_required = ["id", "behavior"]
@@ -283,6 +289,7 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
     def handle_adapt(**params) -> str:
         behavior_id = params.get("id", "").strip()
         behavior = params.get("behavior", "").strip()
+        scope = params.get("scope", "global").strip().lower()
 
         if not behavior_id:
             return "❌ Behavior ID required (e.g., 'communication_style_technical')."
@@ -300,7 +307,7 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
 
         try:
             success = persistence_service.store_adaptive_behavior(
-                agent_name, behavior_id, behavior
+                agent_name, behavior_id, behavior, scope == "local"
             )
             return (
                 f"✅ Stored behavior '{behavior_id}': {behavior}"
@@ -321,13 +328,14 @@ def adaptive_instruction_prompt():
   <Purpose>
     Learn and apply personalized interaction patterns to improve user experience over time.
   </Purpose>
-  <Learning_Triggers>
+  <Adapt_Behavior_Triggers>
     - User expresses preferences for communication style
     - Positive feedback on specific approaches
     - Repeated requests indicating preferred workflows
     - Successful problem-solving patterns
     - Specific "when...do..." instructions from the user
-  </Learning_Triggers>
+    - Use `project` scope for behaviors relevant only to current project
+  </Adapt_Behavior_Triggers>
   <Behavior_Format>
     All behaviors must follow: "when [specific condition] do [specific action]"
     

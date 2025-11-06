@@ -3,7 +3,7 @@ from typing import Optional
 from loguru import logger
 
 # Default constants
-DEFAULT_HISTORY_FILE = os.path.abspath(".chat_histories")
+DEFAULT_HISTORY_FILE = os.path.abspath(".agentcrew/chat_histories")
 DEFAULT_HISTORY_LIMIT = 1000
 ENTRY_DELIMITER = "\n---ENTRY---\n"
 

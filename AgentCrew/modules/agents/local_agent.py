@@ -551,9 +551,6 @@ class LocalAgent(BaseAgent):
             self.services["context_persistent"], ContextPersistenceService
         ):
             return adaptive_messages
-        adaptive_behaviors = self.services["context_persistent"].get_adaptive_behaviors(
-            self.name
-        )
         if (
             self.services.get("agent_manager")
             and self.services["agent_manager"].one_turn_process
@@ -566,20 +563,37 @@ You must analyze then execute it with your available tools and give answer witho
                 }
             )
 
+        adaptive_text = []
+        adaptive_behaviors = self.services["context_persistent"].get_adaptive_behaviors(
+            self.name
+        )
+
         if len(adaptive_behaviors.keys()) > 0:
-            adaptive_text = "  \n".join(
+            adaptive_text.extend(
                 [
-                    f"<Behavior id='{key}'>{value}</Behavior>"
+                    f"<Global_Behavior id='{key}'>{value}</Global_Behavior>"
                     for key, value in adaptive_behaviors.items()
                 ]
             )
+        local_adaptive_behaviors = self.services[
+            "context_persistent"
+        ].get_adaptive_behaviors(self.name, is_local=True)
+        if len(local_adaptive_behaviors.keys()) > 0:
+            adaptive_text.extend(
+                [
+                    f"<Project_Behavior id='{key}'>{value}</Project_Behavior>"
+                    for key, value in local_adaptive_behaviors.items()
+                ]
+            )
+        if len(adaptive_text) > 0:
             adaptive_messages["content"].append(
                 {
                     "type": "text",
-                    "text": f"""# MANDATORY: APPLY list of <Adaptive_Behaviors> before responding. 
-If `when` conditions in <Behavior> match, update your responses with behaviors immediately—they override default instruction.
+                    "text": f"""<MANDATORY>APPLY list of <Adaptive_Behaviors> before responding. 
+Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, update your responses with behaviors immediately—they override default instruction.
+<Project_Behavior> has higher priority than <Global_Behavior>.</MANDATORY>
 <Adaptive_Behaviors>
-{adaptive_text}
+{"  \n".join(adaptive_text)}
 </Adaptive_Behaviors>""",
                 }
             )
