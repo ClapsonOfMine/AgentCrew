@@ -289,19 +289,13 @@ class ConsoleUI(Observer):
         This function is called when the terminal window is resized.
         """
         import os
-        import sys
         import time
 
         if self.input_handler.is_message_processing and self._is_resizing:
             return  # Ignore resize during message processing
         self._is_resizing = True
         time.sleep(0.3)  # brief pause to allow resize to complete
-
-        term_size = os.get_terminal_size()
-
-        for _ in range(term_size.lines + 20):
-            sys.stdout.write("\x1b[1A")  # cursor up one line
-            sys.stdout.write("\x1b[2K")  # delete the last line
+        os.system("cls" if os.name == "nt" else "printf '\033c'")
         self.display_handlers.display_loaded_conversation(
             self.message_handler.streamline_messages, self.message_handler
         )
