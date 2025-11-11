@@ -3,11 +3,13 @@ Display handlers for console UI components.
 Handles rendering of various UI elements like messages, dividers, models, agents, etc.
 """
 
+from __future__ import annotations
+
 import json
 import re
 from datetime import datetime
 from typing import Dict, Any, List
-from rich.console import Console, Group
+from rich.console import Group
 from rich.markdown import Markdown
 from rich.text import Text
 from rich.panel import Panel
@@ -25,13 +27,19 @@ from .constants import (
     CODE_THEME,
 )
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .console_ui import ConsoleUI
+
 
 class DisplayHandlers:
     """Handles all display-related functionality for the console UI."""
 
-    def __init__(self, console: Console):
+    def __init__(self, console_ui: ConsoleUI):
         """Initialize the display handlers with a console instance."""
-        self.console = console
+        self.console = console_ui.console
+        self._ui = console_ui
         self._added_files = []
 
     def display_thinking_started(self, agent_name: str):
@@ -197,11 +205,8 @@ class DisplayHandlers:
                 # Format as markdown for better display
                 self.display_assistant_message(agent_name, content)
                 if "tool_calls" in msg:
-                    from .tool_display import ToolDisplayHandlers
-
-                    tool_display = ToolDisplayHandlers(self.console)
                     for tool_call in msg["tool_calls"]:
-                        tool_display.display_tool_use(tool_call)
+                        self._ui.tool_display.display_tool_use(tool_call)
                 self.display_divider()
             elif role == "consolidated":
                 self.console.print(

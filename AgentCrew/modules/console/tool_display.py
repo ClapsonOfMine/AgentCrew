@@ -23,15 +23,15 @@ from .constants import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rich.console import Console
+    from .console_ui import ConsoleUI
 
 
 class ToolDisplayHandlers:
     """Handles display of tool-related information."""
 
-    def __init__(self, console: Console):
+    def __init__(self, console_ui: ConsoleUI):
         """Initialize the tool display handlers with a console instance."""
-        self.console = console
+        self.console = console_ui.console
 
     def get_tool_icon(self, tool_name: str) -> str:
         """Get the appropriate icon for a tool based on its name."""

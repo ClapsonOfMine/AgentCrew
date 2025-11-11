@@ -3,20 +3,25 @@ Conversation handling for console UI.
 Manages conversation loading, listing, and display functionality.
 """
 
+from __future__ import annotations
 from typing import List, Dict, Any
-from rich.console import Console
 from rich.text import Text
 
 from .constants import RICH_STYLE_YELLOW, RICH_STYLE_RED
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .console_ui import ConsoleUI
 
 
 class ConversationHandler:
     """Handles conversation-related operations for the console UI."""
 
-    def __init__(self, console: Console, display_handlers):
+    def __init__(self, console_ui: ConsoleUI):
         """Initialize the conversation handler."""
-        self.console = console
-        self.display_handlers = display_handlers
+        self.console = console_ui.console
+        self.display_handlers = console_ui.display_handlers
         self._cached_conversations = []
 
     def handle_load_conversation(self, load_arg: str, message_handler):

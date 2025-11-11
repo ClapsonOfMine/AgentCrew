@@ -59,17 +59,13 @@ class ConsoleUI(Observer):
         self.session_cost = 0.0
 
         # Initialize component handlers
-        self.display_handlers = DisplayHandlers(self.console)
-        self.tool_display = ToolDisplayHandlers(self.console)
-        self.input_handler = InputHandler(
-            self.console, self.message_handler, self.display_handlers
-        )
-        self.ui_effects = UIEffects(self.console, self.message_handler)
-        self.confirmation_handler = ConfirmationHandler(self, self.input_handler)
-        self.conversation_handler = ConversationHandler(
-            self.console, self.display_handlers
-        )
-        self.command_handlers = CommandHandlers(self.console, self.message_handler)
+        self.display_handlers = DisplayHandlers(self)
+        self.tool_display = ToolDisplayHandlers(self)
+        self.ui_effects = UIEffects(self)
+        self.input_handler = InputHandler(self)
+        self.confirmation_handler = ConfirmationHandler(self)
+        self.conversation_handler = ConversationHandler(self)
+        self.command_handlers = CommandHandlers(self)
 
     def listen(self, event: str, data: Any = None):
         """

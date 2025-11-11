@@ -28,9 +28,7 @@ from .constants import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from AgentCrew.modules.chat import MessageHandler
-    from rich.console import Console
-    from .display_handlers import DisplayHandlers
+    from .console_ui import ConsoleUI
 
 
 class InputHandler:
@@ -38,14 +36,13 @@ class InputHandler:
 
     def __init__(
         self,
-        console: Console,
-        message_handler: MessageHandler,
-        display_handlers: DisplayHandlers,
+        console_ui: ConsoleUI,
     ):
         """Initialize the input handler."""
-        self.console = console
-        self.message_handler = message_handler
-        self.display_handlers = display_handlers
+        self.console = console_ui.console
+        self.ui_effects = console_ui.ui_effects
+        self.message_handler = console_ui.message_handler
+        self.display_handlers = console_ui.display_handlers
         self.clipboard_service = ClipboardService()
 
         # Threading for user input
@@ -121,6 +118,29 @@ class InputHandler:
                 except Exception:
                     pass  # Ignore if even default paste fails
 
+        @kb.add(Keys.ControlU)
+        def _(event):
+            if self.is_message_processing:
+                self.ui_effects.scroll_live_display("up")
+
+        @kb.add(Keys.ControlD)
+        def _(event):
+            if self.is_message_processing:
+                self.ui_effects.scroll_live_display("down")
+
+        @kb.add(Keys.Escape)
+        def _(event):
+            if (
+                hasattr(self.message_handler, "stream_generator")
+                and self.message_handler.stream_generator
+            ):
+                try:
+                    self.message_handler.stop_streaming = True
+                except RuntimeError as e:
+                    logger.warning(f"Error closing stream generator: {e}")
+                except Exception as e:
+                    logger.warning(f"Exception closing stream generator: {e}")
+
         @kb.add(Keys.ControlC)
         def _(event):
             """Handle Ctrl+C with confirmation for exit."""
@@ -164,7 +184,20 @@ class InputHandler:
                     time.sleep(0.2)
                     self.clear_buffer()
 
-        @kb.add(Keys.Up)
+        @kb.add(Keys.Backspace)
+        def _(event):
+            if not event.current_buffer.text:
+                prompt = Text(
+                    "👤 YOU: " if not self.is_message_processing else "",
+                    style=RICH_STYLE_BLUE,
+                )
+                self.console.print("", end="\r")
+                self.console.print(prompt, end="")
+            else:
+                event.current_buffer.delete_before_cursor()
+
+        @kb.add(Keys.ControlUp)
+        @kb.add(Keys.Escape, Keys.Up)
         def _(event):
             """Navigate to previous history entry."""
             buffer = event.current_buffer
@@ -186,19 +219,8 @@ class InputHandler:
                 # Regular up arrow behavior - move cursor up
                 buffer.cursor_up()
 
-        @kb.add(Keys.Backspace)
-        def _(event):
-            if not event.current_buffer.text:
-                prompt = Text(
-                    "👤 YOU: " if not self.is_message_processing else "",
-                    style=RICH_STYLE_BLUE,
-                )
-                self.console.print("", end="\r")
-                self.console.print(prompt, end="")
-            else:
-                event.current_buffer.delete_before_cursor()
-
-        @kb.add(Keys.Down)
+        @kb.add(Keys.ControlDown)
+        @kb.add(Keys.Escape, Keys.Down)
         def _(event):
             """Navigate to next history entry if cursor is at last line."""
             buffer = event.current_buffer

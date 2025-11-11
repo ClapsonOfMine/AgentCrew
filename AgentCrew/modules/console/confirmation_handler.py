@@ -23,17 +23,16 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .console_ui import ConsoleUI
-    from .input_handler import InputHandler
 
 
 class ConfirmationHandler:
     """Handles confirmation dialogs for tools and MCP prompts."""
 
-    def __init__(self, console_ui: ConsoleUI, input_handler: InputHandler):
+    def __init__(self, console_ui: ConsoleUI):
         """Initialize the confirmation handler."""
         self.console = console_ui.console
-        self.ui = console_ui
-        self.input_handler = input_handler
+        self._ui = console_ui
+        self.input_handler = console_ui.input_handler
 
     def display_tool_confirmation_request(self, tool_info, message_handler):
         """Display tool confirmation request and get user response."""
@@ -119,7 +118,7 @@ class ConfirmationHandler:
                 style=RICH_STYLE_YELLOW,
             )
             self.console.print(saved_text)
-        self.ui.start_loading_animation()
+        self._ui.start_loading_animation()
         self.input_handler._start_input_thread()
         time.sleep(0.2)  # Small delay to between tool calls
 
@@ -154,7 +153,7 @@ class ConfirmationHandler:
                 confirmation_id, {"action": "answer", "answer": "Cancelled by user"}
             )
 
-        self.ui.start_loading_animation()
+        self._ui.start_loading_animation()
 
         self.input_handler._start_input_thread()
 

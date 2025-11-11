@@ -3,29 +3,35 @@ UI effects and animations for console interface.
 Handles loading animations, live displays, and other visual effects.
 """
 
+from __future__ import annotations
+
 import time
 import threading
 import itertools
 import random
-from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from .constants import CODE_THEME, RICH_STYLE_GREEN
-from AgentCrew.modules.chat import MessageHandler
+from .constants import CODE_THEME, RICH_STYLE_GRAY, RICH_STYLE_GREEN
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .console_ui import ConsoleUI
 
 
 class UIEffects:
     """Handles UI effects like loading animations and live displays."""
 
-    def __init__(self, console: Console, message_handler: MessageHandler):
+    def __init__(self, console_ui: ConsoleUI):
         """Initialize UI effects with a console instance."""
-        self.console = console
+        self.console = console_ui.console
         self.live = None
         self._loading_stop_event = None
         self._loading_thread = None
-        self.message_handler = message_handler
+        self._visible_buffer = 0
+        self.message_handler = console_ui.message_handler
 
     def _loading_animation(self, stop_event):
         """Display a loading animation in the terminal."""
@@ -89,8 +95,20 @@ class UIEffects:
 
         live_panel = Panel("", title=header, border_style=RICH_STYLE_GREEN)
 
-        self.live = Live(live_panel, console=self.console, vertical_overflow="crop")
+        self.live = Live(
+            live_panel,
+            refresh_per_second=60,
+            console=self.console,
+            vertical_overflow="crop",
+        )
         self.live.start()
+
+    def scroll_live_display(self, direction: str):
+        speed = 10
+        if direction == "up":
+            self._visible_buffer = max(0, self._visible_buffer - speed)
+        elif direction == "down":
+            self._visible_buffer += speed
 
     def update_live_display(self, chunk: str):
         """Update the live display with a new chunk of the response."""
@@ -102,10 +120,10 @@ class UIEffects:
         # Only show the last part that fits in the console
         lines = updated_text.split("\n")
         height_limit = (
-            self.console.size.height - 10
+            self.console.size.height - 5
         )  # leave some space for other elements
         if len(lines) > height_limit:
-            lines = lines[-height_limit:]
+            lines = lines[self._visible_buffer : self._visible_buffer + height_limit]
 
         if self.live:
             from .constants import RICH_STYLE_GREEN_BOLD
@@ -115,9 +133,11 @@ class UIEffects:
                 f"🤖 {self.message_handler.agent.name.upper()}:",
                 style=RICH_STYLE_GREEN_BOLD,
             )
+            subtitle = Text("(Use Ctrl+U/Ctrl+D to scroll)", style=RICH_STYLE_GRAY)
             live_panel = Panel(
                 Markdown("\n".join(lines), code_theme=CODE_THEME),
                 title=header,
+                subtitle=subtitle,
                 title_align="left",
                 border_style=RICH_STYLE_GREEN,
             )
@@ -125,6 +145,7 @@ class UIEffects:
 
     def finish_live_update(self):
         """Stop the live update display."""
+        self._visible_buffer = 0
         if self.live:
             self.console.print(self.live.get_renderable())
             self.live.update("")
@@ -135,6 +156,8 @@ class UIEffects:
         """Finalize and display the complete response."""
         from .constants import RICH_STYLE_GREEN_BOLD
         from rich.text import Text
+
+        self._visible_buffer = 0
 
         if self.live:
             self.live.update(Text("", end=""))

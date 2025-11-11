@@ -5,25 +5,30 @@ This module contains handlers for various console commands like /edit_agent, /ex
 Extracted from ConsoleUI for better code maintainability and separation of concerns.
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
 
-from rich.console import Console
 from rich.text import Text
 
 from .constants import (
     RICH_STYLE_YELLOW,
 )
-from AgentCrew.modules.chat.message.handler import MessageHandler
 from AgentCrew.modules.config.config_management import ConfigManagement
 from loguru import logger
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .console_ui import ConsoleUI
 
 
 class CommandHandlers:
     """Handles console UI commands for file operations and configuration management."""
 
-    def __init__(self, console: Console, message_handler: MessageHandler):
+    def __init__(self, console_ui: ConsoleUI):
         """
         Initialize the command handlers.
 
@@ -31,8 +36,8 @@ class CommandHandlers:
             console: Rich Console instance for output
             message_handler: MessageHandler instance for agent operations
         """
-        self.console = console
-        self.message_handler = message_handler
+        self.console = console_ui.console
+        self.message_handler = console_ui.message_handler
 
     def open_file_in_editor(self, file_path: str) -> bool:
         """
