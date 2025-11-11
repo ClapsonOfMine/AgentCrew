@@ -140,11 +140,6 @@ class ConsoleUI(Observer):
                 Text("🎮 Chat history cleared.", style=RICH_STYLE_YELLOW_BOLD)
             )
             self.display_handlers.clear_files()
-        elif event == "exit_requested":
-            self.display_handlers.display_message(
-                Text("🎮 Ending chat session. Goodbye!", style=RICH_STYLE_YELLOW_BOLD)
-            )
-            raise SystemExit(0)
         elif event == "copy_requested":
             self.copy_to_clipboard(data)  # data is the text to copy
         elif event == "debug_requested":
@@ -414,6 +409,15 @@ class ConsoleUI(Observer):
                     user_input = self.get_user_input()
 
                     # Handle list command directly
+                    if user_input.strip() in ["/exit", "/quit"]:
+                        self.display_handlers.display_message(
+                            Text(
+                                "🎮 Ending chat session. Goodbye!",
+                                style=RICH_STYLE_YELLOW_BOLD,
+                            )
+                        )
+                        self.input_handler.stop()
+                        raise SystemExit(0)
                     if user_input.strip() == "/list":
                         conversations = self.message_handler.list_conversations()
                         self.conversation_handler.update_cached_conversations(
