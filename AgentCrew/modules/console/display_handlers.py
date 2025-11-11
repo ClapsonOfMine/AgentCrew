@@ -198,7 +198,8 @@ class DisplayHandlers:
                 agent_name = msg.get("agent") or message_handler.agent.name
                 content = self._extract_message_content(msg)
                 # Format as markdown for better display
-                self.display_assistant_message(agent_name, content)
+                if content.strip():
+                    self.display_assistant_message(agent_name, content)
                 if "tool_calls" in msg:
                     for tool_call in msg["tool_calls"]:
                         self._ui.tool_display.display_tool_use(tool_call)
