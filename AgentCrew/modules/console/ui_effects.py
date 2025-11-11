@@ -30,12 +30,14 @@ class UIEffects:
         self.live = None
         self._loading_stop_event = None
         self._loading_thread = None
-        self._visible_buffer = 0
+        self._visible_buffer = -1
+        self._tracking_buffer = 0
         self.message_handler = console_ui.message_handler
+        self.spinner = itertools.cycle(["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"])
+        self.updated_text = ""
 
     def _loading_animation(self, stop_event):
         """Display a loading animation in the terminal."""
-        spinner = itertools.cycle(["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"])
         fun_words = [
             "Pondering",
             "Cogitating",
@@ -60,7 +62,7 @@ class UIEffects:
             "", console=self.console, auto_refresh=True, refresh_per_second=10
         ) as live:
             while not stop_event.is_set():
-                live.update(f"{fun_word} {next(spinner)}")
+                live.update(f"{fun_word} {next(self.spinner)}")
                 time.sleep(0.1)  # Control animation speed
             live.update("")  # Clear the live display when done
             live.stop()  # Stop the live display
@@ -97,7 +99,6 @@ class UIEffects:
 
         self.live = Live(
             live_panel,
-            refresh_per_second=60,
             console=self.console,
             vertical_overflow="crop",
         )
@@ -105,25 +106,35 @@ class UIEffects:
 
     def scroll_live_display(self, direction: str):
         speed = 10
+        if self._visible_buffer == -1:
+            self._visible_buffer = self._tracking_buffer
         if direction == "up":
             self._visible_buffer = max(0, self._visible_buffer - speed)
         elif direction == "down":
             self._visible_buffer += speed
+        self.update_live_display(self.updated_text)
 
     def update_live_display(self, chunk: str):
         """Update the live display with a new chunk of the response."""
         if not self.live:
             self.start_streaming_response(self.message_handler.agent.name)
 
-        updated_text = chunk
+        if chunk != self.updated_text:
+            self.updated_text = chunk
 
         # Only show the last part that fits in the console
-        lines = updated_text.split("\n")
+        lines = self.updated_text.split("\n")
         height_limit = (
             self.console.size.height - 5
         )  # leave some space for other elements
         if len(lines) > height_limit:
-            lines = lines[self._visible_buffer : self._visible_buffer + height_limit]
+            self.tracking_buffer = len(lines) - height_limit
+            if self._visible_buffer == -1:
+                lines = lines[-height_limit:]
+            else:
+                lines = lines[
+                    self._visible_buffer : self._visible_buffer + height_limit
+                ]
 
         if self.live:
             from .constants import RICH_STYLE_GREEN_BOLD
@@ -133,7 +144,10 @@ class UIEffects:
                 f"🤖 {self.message_handler.agent.name.upper()}:",
                 style=RICH_STYLE_GREEN_BOLD,
             )
-            subtitle = Text("(Use Ctrl+U/Ctrl+D to scroll)", style=RICH_STYLE_GRAY)
+            subtitle = Text(
+                f"{next(self.spinner)}(Use Ctrl+U/Ctrl+D to scroll)",
+                style=RICH_STYLE_GRAY,
+            )
             live_panel = Panel(
                 Markdown("\n".join(lines), code_theme=CODE_THEME),
                 title=header,
@@ -145,7 +159,9 @@ class UIEffects:
 
     def finish_live_update(self):
         """Stop the live update display."""
-        self._visible_buffer = 0
+        self._visible_buffer = -1
+        self._tracking_buffer = 0
+        self.updated_text = ""
         if self.live:
             self.console.print(self.live.get_renderable())
             self.live.update("")
@@ -157,7 +173,9 @@ class UIEffects:
         from .constants import RICH_STYLE_GREEN_BOLD
         from rich.text import Text
 
-        self._visible_buffer = 0
+        self._visible_buffer = -1
+        self._tracking_buffer = 0
+        self.updated_text = ""
 
         if self.live:
             self.live.update(Text("", end=""))
