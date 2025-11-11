@@ -393,9 +393,6 @@ class MessageHandler(Observable):
 
             # Add assistant response to messages
             if assistant_response.strip():
-                # Store the latest response
-                self.latest_assistant_response = assistant_response
-
                 self._messages_append(
                     self.agent.format_message(
                         MessageType.Assistant, {"message": assistant_response}

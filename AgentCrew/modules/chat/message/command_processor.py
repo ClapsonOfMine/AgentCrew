@@ -41,11 +41,8 @@ class CommandProcessor:
         elif user_input.lower() == "/clear":
             self.message_handler.start_new_conversation()
             return CommandResult(handled=True, clear_flag=True)
-        elif user_input.lower() == "/copy":
-            self.message_handler._notify(
-                "copy_requested", self.message_handler.latest_assistant_response
-            )
-            return CommandResult(handled=True, clear_flag=True)
+        elif user_input.lower().startswith("/copy"):
+            return await self._handle_copy_command(user_input)
         elif user_input.lower() == "/debug":
             self.message_handler._notify(
                 "debug_requested", self.message_handler.agent.clean_history
@@ -101,6 +98,42 @@ class CommandProcessor:
 
     def _is_exit_command(self, user_input: str) -> bool:
         return user_input.lower() in ["/exit", "/quit"]
+
+    async def _handle_copy_command(self, user_input: str) -> CommandResult:
+        copy_idx = user_input[5:].strip() or 1
+
+        asssistant_messages_iterator = reversed(
+            [
+                msg
+                for msg in self.message_handler.streamline_messages
+                if msg.get("role") == "assistant"
+            ]
+        )
+        latest_assistant_blk = None
+        try:
+            for _ in range(int(copy_idx)):
+                latest_assistant_blk = next(asssistant_messages_iterator, None)
+
+            if latest_assistant_blk:
+                latest_content_blk = latest_assistant_blk.get("content", "")
+                if isinstance(latest_content_blk, list):
+                    latest_content = next(
+                        (
+                            c.get("text", "")
+                            for c in latest_content_blk
+                            if isinstance(c, dict) and c.get("type", "") == "text"
+                        ),
+                        "",
+                    )
+                else:
+                    latest_content = latest_content_blk
+
+                self.message_handler._notify("copy_requested", latest_content)
+        except Exception as e:
+            self.message_handler._notify("error", f"Failed to copy message: {str(e)}")
+            return CommandResult(handled=True, clear_flag=True)
+
+        return CommandResult(handled=True, clear_flag=True)
 
     async def _handle_consolidate_command(self, user_input: str) -> CommandResult:
         """Handle consolidate command."""
@@ -343,21 +376,6 @@ class CommandProcessor:
             self.message_handler.last_assisstant_response_idx = len(
                 self.message_handler.streamline_messages
             )
-            if last_message and last_message.get("role", "") == "assistant":
-                last_message_content = last_message.get("content", "")
-                if isinstance(last_message_content, list):
-                    self.message_handler.latest_assistant_response = next(
-                        (
-                            c.get("text", "")
-                            for c in last_message_content
-                            if isinstance(c, dict) and c.get("type", "") == "text"
-                        ),
-                        "",
-                    )
-                else:
-                    self.message_handler.latest_assistant_response = (
-                        last_message_content
-                    )
 
             self.message_handler._notify(
                 "jump_performed",

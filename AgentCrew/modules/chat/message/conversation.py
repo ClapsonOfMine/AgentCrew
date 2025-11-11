@@ -130,17 +130,6 @@ class ConversationManager:
                 self.message_handler.last_assisstant_response_idx = len(
                     self.message_handler.streamline_messages
                 )
-                if self.message_handler.agent.history:
-                    try:
-                        self.message_handler.latest_assistant_response = (
-                            self.message_handler.agent.history[-1]
-                            .get("content", [])[0]
-                            .get("text", "")
-                        )
-                    except (IndexError, AttributeError):
-                        self.message_handler.latest_assistant_response = (
-                            self.message_handler.agent.history[-1].get("content", "")
-                        )
 
                 for i, message in enumerate(self.message_handler.streamline_messages):
                     role = message.get("role")

@@ -294,7 +294,7 @@ class DisplayHandlers:
                 style=RICH_STYLE_YELLOW,
             ),
             Text(
-                "Use '/copy' to copy the latest assistant response to clipboard.",
+                "Use '/copy <number>' to copy the nth-latest assistant response to clipboard.",
                 style=RICH_STYLE_YELLOW,
             ),
             Text(

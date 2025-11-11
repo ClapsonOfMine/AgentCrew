@@ -165,7 +165,10 @@ class ChatCompleter(Completer):
 
         commands = [
             ("/clear", "Clear the conversation history"),
-            ("/copy", "Copy the latest assistant response to clipboard"),
+            (
+                "/copy",
+                "Copy the nth-latest assistant response to clipboard (usage: /copy <n>)",
+            ),
             (
                 "/debug",
                 "Show debug information (agent history and streamline messages)",

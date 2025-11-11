@@ -29,7 +29,7 @@ class CommandHandler:
 
         # Copy command
         elif user_input.startswith("/copy"):
-            self.copy_last_response()
+            self.chat_window.llm_worker.process_request.emit(user_input)
             self.chat_window.ui_state_manager.set_input_controls_enabled(True)
             return True
 
@@ -65,14 +65,7 @@ class CommandHandler:
     @Slot()
     def copy_last_response(self):
         """Copy the last assistant response to clipboard."""
-        text = self.chat_window.message_handler.latest_assistant_response
-        if text:
-            pyperclip.copy(text)
-            self.chat_window.status_bar.showMessage(
-                "Last response copied to clipboard!", 3000
-            )
-        else:
-            self.chat_window.status_bar.showMessage("No response to copy", 3000)
+        self.chat_window.llm_worker.process_request.emit("/copy")
 
     @Slot()
     def handle_clear_request(self):
