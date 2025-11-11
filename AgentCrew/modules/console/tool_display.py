@@ -51,19 +51,17 @@ class ToolDisplayHandlers:
         """Display information about a tool being used."""
         tool_icon = self.get_tool_icon(tool_use["name"])
 
-        if tool_use["name"] == "ask":
-            return
-
         tool_texts_group = []
 
         # Display tool header with better formatting
         header = Text(f"{tool_icon} Tool: ", style=RICH_STYLE_YELLOW)
         header.append(tool_use["name"], style=RICH_STYLE_YELLOW_BOLD)
 
+        tool_parameters = tool_use.get("input") or tool_use.get("arguments")
         # Format tool input parameters
-        if isinstance(tool_use.get("input"), dict):
+        if isinstance(tool_parameters, dict):
             tool_texts_group.append(Text("Parameters:", style=RICH_STYLE_YELLOW))
-            for key, value in tool_use["input"].items():
+            for key, value in tool_parameters.items():
                 # Format value based on type
                 if isinstance(value, dict) or isinstance(value, list):
                     formatted_value = json.dumps(value, indent=2)

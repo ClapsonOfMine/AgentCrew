@@ -38,6 +38,7 @@ class ConversationHandler:
             self._cached_conversations = message_handler.list_conversations()
 
         try:
+            self.display_handlers.display_divider()
             # Check if the argument is a number (index in the list)
             if load_arg.isdigit():
                 index = int(load_arg) - 1  # Convert to 0-based index
@@ -75,6 +76,10 @@ class ConversationHandler:
                     self.display_handlers.display_loaded_conversation(
                         messages, message_handler
                     )
+
+            self.console.print(
+                Text("End of conversation history\n", style=RICH_STYLE_YELLOW)
+            )
         except Exception as e:
             self.console.print(
                 Text(f"Error loading conversation: {str(e)}", style=RICH_STYLE_RED)

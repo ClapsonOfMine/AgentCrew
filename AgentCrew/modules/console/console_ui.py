@@ -6,6 +6,7 @@ Refactored to use separate modules for different responsibilities.
 from __future__ import annotations
 import asyncio
 import time
+import signal
 from typing import Any
 from rich.console import Console
 from rich.text import Text
@@ -52,6 +53,9 @@ class ConsoleUI(Observer):
         self.message_handler = message_handler
         self.voice_recording = False
         self.message_handler.attach(self)
+
+        self._is_resizing = False
+        signal.signal(signal.SIGWINCH, self._handle_terminal_resize)
 
         self.console = Console()
         self._last_ctrl_c_time = 0
@@ -278,6 +282,35 @@ class ConsoleUI(Observer):
                 )
         else:
             self.console.print(Text("\n! No text to copy.", style=RICH_STYLE_YELLOW))
+
+    def _handle_terminal_resize(self, signum, frame):
+        """
+        Signal handler for SIGWINCH.
+        This function is called when the terminal window is resized.
+        """
+        import os
+        import sys
+        import time
+
+        if self.input_handler.is_message_processing and self._is_resizing:
+            return  # Ignore resize during message processing
+        self._is_resizing = True
+        time.sleep(0.3)  # brief pause to allow resize to complete
+
+        term_size = os.get_terminal_size()
+
+        for _ in range(term_size.lines + 20):
+            sys.stdout.write("\x1b[1A")  # cursor up one line
+            sys.stdout.write("\x1b[2K")  # delete the last line
+        self.display_handlers.display_loaded_conversation(
+            self.message_handler.streamline_messages, self.message_handler
+        )
+        self.display_handlers.print_prompt_prefix(
+            self.message_handler.agent.name,
+            self.message_handler.agent.get_model(),
+            self.message_handler.tool_manager.get_effective_yolo_mode(),
+        )
+        self._is_resizing = False
 
     def start_streaming_response(self, agent_name: str):
         """Start streaming the assistant's response."""

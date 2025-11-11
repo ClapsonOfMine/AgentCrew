@@ -182,11 +182,6 @@ class DisplayHandlers:
 
     def display_loaded_conversation(self, messages, message_handler):
         """Display all messages from a loaded conversation."""
-        self.console.print(
-            Text("\nDisplaying conversation history:", style=RICH_STYLE_YELLOW)
-        )
-        self.display_divider()
-
         last_consolidated_idx = 0
         for i, msg in reversed(list(enumerate(messages))):
             if msg.get("role") == "consolidated":
@@ -233,10 +228,6 @@ class DisplayHandlers:
                 # Format the summary with markdown
                 self.console.print(Markdown(content, code_theme=CODE_THEME))
                 self.display_divider()
-
-        self.console.print(
-            Text("End of conversation history\n", style=RICH_STYLE_YELLOW)
-        )
 
     def display_token_usage(
         self,

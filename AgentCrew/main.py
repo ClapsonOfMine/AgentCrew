@@ -25,13 +25,13 @@ def cli():
     import logging
 
     formatter = "{time} - {name} - {level} - {message}"
-    log_level = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR").upper()
     logger.remove(0)
 
     httpx_logger = logging.getLogger("httpx")
     httpx_logger.setLevel(logging.ERROR)
 
     if os.getenv("AGENTCREW_ENV", "development") == "production":
+        log_level = os.getenv("AGENTCREW_LOG_LEVEL", "ERROR").upper()
         log_dir_path = os.getenv("AGENTCREW_LOG_PATH", tempfile.gettempdir())
         os.makedirs(log_dir_path, exist_ok=True)
         log_path = log_dir_path + "/agentcrew_log_{time}.log"
@@ -40,6 +40,7 @@ def cli():
         logger.add(log_path, level=log_level, format=formatter, rotation="10 MB")
 
     else:
+        log_level = os.getenv("AGENTCREW_LOG_LEVEL", "INFO").upper()
         logger.add(
             sys.stderr,
             level=log_level,
