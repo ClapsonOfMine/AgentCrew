@@ -405,7 +405,7 @@ class DisplayHandlers:
             return "\n".join(result)
 
         content = re.sub(
-            r"(?:```(?:json)?)?\s*<user_context_summary>.*?</user_context_summary>\s*(?:```)?",
+            r"(?:```(?:json)?)?\s*<agent_evaluation>.*?</agent_evaluation>\s*(?:```)?",
             "",
             str(content),
             flags=re.DOTALL | re.IGNORECASE,

@@ -59,7 +59,6 @@ class ConsoleUI(Observer):
 
         self.console = Console()
         self._last_ctrl_c_time = 0
-        self.latest_assistant_response = ""
         self.session_cost = 0.0
 
         # Initialize component handlers
@@ -131,7 +130,6 @@ class ConsoleUI(Observer):
         elif event == "response_completed" or event == "assistant_message_added":
             data = agent_evaluation_remove(data)
             self.ui_effects.finish_response(data)  # data is the complete response
-            self.latest_assistant_response = data
         elif event == "error":
             self.display_handlers.display_error(
                 data
