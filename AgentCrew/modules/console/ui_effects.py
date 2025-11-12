@@ -125,7 +125,7 @@ class UIEffects:
         # Only show the last part that fits in the console
         lines = self.updated_text.split("\n")
         height_limit = (
-            self.console.size.height - 5
+            self.console.size.height - 10
         )  # leave some space for other elements
         if len(lines) > height_limit:
             self.tracking_buffer = len(lines) - height_limit

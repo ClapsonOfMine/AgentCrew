@@ -55,7 +55,6 @@ class ConsoleUI(Observer):
         self.message_handler.attach(self)
 
         self._is_resizing = False
-        signal.signal(signal.SIGWINCH, self._handle_terminal_resize)
 
         self.console = Console()
         self._last_ctrl_c_time = 0
@@ -287,7 +286,7 @@ class ConsoleUI(Observer):
         if self.input_handler.is_message_processing and self._is_resizing:
             return  # Ignore resize during message processing
         self._is_resizing = True
-        time.sleep(0.3)  # brief pause to allow resize to complete
+        time.sleep(0.5)  # brief pause to allow resize to complete
         os.system("cls" if os.name == "nt" else "printf '\033c'")
         self.display_handlers.display_loaded_conversation(
             self.message_handler.streamline_messages, self.message_handler
@@ -403,6 +402,11 @@ class ConsoleUI(Observer):
 
         try:
             while True:
+                if (
+                    not signal.getsignal(signal.SIGWINCH)
+                    or signal.getsignal(signal.SIGWINCH) == signal.SIG_DFL
+                ):
+                    signal.signal(signal.SIGWINCH, self._handle_terminal_resize)
                 try:
                     # Get user input (now in separate thread)
                     self.stop_loading_animation()  # Stop if any
@@ -564,6 +568,7 @@ class ConsoleUI(Observer):
                     )
 
                     self.input_handler.is_message_processing = False
+                    self._is_resizing = False
 
                     # Ensure loading animation is stopped
                     self.stop_loading_animation()

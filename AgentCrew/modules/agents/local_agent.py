@@ -5,15 +5,14 @@ import os
 import time
 import copy
 from typing import List, TYPE_CHECKING
-from AgentCrew.modules.llm import BaseLLMService
 
 from .base import BaseAgent, MessageType
 from loguru import logger
 
 if TYPE_CHECKING:
+    from AgentCrew.modules.llm import BaseLLMService
     from typing import Dict, Any, Optional, Callable, Literal, Union
 
-SHRINK_CONTEXT_THRESHOLD = 90_000
 SHRINK_LENGTH_THRESHOLD = 15
 
 
@@ -669,12 +668,18 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
             final_messages: List of message dictionaries to process
         """
         # Find all indices of tool messages that start with [UNIQUE]
+        from AgentCrew.modules.llm.model_registry import ModelRegistry
+
+        shrink_context_threshold = (
+            ModelRegistry.get_model_limit(self.get_model()) * 0.85
+        )
+
         unique_tool_indices = []
         agent_manager = self.services.get("agent_manager", None)
 
         is_shrinkable = (
             agent_manager.context_shrink_enabled if agent_manager else False
-        ) and self.input_tokens_usage > SHRINK_CONTEXT_THRESHOLD
+        ) and self.input_tokens_usage > shrink_context_threshold
         shrink_threshold = len(final_messages) - SHRINK_LENGTH_THRESHOLD
         shrink_excluded = (
             set(agent_manager.shrink_excluded_list) if agent_manager else []
