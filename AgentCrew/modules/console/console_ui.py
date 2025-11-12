@@ -199,12 +199,14 @@ class ConsoleUI(Observer):
         elif event == "consolidation_completed":
             self.display_handlers.display_consolidation_result(data)
             self.display_handlers.display_loaded_conversation(
-                self.message_handler.streamline_messages, self.message_handler
+                self.message_handler.streamline_messages,
+                self.message_handler.agent.name,
             )
 
         elif event == "unconsolidation_completed":
             self.display_handlers.display_loaded_conversation(
-                self.message_handler.streamline_messages, self.message_handler
+                self.message_handler.streamline_messages,
+                self.message_handler.agent.name,
             )
         elif event == "conversations_listed":
             self.display_handlers.display_conversations(
@@ -289,7 +291,7 @@ class ConsoleUI(Observer):
         time.sleep(0.5)  # brief pause to allow resize to complete
         os.system("cls" if os.name == "nt" else "printf '\033c'")
         self.display_handlers.display_loaded_conversation(
-            self.message_handler.streamline_messages, self.message_handler
+            self.message_handler.streamline_messages, self.message_handler.agent.name
         )
         self.display_handlers.print_prompt_prefix(
             self.message_handler.agent.name,

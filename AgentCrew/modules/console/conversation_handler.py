@@ -54,7 +54,7 @@ class ConversationHandler:
                         messages = message_handler.load_conversation(convo_id)
                         if messages:
                             self.display_handlers.display_loaded_conversation(
-                                messages, message_handler
+                                messages, message_handler.agent.name
                             )
                         return
                 self.console.print(
@@ -74,7 +74,7 @@ class ConversationHandler:
                 messages = message_handler.load_conversation(load_arg)
                 if messages:
                     self.display_handlers.display_loaded_conversation(
-                        messages, message_handler
+                        messages, message_handler.agent.name
                     )
 
             self.console.print(

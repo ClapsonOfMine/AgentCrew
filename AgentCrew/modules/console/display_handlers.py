@@ -180,7 +180,7 @@ class DisplayHandlers:
             f"  • ~{result['original_token_count'] - result['consolidated_token_count']} tokens saved"
         )
 
-    def display_loaded_conversation(self, messages, message_handler):
+    def display_loaded_conversation(self, messages: List, default_agent_name: str):
         """Display all messages from a loaded conversation."""
         last_consolidated_idx = 0
         for i, msg in reversed(list(enumerate(messages))):
@@ -195,7 +195,7 @@ class DisplayHandlers:
                 content = self._extract_message_content(msg)
                 self.display_user_message(content)
             elif role == "assistant":
-                agent_name = msg.get("agent") or message_handler.agent.name
+                agent_name = msg.get("agent") or default_agent_name
                 content = self._extract_message_content(msg)
                 # Format as markdown for better display
                 if content.strip():
