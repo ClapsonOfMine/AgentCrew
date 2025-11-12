@@ -409,9 +409,16 @@ class MessageHandler(Observable):
             if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
                 try:
                     messages_for_this_turn = self.get_recent_agent_responses()
-                    if (
-                        messages_for_this_turn and self.persistent_service
-                    ):  # Only save if there are messages for the turn
+                    if messages_for_this_turn and self.persistent_service:
+                        metadata = {
+                            "input_tokens": input_tokens,
+                            "output_tokens": output_tokens,
+                            "total_tokens": input_tokens + output_tokens,
+                        }
+                        self.persistent_service.store_conversation_metadata(
+                            self.current_conversation_id, metadata
+                        )
+
                         self.persistent_service.append_conversation_messages(
                             self.current_conversation_id,
                             messages_for_this_turn,
@@ -469,9 +476,16 @@ class MessageHandler(Observable):
                 self.current_user_input_idx = -1
             if self.current_conversation_id and self.last_assisstant_response_idx >= 0:
                 messages_for_this_turn = self.get_recent_agent_responses()
-                if (
-                    messages_for_this_turn and self.persistent_service
-                ):  # Only save if there are messages for the turn
+                if messages_for_this_turn and self.persistent_service:
+                    metadata = {
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "total_tokens": input_tokens + output_tokens,
+                    }
+                    self.persistent_service.store_conversation_metadata(
+                        self.current_conversation_id, metadata
+                    )
+
                     self.persistent_service.append_conversation_messages(
                         self.current_conversation_id,
                         messages_for_this_turn,

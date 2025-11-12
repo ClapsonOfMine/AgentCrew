@@ -94,8 +94,14 @@ class ConversationManager:
                         conversation_id
                     )
                 )
+                metadata = (
+                    self.message_handler.persistent_service.get_conversation_metadata(
+                        conversation_id
+                    )
+                )
             else:
                 history = []
+                metadata = {}
             if history:
                 # Backward compatibility: Convert tool messages
                 for msg in history:
@@ -122,6 +128,7 @@ class ConversationManager:
                         self.message_handler.agent_manager.get_current_agent()
                     )
                     self.message_handler._notify("agent_changed", last_agent_name)
+
                 self.message_handler.streamline_messages = history
                 self.message_handler.agent_manager.rebuild_agents_messages(
                     self.message_handler.streamline_messages
@@ -157,10 +164,23 @@ class ConversationManager:
                         ):
                             self.store_conversation_turn(message_content, i)
 
+                from AgentCrew.modules.agents import LocalAgent
+
                 logger.info(f"Loaded conversation {conversation_id}")
                 self.message_handler._notify(
                     "conversation_loaded", {"id": conversation_id, "history": history}
                 )
+                if isinstance(self.message_handler.agent, LocalAgent) and metadata:
+                    input_tokens = metadata.get("input_tokens", 0)
+                    output_tokens = metadata.get("output_tokens", 0)
+
+                    self.message_handler.agent.input_tokens_usage = input_tokens
+                    self.message_handler.agent.output_tokens_usage = output_tokens
+
+                    self.message_handler._notify(
+                        "update_token_usage",
+                        {"input_tokens": input_tokens, "output_tokens": output_tokens},
+                    )
                 return history
             else:
                 self.message_handler._notify(

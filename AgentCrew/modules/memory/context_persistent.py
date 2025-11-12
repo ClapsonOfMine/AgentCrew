@@ -256,6 +256,62 @@ class ContextPersistenceService:
 
         return history
 
+    def store_conversation_metadata(
+        self, conversation_id: str, metadata: Dict[str, Any]
+    ) -> bool:
+        """
+        Stores metadata for a conversation as a separate JSON file.
+
+        Args:
+            conversation_id: The ID of the conversation.
+            metadata: Dictionary containing metadata to store.
+
+        Returns:
+            True if successful, False otherwise.
+
+        Raises:
+            ValueError: If metadata is not a dictionary.
+            IOError, TypeError, OSError: If writing fails.
+        """
+        if not isinstance(metadata, dict):
+            raise ValueError("Metadata must be a dictionary")
+
+        file_path = os.path.join(
+            self.conversations_dir, f"{conversation_id}.metadata.json"
+        )
+
+        try:
+            self._write_json_file(file_path, metadata)
+            logger.info(f"INFO: Stored metadata for conversation: {conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"ERROR: Failed to store metadata for {conversation_id}: {e}")
+            return False
+
+    def get_conversation_metadata(self, conversation_id: str) -> Dict[str, Any]:
+        """
+        Retrieves metadata for a conversation.
+
+        Args:
+            conversation_id: The ID of the conversation.
+
+        Returns:
+            Dictionary containing metadata, or empty dict if file not found.
+        """
+        file_path = os.path.join(
+            self.conversations_dir, f"{conversation_id}.metadata.json"
+        )
+
+        metadata = self._read_json_file(file_path, default_value={})
+
+        if not isinstance(metadata, dict):
+            logger.warning(
+                f"WARNING: Metadata for {conversation_id} was not a dictionary. Returning empty dict."
+            )
+            return {}
+
+        return metadata
+
     def list_conversations(self) -> List[Dict[str, Any]]:
         """
         Scans the conversations directory and returns metadata for available conversations.
