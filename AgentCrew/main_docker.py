@@ -34,6 +34,36 @@ def cli():
     )
 
 
+def common_options(func):
+    import functools
+
+    @click.option(
+        "--provider",
+        type=click.Choice(PROVIDER_LIST),
+        default=None,
+        help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
+    )
+    @click.option(
+        "--agent-config", default=None, help="Path/URL to the agent configuration file."
+    )
+    @click.option(
+        "--mcp-config", default=None, help="Path to the mcp servers configuration file."
+    )
+    @click.option(
+        "--memory-llm",
+        type=click.Choice(
+            ["claude", "groq", "openai", "google", "deepinfra", "github_copilot"]
+        ),
+        default=None,
+        help="LLM Model use for analyzing and processing memory",
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def cli_prod():
     if sys.argv[1] == "--version":
         click.echo(f"AgentCrew version: {get_current_version()}")
@@ -65,26 +95,7 @@ def get_current_version():
 
 
 @cli.command()
-@click.option(
-    "--provider",
-    type=click.Choice(PROVIDER_LIST),
-    default=None,
-    help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
-)
-@click.option(
-    "--agent-config", default=None, help="Path to the agent configuration file."
-)
-@click.option(
-    "--mcp-config", default=None, help="Path to the mcp servers configuration file."
-)
-@click.option(
-    "--memory-llm",
-    type=click.Choice(
-        ["claude", "groq", "openai", "google", "deepinfra", "github_copilot"]
-    ),
-    default=None,
-    help="LLM Model use for analyzing and processing memory",
-)
+@common_options
 def chat(provider, agent_config, mcp_config, memory_llm):
     """Start an interactive chat session with LLM"""
     from AgentCrew.app import AgentCrewApplication
@@ -97,24 +108,9 @@ def chat(provider, agent_config, mcp_config, memory_llm):
 @click.option("--host", default="0.0.0.0", help="Host to bind the server to")
 @click.option("--port", default=41241, help="Port to bind the server to")
 @click.option("--base-url", default=None, help="Base URL for agent endpoints")
-@click.option(
-    "--provider",
-    type=click.Choice(PROVIDER_LIST),
-    default=None,
-    help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
-)
+@common_options
 @click.option("--model-id", default=None, help="Model ID from provider")
-@click.option("--agent-config", default=None, help="Path to agent configuration file")
 @click.option("--api-key", default=None, help="API key for authentication (optional)")
-@click.option(
-    "--mcp-config", default=None, help="Path to the mcp servers configuration file."
-)
-@click.option(
-    "--memory-llm",
-    type=click.Choice(["claude", "groq", "openai", "google"]),
-    default=None,
-    help="LLM Model use for analyzing and processing memory",
-)
 def a2a_server(
     host,
     port,
@@ -145,23 +141,8 @@ def a2a_server(
 
 @cli.command()
 @click.option("--agent", type=str, help="Name of the agent to run")
-@click.option(
-    "--provider",
-    type=click.Choice(PROVIDER_LIST),
-    default=None,
-    help="LLM provider to use (claude, groq, openai, google, github_copilot or deepinfra)",
-)
+@common_options
 @click.option("--model-id", default=None, help="Model ID from provider")
-@click.option("--agent-config", default=None, help="Path to agent configuration file")
-@click.option(
-    "--mcp-config", default=None, help="Path to the mcp servers configuration file."
-)
-@click.option(
-    "--memory-llm",
-    type=click.Choice(["claude", "groq", "openai", "google"]),
-    default=None,
-    help="LLM Model use for analyzing and processing memory",
-)
 @click.option(
     "--output-schema",
     default=None,

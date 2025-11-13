@@ -268,6 +268,7 @@ def chat(provider, agent_config, mcp_config, memory_llm, console, with_voice):
 @click.option("--base-url", default=None, help="Base URL for agent endpoints")
 @common_options
 @click.option("--model-id", default=None, help="Model ID from provider")
+@click.option("--api-key", default=None, help="API key for authentication (optional)")
 def a2a_server(
     host,
     port,
