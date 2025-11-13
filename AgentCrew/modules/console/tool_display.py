@@ -12,12 +12,12 @@ from rich.box import HORIZONTALS
 from rich.text import Text
 
 from .constants import (
+    RICH_STYLE_GRAY,
     RICH_STYLE_YELLOW,
     RICH_STYLE_GREEN,
     RICH_STYLE_BLUE,
     RICH_STYLE_RED,
     RICH_STYLE_WHITE,
-    RICH_STYLE_YELLOW_BOLD,
     RICH_STYLE_GREEN_BOLD,
     RICH_STYLE_RED_BOLD,
 )
@@ -55,8 +55,8 @@ class ToolDisplayHandlers:
         tool_texts_group = []
 
         # Display tool header with better formatting
-        header = Text(f"{tool_icon} Tool: ", style=RICH_STYLE_YELLOW)
-        header.append(tool_use["name"], style=RICH_STYLE_YELLOW_BOLD)
+        header = Text(f"{tool_icon} Tool: ", style=RICH_STYLE_GRAY)
+        header.append(tool_use["name"], style=RICH_STYLE_GRAY)
 
         tool_parameters = tool_use.get("input") or tool_use.get("arguments")
         # Format tool input parameters

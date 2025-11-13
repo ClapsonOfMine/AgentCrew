@@ -377,7 +377,7 @@ class DisplayHandlers:
         self, agent_name: str, model_name: str, yolo_mode_enabled: bool
     ):
         """Print the prompt prefix with agent and model information."""
-        title = Text(f"\n[{agent_name}", style=RICH_STYLE_RED)
+        title = Text(f"\n [{agent_name}", style=RICH_STYLE_RED)
         title.append(":")
         title.append(f"{model_name}]", style=RICH_STYLE_BLUE)
 
@@ -387,10 +387,10 @@ class DisplayHandlers:
         )
 
         if yolo_mode_enabled:
-            title.append("\n[YOLO mode enabled]", style=RICH_STYLE_YELLOW_BOLD)
+            title.append("\n [YOLO mode enabled]", style=RICH_STYLE_YELLOW_BOLD)
 
         title.append(
-            "\n(Press Enter for new line, Ctrl+S/Alt+Enter to Send, Ctrl+V to paste)\n",
+            "\n (Press Enter for new line, Ctrl+S/Alt+Enter to Send, Ctrl+V to paste)\n",
             style=RICH_STYLE_YELLOW,
         )
         self.console.print(title)
