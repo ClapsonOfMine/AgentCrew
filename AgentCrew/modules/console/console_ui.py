@@ -420,6 +420,7 @@ class ConsoleUI(Observer):
                     signal.signal(signal.SIGWINCH, self._handle_terminal_resize)
                 try:
                     # Get user input (now in separate thread)
+                    self.input_handler.is_message_processing = False
                     self.stop_loading_animation()  # Stop if any
                     user_input = self.get_user_input()
 
@@ -571,13 +572,11 @@ class ConsoleUI(Observer):
                     if not self.message_handler.agent.history:
                         continue
 
-                    self.input_handler.is_message_processing = True
                     # Get assistant response
                     assistant_response, input_tokens, output_tokens = asyncio.run(
                         self.message_handler.get_assistant_response()
                     )
 
-                    self.input_handler.is_message_processing = False
                     self._is_resizing = False
 
                     # Ensure loading animation is stopped
@@ -594,7 +593,6 @@ class ConsoleUI(Observer):
                         )
                 except KeyboardInterrupt:
                     self._handle_keyboard_interrupt()
-                    self.input_handler.is_message_processing = False
                     continue  # Continue the loop instead of breaking
         finally:
             # Clean up input thread when exiting

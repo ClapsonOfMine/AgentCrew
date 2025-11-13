@@ -307,7 +307,7 @@ class InputHandler:
                 session = PromptSession(
                     key_bindings=self.kb,
                     completer=ChatCompleter(self.message_handler),
-                    refresh_interval=0.3,
+                    refresh_interval=0.2,
                 )
                 self._current_prompt_session = session
 
@@ -319,7 +319,7 @@ class InputHandler:
                 self.message_handler.history_manager.reset_position()
 
                 self._input_queue.put(user_input)
-                time.sleep(0.4)  # Allow time for input processing
+                self.is_message_processing = True
 
             except KeyboardInterrupt:
                 # Handle Ctrl+C in input thread
@@ -395,7 +395,7 @@ class InputHandler:
         while True:
             try:
                 # Check for input with a short timeout to allow event processing
-                user_input = self._input_queue.get(timeout=0.2)
+                user_input = self._input_queue.get(timeout=0.1)
 
                 # Add None check here
                 if user_input is None:
