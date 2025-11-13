@@ -35,7 +35,7 @@ class ConsoleUI(Observer):
     to receive updates from the MessageHandler.
     """
 
-    def __init__(self, message_handler: MessageHandler):
+    def __init__(self, message_handler: MessageHandler, swap_enter: bool = False):
         """
         Initialize the ConsoleUI.
 
@@ -65,7 +65,7 @@ class ConsoleUI(Observer):
         self.display_handlers = DisplayHandlers(self)
         self.tool_display = ToolDisplayHandlers(self)
         self.ui_effects = UIEffects(self)
-        self.input_handler = InputHandler(self)
+        self.input_handler = InputHandler(self, swap_enter=swap_enter)
         self.confirmation_handler = ConfirmationHandler(self)
         self.conversation_handler = ConversationHandler(self)
         self.command_handlers = CommandHandlers(self)

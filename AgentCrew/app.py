@@ -461,8 +461,12 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
             message_handler = MessageHandler(
                 services["memory"], services["context_persistent"], with_voice
             )
+            global_config = self.config_manager.read_global_config_data()
 
-            ui = ConsoleUI(message_handler)
+            ui = ConsoleUI(
+                message_handler,
+                global_config.get("global_settings", {}).get("swap_enter", False),
+            )
             ui.start()
         except Exception as e:
             import traceback

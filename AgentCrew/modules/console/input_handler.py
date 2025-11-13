@@ -37,6 +37,7 @@ class InputHandler:
     def __init__(
         self,
         console_ui: ConsoleUI,
+        swap_enter: bool = False,
     ):
         """Initialize the input handler."""
         self.console = console_ui.console
@@ -52,6 +53,7 @@ class InputHandler:
         self._current_prompt_session = None
         self._last_ctrl_c_time = 0
         self.is_message_processing = False
+        self.swap_enter = swap_enter
 
         # Set up key bindings
         self.kb = self._setup_key_bindings()
@@ -59,9 +61,11 @@ class InputHandler:
     def _setup_key_bindings(self):
         """Set up key bindings for multiline input."""
         kb = KeyBindings()
+        submit_keys = (Keys.Enter) if self.swap_enter else ("escape", "enter")
+        newline_keys = ("escape", "enter") if self.swap_enter else (Keys.Enter)
 
         @kb.add(Keys.ControlS)
-        @kb.add("escape", "enter")
+        @kb.add(*submit_keys)
         def _(event):
             """Submit on Ctrl+S."""
             if event.current_buffer.text.strip():
@@ -73,7 +77,7 @@ class InputHandler:
                 ):
                     event.current_buffer.validate_and_handle()
 
-        @kb.add(Keys.Enter)
+        @kb.add(*newline_keys)
         def _(event):
             """Insert newline on Enter."""
             event.current_buffer.insert_text("\n")

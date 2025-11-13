@@ -232,6 +232,7 @@ class ConfigManagement:
             "auto_approval_tools": [],
             "global_settings": {
                 "theme": "dark",
+                "swap_enter": False,
                 "yolo_mode": False,
                 "auto_context_shrink": True,
                 "shrink_excluded": [],
