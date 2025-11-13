@@ -8,6 +8,7 @@ import json
 from typing import Dict
 from rich.console import Group
 from rich.panel import Panel
+from rich.box import HORIZONTALS
 from rich.text import Text
 
 from .constants import (
@@ -90,6 +91,7 @@ class ToolDisplayHandlers:
             Panel(
                 Group(*tool_texts_group),
                 title=header,
+                box=HORIZONTALS,
                 title_align="left",
             )
         )
@@ -124,7 +126,12 @@ class ToolDisplayHandlers:
                 tool_texts_group.append(result_line)
 
         self.console.print(
-            Panel(Group(*tool_texts_group), title=header, title_align="left")
+            Panel(
+                Group(*tool_texts_group),
+                box=HORIZONTALS,
+                title=header,
+                title_align="left",
+            )
         )
 
     def display_tool_error(self, data: Dict):
@@ -145,6 +152,7 @@ class ToolDisplayHandlers:
         self.console.print(
             Panel(
                 Group(*tool_texts_group),
+                box=HORIZONTALS,
                 title=header,
                 title_align="left",
                 border_style=RICH_STYLE_RED,

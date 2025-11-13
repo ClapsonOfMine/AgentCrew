@@ -179,20 +179,28 @@ class InputHandler:
                         self.message_handler.agent.get_model(),
                         self.message_handler.tool_manager.get_effective_yolo_mode(),
                     )
-                    prompt = Text("👤 YOU: ", style=RICH_STYLE_BLUE)
-                    self.console.print(prompt, end="")
                     time.sleep(0.2)
                     self.clear_buffer()
+                    prompt = Text("  ", style=RICH_STYLE_BLUE)
+                    self.console.print(prompt, end="")
 
         @kb.add(Keys.Backspace)
         def _(event):
             if not event.current_buffer.text:
                 prompt = Text(
-                    "👤 YOU: " if not self.is_message_processing else "",
+                    "  " if not self.is_message_processing else "",
                     style=RICH_STYLE_BLUE,
                 )
-                self.console.print("", end="\r")
-                self.console.print(prompt, end="")
+                if not self.is_message_processing:
+                    import sys
+
+                    sys.stdout.write("\x1b[1A")  # cursor up one line
+                    sys.stdout.write("\x1b[2K")
+                    sys.stdout.write("\r")
+                    self.display_handlers.print_divider("👤 YOU: ")
+                    self.console.print(prompt, end="")
+                else:
+                    self.console.print("", end="\r")
             else:
                 event.current_buffer.delete_before_cursor()
 
@@ -244,7 +252,9 @@ class InputHandler:
     def clear_buffer(self):
         if self._current_prompt_session:
             self._current_prompt_session.app.current_buffer.reset()
-            self._current_prompt_session.message = HTML("<ansiblue>👤 YOU:</ansiblue> ")
+            if not self.is_message_processing:
+                self.display_handlers.print_divider("👤 YOU: ")
+            self._current_prompt_session.message = HTML("  ")
             self._current_prompt_session.app.invalidate()
 
     def get_choice_input(self, message: str, values: list[str], default=None) -> str:
@@ -301,11 +311,9 @@ class InputHandler:
                 )
                 self._current_prompt_session = session
 
-                prompt_text = (
-                    HTML("<ansiblue>👤 YOU:</ansiblue> ")
-                    if not self.is_message_processing
-                    else ""
-                )
+                if not self.is_message_processing:
+                    self.display_handlers.print_divider("👤 YOU: ")
+                prompt_text = HTML("  ") if not self.is_message_processing else ""
                 user_input = session.prompt(prompt_text)
 
                 self.message_handler.history_manager.reset_position()
@@ -393,6 +401,8 @@ class InputHandler:
                 if user_input is None:
                     continue
 
+                self.display_handlers.print_divider()
+
                 if user_input == "__EXIT__":
                     self.console.print(
                         Text(
@@ -417,7 +427,6 @@ class InputHandler:
                     )
                     return ""
                 else:
-                    self.display_handlers.display_divider()
                     return user_input
 
             except queue.Empty:

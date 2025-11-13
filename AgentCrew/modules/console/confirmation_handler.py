@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from rich.text import Text
 from rich.panel import Panel
+from rich.box import HORIZONTALS
 from rich.console import Group
 import time
 
@@ -65,6 +66,7 @@ class ConfirmationHandler:
             Panel(
                 Group(*tool_texts_group),
                 title=header,
+                box=HORIZONTALS,
                 title_align="left",
                 border_style=RICH_STYLE_YELLOW,
             )

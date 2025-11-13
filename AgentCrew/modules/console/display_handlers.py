@@ -10,6 +10,7 @@ import re
 from datetime import datetime
 from typing import Dict, Any, List
 from rich.console import Group
+from rich.box import HORIZONTALS, SQUARE
 from rich.markdown import Markdown
 from rich.text import Text
 from rich.panel import Panel
@@ -22,6 +23,7 @@ from .constants import (
     RICH_STYLE_GRAY,
     RICH_STYLE_YELLOW_BOLD,
     RICH_STYLE_GREEN_BOLD,
+    RICH_STYLE_BLUE_BOLD,
     RICH_STYLE_FILE_ACCENT_BOLD,
     RICH_STYLE_WHITE,
     CODE_THEME,
@@ -75,11 +77,12 @@ class DisplayHandlers:
     def display_user_message(self, message: str):
         header = Text(
             "👤 YOU:",
-            style=RICH_STYLE_GREEN_BOLD,
+            style=RICH_STYLE_BLUE_BOLD,
         )
         user_panel = Panel(
             Text(message),
             title=header,
+            box=HORIZONTALS,
             title_align="left",
             border_style=RICH_STYLE_BLUE,
         )
@@ -93,6 +96,7 @@ class DisplayHandlers:
         assistant_panel = Panel(
             Markdown(message, code_theme=CODE_THEME),
             title=header,
+            box=HORIZONTALS,
             title_align="left",
             border_style=RICH_STYLE_GREEN,
         )
@@ -101,6 +105,14 @@ class DisplayHandlers:
     def display_divider(self):
         """Display a divider line."""
         pass
+
+    def print_divider(self, title=""):
+        """Display a divider line."""
+        title_length = len(title) + 1 if title else 0
+        self.console.print(
+            " ─" + title + ("─" * (self.console.width - title_length - 3)) + " ",
+            style=RICH_STYLE_BLUE,
+        )
 
     def display_debug_info(self, debug_info):
         """Display debug information."""
@@ -248,7 +260,7 @@ class DisplayHandlers:
             f"Total: {input_tokens + output_tokens:,} | Cost: ${total_cost:.4f} | Total: {session_cost:.4f}",
             style=RICH_STYLE_YELLOW,
         )
-        self.console.print(Panel(token_info))
+        self.console.print(Panel(token_info, box=HORIZONTALS))
         self.display_divider()
 
     def display_added_files(self):
@@ -263,10 +275,6 @@ class DisplayHandlers:
     def print_welcome_message(self, version: str):
         """Print the welcome message for the chat."""
         welcome_messages = Group(
-            Text(
-                "🎮 Welcome to AgentCrew v" + version + " interactive chat!",
-                style=RICH_STYLE_YELLOW_BOLD,
-            ),
             Text("Press Ctrl+C twice to exit.", style=RICH_STYLE_GRAY),
             Text("Type '/exit' or '/quit' to end the session.", style=RICH_STYLE_GRAY),
             Text(
@@ -353,7 +361,16 @@ class DisplayHandlers:
             ),
         )
 
-        self.console.print(Panel(welcome_messages))
+        self.console.print(
+            Panel(
+                welcome_messages,
+                box=SQUARE,
+                title=Text(
+                    "🎮 Welcome to AgentCrew v" + version + " interactive chat!",
+                    style=RICH_STYLE_YELLOW_BOLD,
+                ),
+            )
+        )
         self.display_divider()
 
     def print_prompt_prefix(

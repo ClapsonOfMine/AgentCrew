@@ -17,6 +17,7 @@ from .utils import agent_evaluation_remove
 
 from .constants import (
     RICH_STYLE_GREEN,
+    RICH_STYLE_BLUE,
     RICH_STYLE_YELLOW,
     RICH_STYLE_GREEN_BOLD,
     RICH_STYLE_YELLOW_BOLD,
@@ -86,7 +87,7 @@ class ConsoleUI(Observer):
                 data
             )  # data is the thinking chunk
         elif event == "user_message_created":
-            self.console.print("\n")
+            pass
         elif event == "response_chunk":
             _, assistant_response = data
             if (
@@ -298,6 +299,14 @@ class ConsoleUI(Observer):
             self.message_handler.agent.get_model(),
             self.message_handler.tool_manager.get_effective_yolo_mode(),
         )
+
+        self.display_handlers.print_divider("👤 YOU: ")
+
+        prompt = Text(
+            "  ",
+            style=RICH_STYLE_BLUE,
+        )
+        self.console.print(prompt, end="")
         self._is_resizing = False
 
     def start_streaming_response(self, agent_name: str):
@@ -424,7 +433,7 @@ class ConsoleUI(Observer):
                         )
                         self.input_handler.stop()
                         raise SystemExit(0)
-                    if user_input.strip() == "/list":
+                    elif user_input.strip() == "/list":
                         conversations = self.message_handler.list_conversations()
                         self.conversation_handler.update_cached_conversations(
                             conversations
@@ -526,8 +535,11 @@ class ConsoleUI(Observer):
                         self.command_handlers.handle_edit_config_command()
                         continue
 
+                    elif user_input.startswith("/voice"):
+                        self.input_handler._stop_input_thread()
+                        self.voice_recording = True
                     # Start loading animation while waiting for response
-                    if (
+                    elif (
                         not user_input.startswith("/")
                         or user_input.startswith("/file ")
                         or user_input.startswith("/consolidate ")
@@ -536,10 +548,6 @@ class ConsoleUI(Observer):
                         or user_input.startswith("/retry")
                     ):
                         self.start_loading_animation()
-
-                    if user_input.startswith("/voice"):
-                        self.input_handler._stop_input_thread()
-                        self.voice_recording = True
 
                     # Process user input and commands
                     should_exit, was_cleared = asyncio.run(

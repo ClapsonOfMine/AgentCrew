@@ -10,6 +10,7 @@ import threading
 import itertools
 import random
 from rich.live import Live
+from rich.box import HORIZONTALS
 from rich.markdown import Markdown
 from rich.panel import Panel
 
@@ -66,6 +67,10 @@ class UIEffects:
                 time.sleep(0.1)  # Control animation speed
             live.update("")  # Clear the live display when done
             live.stop()  # Stop the live display
+            import sys
+
+            sys.stdout.write("\x1b[1A")  # cursor up one line
+            sys.stdout.write("\x1b[2K")
 
     def start_loading_animation(self):
         """Start the loading animation."""
@@ -95,7 +100,9 @@ class UIEffects:
 
         header = Text(f"🤖 {agent_name.upper()}:", style=RICH_STYLE_GREEN_BOLD)
 
-        live_panel = Panel("", title=header, border_style=RICH_STYLE_GREEN)
+        live_panel = Panel(
+            "", title=header, box=HORIZONTALS, border_style=RICH_STYLE_GREEN
+        )
 
         self.live = Live(
             live_panel,
@@ -151,6 +158,7 @@ class UIEffects:
             live_panel = Panel(
                 Markdown("\n".join(lines), code_theme=CODE_THEME),
                 title=header,
+                box=HORIZONTALS,
                 subtitle=subtitle,
                 title_align="left",
                 border_style=RICH_STYLE_GREEN,
@@ -195,6 +203,7 @@ class UIEffects:
         assistant_panel = Panel(
             Markdown(markdown_formatted_response, code_theme=CODE_THEME),
             title=header,
+            box=HORIZONTALS,
             title_align="left",
             border_style=RICH_STYLE_GREEN,
         )
