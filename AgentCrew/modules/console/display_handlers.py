@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 from typing import Dict, Any, List
 from rich.console import Group
-from rich.box import HORIZONTALS, SQUARE
+from rich.box import HORIZONTALS, SIMPLE, SQUARE
 from rich.markdown import Markdown
 from rich.text import Text
 from rich.panel import Panel
@@ -72,7 +72,7 @@ class DisplayHandlers:
 
     def display_message(self, message: Text):
         """Display a generic message."""
-        self.console.print(message)
+        self.console.print(Panel(message, box=SIMPLE))
 
     def display_user_message(self, message: str):
         header = Text(
@@ -106,11 +106,18 @@ class DisplayHandlers:
         """Display a divider line."""
         pass
 
-    def print_divider(self, title=""):
+    def print_divider(self, title="", with_time=False):
         """Display a divider line."""
         title_length = len(title) + 1 if title else 0
+        time = ""
+        if with_time:
+            time = f"{datetime.now().strftime('%H:%M:%S')} ──"
         self.console.print(
-            " ─" + title + ("─" * (self.console.width - title_length - 3)) + " ",
+            " ─"
+            + title
+            + ("─" * (self.console.width - title_length - len(time) - 3))
+            + time
+            + " ",
             style=RICH_STYLE_BLUE,
         )
 
@@ -205,6 +212,11 @@ class DisplayHandlers:
             role = msg.get("role")
             if role == "user":
                 content = self._extract_message_content(msg)
+                if content.startswith("<Transfer_Tool>"):
+                    transfer_text = Text("Transfered to ", style=RICH_STYLE_YELLOW)
+                    transfer_text.append(f"{msg.get('agent', 'unknown')} agent")
+                    self.display_message(transfer_text)
+                    continue
                 self.display_user_message(content)
             elif role == "assistant":
                 agent_name = msg.get("agent") or default_agent_name
@@ -380,11 +392,6 @@ class DisplayHandlers:
         title = Text(f"\n [{agent_name}", style=RICH_STYLE_RED)
         title.append(":")
         title.append(f"{model_name}]", style=RICH_STYLE_BLUE)
-
-        title.append(
-            f"      [{datetime.now().strftime('%H:%M:%S')}]",
-            style=RICH_STYLE_GRAY,
-        )
 
         if yolo_mode_enabled:
             title.append("\n [YOLO mode enabled]", style=RICH_STYLE_YELLOW_BOLD)

@@ -287,7 +287,9 @@ class AgentManager:
                                 if msg.get("role", "user") == "user"
                                 else source_agent.name
                             )
-                            included_conversations.append(f"**{role}**: {content}")
+                            included_conversations.append(
+                                f"<{role}_message>{content}</{role}_message>"
+                            )
                             source_agent.shared_context_pool[target_agent_name].append(
                                 i
                             )

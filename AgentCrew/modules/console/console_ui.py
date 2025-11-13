@@ -300,7 +300,7 @@ class ConsoleUI(Observer):
             self.message_handler.tool_manager.get_effective_yolo_mode(),
         )
 
-        self.display_handlers.print_divider("👤 YOU: ")
+        self.display_handlers.print_divider("👤 YOU: ", with_time=True)
 
         prompt = Text(
             "  ",

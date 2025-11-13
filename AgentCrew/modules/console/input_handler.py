@@ -197,7 +197,7 @@ class InputHandler:
                     sys.stdout.write("\x1b[1A")  # cursor up one line
                     sys.stdout.write("\x1b[2K")
                     sys.stdout.write("\r")
-                    self.display_handlers.print_divider("👤 YOU: ")
+                    self.display_handlers.print_divider("👤 YOU: ", with_time=True)
                     self.console.print(prompt, end="")
                 else:
                     self.console.print("", end="\r")
@@ -253,7 +253,7 @@ class InputHandler:
         if self._current_prompt_session:
             self._current_prompt_session.app.current_buffer.reset()
             if not self.is_message_processing:
-                self.display_handlers.print_divider("👤 YOU: ")
+                self.display_handlers.print_divider("👤 YOU: ", with_time=True)
             self._current_prompt_session.message = HTML("  ")
             self._current_prompt_session.app.invalidate()
 
@@ -312,7 +312,7 @@ class InputHandler:
                 self._current_prompt_session = session
 
                 if not self.is_message_processing:
-                    self.display_handlers.print_divider("👤 YOU: ")
+                    self.display_handlers.print_divider("👤 YOU: ", with_time=True)
                 prompt_text = HTML("  ") if not self.is_message_processing else ""
                 user_input = session.prompt(prompt_text)
 
