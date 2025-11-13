@@ -143,6 +143,18 @@ class CustomLLMService(OpenAIService):
         ):
             stream_params["reasoning_effort"] = self.reasoning_effort
 
+        if (
+            "structured_output" in ModelRegistry.get_model_capabilities(full_model_id)
+            and self.structured_output
+        ):
+            stream_params["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "default",
+                    "schema": self.structured_output,
+                },
+            }
+
         if "stream" in ModelRegistry.get_model_capabilities(full_model_id):
             self._is_thinking = False
             return await self.client.chat.completions.create(

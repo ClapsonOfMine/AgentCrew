@@ -216,6 +216,18 @@ class OpenAIService(BaseLLMService):
         ):
             stream_params["tools"] = self.tools
 
+        if (
+            "structured_output" in ModelRegistry.get_model_capabilities(full_model_id)
+            and self.structured_output
+        ):
+            stream_params["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "default",
+                    "schema": self.structured_output,
+                },
+            }
+
         return await self.client.chat.completions.create(**stream_params, stream=True)
 
     def process_stream_chunk(

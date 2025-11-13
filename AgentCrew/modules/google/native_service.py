@@ -384,6 +384,7 @@ class GoogleAINativeService(BaseLLMService):
         """
         # Convert messages to Google GenAI format
         google_messages = self._convert_internal_format(messages)
+        full_model_id = f"{self._provider_name}/{self.model}"
 
         # Create configuration with tools
         config = types.GenerateContentConfig(
@@ -398,7 +399,7 @@ class GoogleAINativeService(BaseLLMService):
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
-            f"{self._provider_name}/{self.model}"
+            full_model_id
         ):
             config.tools = self.tools
 
@@ -406,6 +407,14 @@ class GoogleAINativeService(BaseLLMService):
             config.thinking_config = types.ThinkingConfig(
                 thinking_budget=self.thinking_budget
             )
+
+        if (
+            "structured_output" in ModelRegistry.get_model_capabilities(full_model_id)
+            and self.structured_output
+        ):
+            config.response_mime_type = "application/json"
+            config.response_json_schema = self.structured_output
+            config.tools = None
 
         # Get the stream generator
         stream_generator = self.client.models.generate_content_stream(

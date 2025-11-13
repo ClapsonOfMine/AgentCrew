@@ -774,11 +774,19 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
             if current_agent:
                 # Parse schema if provided
                 schema_dict = None
-                if output_schema and isinstance(current_agent, LocalAgent):
+                if output_schema:
+                    from AgentCrew.modules.llm.model_registry import ModelRegistry
+
                     schema_prompt, schema_dict = self._parse_output_schema(
                         output_schema
                     )
-                    current_agent.set_custom_system_prompt(schema_prompt)
+                    if "structured_output" in ModelRegistry.get_model_capabilities(
+                        f"{provider}/{model_id}"
+                    ):
+                        current_agent.llm.structured_output = schema_dict
+
+                    else:
+                        current_agent.set_custom_system_prompt(schema_prompt)
 
                 self.agent_manager.select_agent(current_agent.name)
 

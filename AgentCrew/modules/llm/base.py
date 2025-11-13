@@ -104,6 +104,15 @@ class BaseLLMService(ABC):
     def temperature(self, value: float):
         self._temperature = value
 
+    @property
+    def structured_output(self) -> Optional[Dict[str, Any]]:
+        """Get the temperature for this service."""
+        return getattr(self, "_structured_output", None)
+
+    @structured_output.setter
+    def structured_output(self, value: Dict):
+        self._structured_output = value
+
     def _extract_tool_name(self, tool_def):
         """Extract tool name from definition regardless of format"""
         if "name" in tool_def:

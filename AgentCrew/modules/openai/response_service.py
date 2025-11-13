@@ -251,6 +251,18 @@ class OpenAIResponseService(BaseLLMService):
 
             stream_params["tools"] = all_tools
 
+        # if (
+        #     "structured_output" in ModelRegistry.get_model_capabilities(full_model_id)
+        #     and self.structured_output
+        # ):
+        #     from openai.types import ResponseFormatJSONSchema
+        #
+        #     stream_params["text"] = {
+        #         "format": ResponseFormatJSONSchema.model_validate(
+        #             {"type": "json_schema", "json_schema": self.structured_output}
+        #         )
+        #     }
+
         return await self.client.responses.create(**stream_params)
 
     def process_stream_chunk(
