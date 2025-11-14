@@ -376,10 +376,26 @@ class CommandProcessor:
             self.message_handler.last_assisstant_response_idx = len(
                 self.message_handler.streamline_messages
             )
+            if isinstance(selected_message.get("content"), list):
+                selected_content = next(
+                    (
+                        c.get("text", "")
+                        for c in selected_message.get("content", [])
+                        if c.get("type", "") == "text"
+                    ),
+                    "",
+                )
+
+            else:
+                selected_content = selected_message.get("content", "")
 
             self.message_handler._notify(
                 "jump_performed",
-                {"turn_number": turn_number, "preview": selected_turn.get_preview(100)},
+                {
+                    "turn_number": turn_number,
+                    "preview": selected_turn.get_preview(100),
+                    "message": selected_content,
+                },
             )
 
             return True

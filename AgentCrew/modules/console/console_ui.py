@@ -191,6 +191,7 @@ class ConsoleUI(Observer):
 
             self.display_handlers.display_message(jump_text)
             self.display_handlers.display_message(preview_text)
+            self.input_handler.set_current_buffer(data["message"])
         elif event == "thinking_completed":
             self.display_handlers.display_divider()
         elif event == "file_processing":

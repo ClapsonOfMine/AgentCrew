@@ -55,6 +55,7 @@ class InputHandler:
         self._last_ctrl_c_time = 0
         self.is_message_processing = False
         self.swap_enter = swap_enter
+        self._jumped_user_message = ""
 
         # Set up key bindings
         self.kb = self._setup_key_bindings()
@@ -263,6 +264,11 @@ class InputHandler:
     def clear_buffer(self):
         if self._current_prompt_session:
             self._current_prompt_session.app.current_buffer.reset()
+            if self._jumped_user_message:
+                self._current_prompt_session.app.current_buffer.insert_text(
+                    self._jumped_user_message
+                )
+                self._jumped_user_message = ""
             if not self.is_message_processing:
                 self.display_handlers.print_divider("👤 YOU: ", with_time=True)
             self._current_prompt_session.message = HTML(PROMPT_CHAR)
@@ -384,6 +390,9 @@ class InputHandler:
                 except Exception:
                     pass
             self._input_thread.join(timeout=1.0)
+
+    def set_current_buffer(self, content: str):
+        self._jumped_user_message = content
 
     def get_user_input(self):
         """
