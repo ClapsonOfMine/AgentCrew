@@ -111,7 +111,7 @@ class DisplayHandlers:
         title_length = len(title) + 1 if title else 0
         time = ""
         if with_time:
-            time = f"{datetime.now().strftime('%H:%M:%S')} ──"
+            time = f" {datetime.now().strftime('%H:%M:%S')} ──"
         self.console.print(
             " ─"
             + title

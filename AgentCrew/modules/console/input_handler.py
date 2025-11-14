@@ -61,8 +61,8 @@ class InputHandler:
     def _setup_key_bindings(self):
         """Set up key bindings for multiline input."""
         kb = KeyBindings()
-        submit_keys = (Keys.Enter) if self.swap_enter else ("escape", "enter")
-        newline_keys = ("escape", "enter") if self.swap_enter else (Keys.Enter)
+        submit_keys = ("enter",) if self.swap_enter else ("escape", "enter")
+        newline_keys = ("escape", "enter") if self.swap_enter else ("enter",)
 
         @kb.add(Keys.ControlS)
         @kb.add(*submit_keys)
