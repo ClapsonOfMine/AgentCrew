@@ -329,7 +329,9 @@ class ContextPersistenceService:
             # listdir raises OSError if the directory is invalid
             filenames = os.listdir(self.conversations_dir)
             for filename in filenames:
-                if filename.endswith(".json"):
+                if filename.endswith(".json") and not filename.endswith(
+                    ".metadata.json"
+                ):
                     conversation_id = filename[:-5]  # Remove .json extension
                     file_path = os.path.join(self.conversations_dir, filename)
                     try:
