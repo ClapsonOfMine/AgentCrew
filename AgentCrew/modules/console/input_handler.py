@@ -329,6 +329,9 @@ class InputHandler:
                 )
                 user_input = session.prompt(prompt_text)
 
+                if not user_input:
+                    continue
+
                 user_input = user_input.replace(f"\n{PROMPT_CHAR}", "\n")
 
                 self.message_handler.history_manager.reset_position()
