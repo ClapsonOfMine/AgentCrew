@@ -21,6 +21,7 @@ from .constants import (
     RICH_STYLE_YELLOW,
     RICH_STYLE_GREEN_BOLD,
     RICH_STYLE_YELLOW_BOLD,
+    PROMPT_CHAR,
 )
 
 from typing import TYPE_CHECKING
@@ -303,9 +304,15 @@ class ConsoleUI(Observer):
         self.display_handlers.print_divider("👤 YOU: ", with_time=True)
 
         prompt = Text(
-            "  ",
+            PROMPT_CHAR,
             style=RICH_STYLE_BLUE,
         )
+        if self.input_handler._current_prompt_session:
+            prompt.append(
+                self.input_handler._current_prompt_session.default_buffer.text,
+                style="white",
+            )
+
         self.console.print(prompt, end="")
         self._is_resizing = False
 

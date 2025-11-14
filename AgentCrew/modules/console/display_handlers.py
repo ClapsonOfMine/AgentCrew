@@ -397,7 +397,7 @@ class DisplayHandlers:
             title.append("\n [YOLO mode enabled]", style=RICH_STYLE_YELLOW_BOLD)
 
         title.append(
-            f"\n (Press Enter for new line, Ctrl+S/{'Enter' if self._ui.input_handler.swap_enter else 'Alt+Enter'} to Send, Ctrl+V to paste)\n",
+            f"\n (Press {'Enter' if not self._ui.input_handler.swap_enter else 'Alt+Enter'} for new line, Ctrl+S/{'Enter' if self._ui.input_handler.swap_enter else 'Alt+Enter'} to Send, Ctrl+V to paste)\n",
             style=RICH_STYLE_YELLOW,
         )
         self.console.print(title)

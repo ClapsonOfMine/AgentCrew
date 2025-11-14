@@ -16,3 +16,4 @@ RICH_STYLE_FILE_ACCENT_BOLD = Style(color="bright_cyan", bold=True)
 RICH_STYLE_WHITE = Style(color="#ffffff", bold=False)
 
 CODE_THEME = "lightbulb"
+PROMPT_CHAR = "  "

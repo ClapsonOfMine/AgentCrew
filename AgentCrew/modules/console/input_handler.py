@@ -23,6 +23,7 @@ from .constants import (
     RICH_STYLE_YELLOW_BOLD,
     RICH_STYLE_RED,
     RICH_STYLE_BLUE,
+    PROMPT_CHAR,
 )
 
 from typing import TYPE_CHECKING
@@ -80,7 +81,7 @@ class InputHandler:
         @kb.add(*newline_keys)
         def _(event):
             """Insert newline on Enter."""
-            event.current_buffer.insert_text("\n")
+            event.current_buffer.insert_text(f"\n{PROMPT_CHAR}")
 
         @kb.add("escape", "c")  # Alt+C
         def _(event):
@@ -185,14 +186,14 @@ class InputHandler:
                     )
                     time.sleep(0.2)
                     self.clear_buffer()
-                    prompt = Text("  ", style=RICH_STYLE_BLUE)
+                    prompt = Text(PROMPT_CHAR, style=RICH_STYLE_BLUE)
                     self.console.print(prompt, end="")
 
         @kb.add(Keys.Backspace)
         def _(event):
             if not event.current_buffer.text:
                 prompt = Text(
-                    "  " if not self.is_message_processing else "",
+                    PROMPT_CHAR if not self.is_message_processing else "",
                     style=RICH_STYLE_BLUE,
                 )
                 if not self.is_message_processing:
@@ -206,7 +207,13 @@ class InputHandler:
                 else:
                     self.console.print("", end="\r")
             else:
-                event.current_buffer.delete_before_cursor()
+                if (
+                    event.current_buffer.text[-(len(PROMPT_CHAR) + 1) :]
+                    == f"\n{PROMPT_CHAR}"
+                ):
+                    event.current_buffer.delete_before_cursor((len(PROMPT_CHAR) + 1))
+                else:
+                    event.current_buffer.delete_before_cursor()
 
         @kb.add(Keys.ControlUp)
         @kb.add(Keys.Escape, Keys.Up)
@@ -258,7 +265,7 @@ class InputHandler:
             self._current_prompt_session.app.current_buffer.reset()
             if not self.is_message_processing:
                 self.display_handlers.print_divider("👤 YOU: ", with_time=True)
-            self._current_prompt_session.message = HTML("  ")
+            self._current_prompt_session.message = HTML(PROMPT_CHAR)
             self._current_prompt_session.app.invalidate()
 
     def get_choice_input(self, message: str, values: list[str], default=None) -> str:
@@ -317,8 +324,12 @@ class InputHandler:
 
                 if not self.is_message_processing:
                     self.display_handlers.print_divider("👤 YOU: ", with_time=True)
-                prompt_text = HTML("  ") if not self.is_message_processing else ""
+                prompt_text = (
+                    HTML(PROMPT_CHAR) if not self.is_message_processing else ""
+                )
                 user_input = session.prompt(prompt_text)
+
+                user_input = user_input.replace(f"\n{PROMPT_CHAR}", "\n")
 
                 self.message_handler.history_manager.reset_position()
 
