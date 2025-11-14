@@ -107,6 +107,8 @@ class UIEffects:
         self.live = Live(
             live_panel,
             console=self.console,
+            auto_refresh=True,
+            refresh_per_second=10,
             vertical_overflow="crop",
         )
         self.live.start()
@@ -119,7 +121,8 @@ class UIEffects:
             self._visible_buffer = max(0, self._visible_buffer - speed)
         elif direction == "down":
             self._visible_buffer += speed
-        self.update_live_display(self.updated_text)
+        if self.live:
+            self.update_live_display(self.updated_text)
 
     def update_live_display(self, chunk: str):
         """Update the live display with a new chunk of the response."""
@@ -131,12 +134,14 @@ class UIEffects:
 
         # Only show the last part that fits in the console
         lines = self.updated_text.split("\n")
-        height_limit = (
-            self.console.size.height - 10
-        )  # leave some space for other elements
+        height_limit = self.console.size.height - 4
         if len(lines) > height_limit:
-            self.tracking_buffer = len(lines) - height_limit
-            if self._visible_buffer == -1:
+            if (
+                self._visible_buffer == -1
+                or self._visible_buffer > len(lines) - height_limit
+            ):
+                self._tracking_buffer = len(lines) - height_limit
+                self._visible_buffer = -1
                 lines = lines[-height_limit:]
             else:
                 lines = lines[
@@ -161,6 +166,8 @@ class UIEffects:
                 box=HORIZONTALS,
                 subtitle=subtitle,
                 title_align="left",
+                expand=False,
+                height=height_limit,
                 border_style=RICH_STYLE_GREEN,
             )
             self.live.update(live_panel)
