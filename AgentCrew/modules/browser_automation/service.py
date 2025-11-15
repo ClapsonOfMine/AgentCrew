@@ -41,7 +41,7 @@ class BrowserAutomationService:
 
         self.debug_port = debug_port
         self.chrome_manager = ChromeManager(debug_port=debug_port)
-        self.chrome_interface: Optional[Any] = None
+        self.chrome_interface: Optional[PyChromeDevTools.ChromeInterface] = None
         self._is_initialized = False
         # UUID to XPath mapping for element identification
         self.uuid_to_xpath_mapping: Dict[str, str] = {}
@@ -51,6 +51,9 @@ class BrowserAutomationService:
         """Ensure Chrome browser is running and connected."""
         if not self._is_initialized:
             self._initialize_chrome(profile)
+        # Always get active content tabs
+        if self.chrome_interface:
+            self.chrome_interface.connect()
 
     def _initialize_chrome(self, profile: str = "Default"):
         """Initialize Chrome browser and DevTools connection."""
@@ -471,7 +474,11 @@ class BrowserAutomationService:
                 if style:
                     # Remove spaces and check for display:none
                     style_clean = re.sub(r"\s+", "", style.lower())
-                    if "display:none" in style_clean or "display=none" in style_clean:
+                    if (
+                        "display:none" in style_clean
+                        or "display=none" in style_clean
+                        or "visibility:hidden" in style_clean
+                    ):
                         should_hide = True
 
                 # Check for aria-hidden="true"
