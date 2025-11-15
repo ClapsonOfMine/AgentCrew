@@ -17,7 +17,7 @@ def get_clipboard_read_tool_definition(provider="claude") -> Dict[str, Any]:
     tool_required = []
     if provider == "claude":
         return {
-            "name": "clipboard_read",
+            "name": "read_clipboard",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -29,7 +29,7 @@ def get_clipboard_read_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "clipboard_read",
+                "name": "read_clipboard",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",

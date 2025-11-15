@@ -105,15 +105,15 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
 def get_memory_retrieve_tool_definition(provider="claude") -> Dict[str, Any]:
     """Optimized memory retrieval tool definition."""
 
-    tool_description = """Retrieves relevant information from conversation history using semantic search.
+    tool_description = """Search relevant information from conversation history using semantic search.
 Use for gathering context, accessing user preferences, finding similar problems, and maintaining conversation continuity. 
-Search with specific, descriptive keywords for better results.
+Search with specific, descriptive queries for better results.
 Use from_date and to_date to filter memories by time whenever posible, Eg: yesterday: from_date = current_date - 1"""
 
     tool_arguments = {
-        "phrases": {
+        "query": {
             "type": "string",
-            "description": "Search a phrases for finding relevant memories. Use specific semantic phrases like 'project alpha database issues' or 'user preferences communication style' rather than single words.",
+            "description": "A searching query for finding relevant memories. Use specific semantic phrases like 'project alpha database issues' or 'user preferences communication style' rather than keywords.",
         },
         "from_date": {
             "type": "string",
@@ -131,7 +131,7 @@ Use from_date and to_date to filter memories by time whenever posible, Eg: yeste
 
     if provider == "claude":
         return {
-            "name": "retrieve_memory",
+            "name": "search_memory",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -143,7 +143,7 @@ Use from_date and to_date to filter memories by time whenever posible, Eg: yeste
         return {
             "type": "function",
             "function": {
-                "name": "retrieve_memory",
+                "name": "search_memory",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -159,16 +159,16 @@ def memory_instruction_prompt():
     return """<Memory_System>
   <Purpose>
     Extremely useful for gathering context through intelligent storage and retrieval of relevant information.
-    Call retrieve_memory when on of retrieval triggers occur to provide better responses.
+    Call search_memory when one of <Memory_Triggers> occur to provide better responses.
   </Purpose>
   <Usage_Guidelines>
-    <Retrieval_Triggers>
+    <Memory_Triggers>
       - When start a new conversation - gather relevant context from user request
       - When current topic changes - Get new topic-related memories context for better responses
       - When User references to past interactions
-    </Retrieval_Triggers>
+    </Memory_Triggers>
     <Search_Strategy>
-      - Use specific, descriptive phrases
+      - Use specific, descriptive queries
       - Combine related concepts with spaces
       - Include temporal indicators when relevant
       - Include time filters when applicable
@@ -188,16 +188,16 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
     """Optimized memory retrieval handler with concise feedback."""
 
     def handle_memory_retrieve(**params) -> str:
-        phrases = params.get("phrases", "").strip()
+        query = params.get("query", "").strip()
         from_date = params.get("from_date", None)
         to_date = params.get("to_date", None)
 
-        if not phrases:
+        if not query:
             raise ValueError("❌ Phrases required for memory search. Try again.")
 
-        if len(phrases) < 3:
+        if len(query) < 3:
             raise ValueError(
-                f"⚠️ Search term '{phrases}' too short. Try again with more semantica and descriptive phrases."
+                f"⚠️ Search term '{query}' too short. Try again with more semantica and descriptive phrases."
             )
 
         # Use provided agent_name or fallback to current agent
@@ -215,11 +215,11 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
                 )
 
             result = memory_service.retrieve_memory(
-                phrases, from_date, to_date, agent_name
+                query, from_date, to_date, agent_name
             )
 
             if not result or result.strip() == "":
-                return f"📝 No memories found for '{phrases}'. Try broader phrases or related terms."
+                return f"📝 No memories found for '{query}'. Try broader phrases or related terms."
 
             # Count memories for user feedback
             return f"📚 Found relevant memories:\n\n{result}"
@@ -260,7 +260,7 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
 
     if provider == "claude":
         return {
-            "name": "adapt",
+            "name": "adapt_behavior",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -272,7 +272,7 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
         return {
             "type": "function",
             "function": {
-                "name": "adapt",
+                "name": "adapt_behavior",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",

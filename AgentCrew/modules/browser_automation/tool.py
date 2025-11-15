@@ -27,7 +27,7 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "browser_navigate",
+            "name": "navigate_url",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -39,7 +39,7 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "browser_navigate",
+                "name": "navigate_url",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -65,7 +65,7 @@ def get_browser_click_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "browser_click",
+            "name": "click_browser_element",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -77,7 +77,7 @@ def get_browser_click_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "browser_click",
+                "name": "click_browser_element",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -115,7 +115,7 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "browser_scroll",
+            "name": "scroll_browser",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -127,7 +127,7 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "browser_scroll",
+                "name": "scroll_browser",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -149,7 +149,7 @@ def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]
 
     if provider == "claude":
         return {
-            "name": "browser_get_content",
+            "name": "get_browser_content",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -161,7 +161,7 @@ def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]
         return {
             "type": "function",
             "function": {
-                "name": "browser_get_content",
+                "name": "get_browser_content",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -301,7 +301,7 @@ def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "browser_input",
+            "name": "input_browser_field",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -313,7 +313,7 @@ def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "browser_input",
+                "name": "input_browser_field",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -367,7 +367,7 @@ def get_browser_get_elements_by_text_tool_definition(
 
     if provider == "claude":
         return {
-            "name": "browser_get_elements_by_text",
+            "name": "get_browser_elements_by_text",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -379,7 +379,7 @@ def get_browser_get_elements_by_text_tool_definition(
         return {
             "type": "function",
             "function": {
-                "name": "browser_get_elements_by_text",
+                "name": "get_browser_elements_by_text",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -446,7 +446,7 @@ def get_browser_capture_screenshot_tool_definition(provider="claude") -> Dict[st
 
     if provider == "claude":
         return {
-            "name": "browser_capture_screenshot",
+            "name": "capture_browser_screenshot",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -458,7 +458,7 @@ def get_browser_capture_screenshot_tool_definition(provider="claude") -> Dict[st
         return {
             "type": "function",
             "function": {
-                "name": "browser_capture_screenshot",
+                "name": "capture_browser_screenshot",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -572,7 +572,7 @@ def get_browser_send_key_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "browser_send_key",
+            "name": "send_browser_key",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -584,7 +584,7 @@ def get_browser_send_key_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "browser_send_key",
+                "name": "send_browser_key",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",

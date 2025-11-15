@@ -35,7 +35,7 @@ def get_web_search_tool_definition(provider="claude"):
     tool_required = ["query", "search_depth", "topic"]
     if provider == "claude":
         return {
-            "name": "web_search",
+            "name": "search_web",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -47,7 +47,7 @@ def get_web_search_tool_definition(provider="claude"):
         return {
             "type": "function",
             "function": {
-                "name": "web_search",
+                "name": "search_web",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",

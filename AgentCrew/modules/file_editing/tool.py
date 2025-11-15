@@ -64,7 +64,7 @@ Auto syntax check (30+ langs) with rollback on error
 
     if provider == "claude":
         return {
-            "name": "file_write_or_edit",
+            "name": "write_or_edit_file",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -76,7 +76,7 @@ Auto syntax check (30+ langs) with rollback on error
         return {
             "type": "function",
             "function": {
-                "name": "file_write_or_edit",
+                "name": "write_or_edit_file",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",

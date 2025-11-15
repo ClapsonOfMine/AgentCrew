@@ -444,7 +444,7 @@ class MCPService:
             Formatted tool definition
         """
         # Create namespaced tool name
-        namespaced_name = f"{server_id}_{tool.name}"
+        namespaced_name = f"{server_id}__{tool.name}"
 
         from jsonref import replace_refs
         import json
