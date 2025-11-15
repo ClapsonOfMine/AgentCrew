@@ -88,6 +88,25 @@ class BaseMemoryService(ABC):
         pass
 
     @abstractmethod
+    def list_memory_ids(
+        self,
+        from_date: Optional[int] = None,
+        to_date: Optional[int] = None,
+        agent_name: str = "None",
+    ) -> List[str]:
+        """
+        List all memory IDs within an optional date range.
+
+        Args:
+            from_date: Optional start date (timestamp) to filter memories
+            to_date: Optional end date (timestamp) to filter memories
+
+        Returns:
+            List of memory IDs
+        """
+        pass
+
+    @abstractmethod
     def cleanup_old_memories(self, months: int = 1) -> int:
         """
         Remove memories older than the specified number of months.

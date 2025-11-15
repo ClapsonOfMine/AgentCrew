@@ -425,6 +425,35 @@ class ChromaMemoryService(BaseMemoryService):
         else:
             return input
 
+    def list_memory_ids(
+        self,
+        from_date: Optional[int] = None,
+        to_date: Optional[int] = None,
+        agent_name: str = "None",
+    ) -> List[str]:
+        collection = self._initialize_collection()
+
+        and_conditions: List[Dict[str, Any]] = []
+
+        if self.session_id.strip():
+            and_conditions.append({"session_id": {"$ne": self.session_id}})
+        if agent_name.strip():
+            and_conditions.append({"agent": agent_name})
+        if from_date:
+            and_conditions.append({"date": {"$gte": from_date}})
+        if to_date:
+            and_conditions.append({"date": {"$lte": to_date}})
+
+        list_memory = collection.get(
+            where={"$and": and_conditions}
+            if len(and_conditions) >= 2
+            else and_conditions[0]
+            if and_conditions
+            else None,
+            include=[],
+        )
+        return list_memory["ids"]
+
     def retrieve_memory(
         self,
         keywords: str,
@@ -451,7 +480,6 @@ class ChromaMemoryService(BaseMemoryService):
             and_conditions.append({"session_id": {"$ne": self.session_id}})
         if agent_name.strip():
             and_conditions.append({"agent": agent_name})
-
         if from_date:
             and_conditions.append({"date": {"$gte": from_date}})
         if to_date:

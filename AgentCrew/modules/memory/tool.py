@@ -8,31 +8,21 @@ from .base_service import BaseMemoryService
 def get_memory_forget_tool_definition(provider="claude") -> Dict[str, Any]:
     """Optimized memory forgetting tool definition."""
 
-    tool_description = """Removes memories related to specific topics or IDs from storage.
+    tool_description = """Removes memories using IDs from memory bank.
 
 Use for clearing outdated information, removing sensitive data, resolving conflicting memories, or correcting errors.
 
-Be specific with topics to avoid over-deletion. Use IDs for precise removal when available.
-Use date filters to limit scope whenever posible, Eg: yesterday: from_date = current_date - 1"""
+Search for memories need to remote, use date filters to limit scope whenever posible, Eg: yesterday: from_date = current_date - 1 and use IDs for precise removal."""
 
     tool_arguments = {
-        "topic": {
-            "type": "string",
+        "ids": {
+            "type": "array",
             "description": "Keywords describing what to forget. Use specific terms like 'project alpha 2024 credentials' or 'outdated api documentation v1'. Avoid broad terms like 'user' or 'project'.",
-        },
-        "from_date": {
-            "type": "string",
-            "format": "date",
-            "description": "Filter removing memories from this date (YYYY-MM-DD). Optional.",
-        },
-        "to_date": {
-            "type": "string",
-            "format": "date",
-            "description": "Filter removing memories til this date (YYYY-MM-DD). Optional.",
+            "items": {"type": "string"},
         },
     }
 
-    tool_required = ["topic"]
+    tool_required = ["ids"]
 
     if provider == "claude":
         return {
@@ -63,41 +53,21 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
     """Optimized memory forgetting handler with concise feedback."""
 
     def handle_memory_forget(**params) -> str:
-        topic = params.get("topic", "").strip()
-
-        from_date = params.get("from_date", None)
-        to_date = params.get("to_date", None)
+        ids = params.get("ids", "").strip()
 
         # Use provided agent_name or fallback to current agent
         current_agent = AgentManager.get_instance().get_current_agent()
         agent_name = current_agent.name if current_agent else "None"
 
-        # Topic-based removal
-        if not topic:
-            return "❌ Topic required for memory removal."
-
-        # Prevent overly broad deletion
-        risky_terms = ["all", "everything", "user", "conversation", "memory"]
-        if topic.lower() in risky_terms:
-            return f"⚠️ '{topic}' too broad. Use specific terms to avoid over-deletion."
-
         try:
-            if from_date:
-                from_date = int(dt.strptime(from_date, "%Y-%m-%d").timestamp())
-            if to_date:
-                to_date = int(dt.strptime(to_date, "%Y-%m-%d").timestamp())
-            if from_date and to_date and from_date >= to_date:
-                raise ValueError(
-                    "from_date must be earlier than and not equal to to_date."
-                )
-            result = memory_service.forget_topic(topic, from_date, to_date, agent_name)
+            result = memory_service.forget_ids(ids, agent_name)
             return (
-                f"✅ Removed memories for '{topic}': {result.get('message', 'Success')}"
+                f"✅ Removed memories: {result.get('message', 'Success')}"
                 if result.get("success")
                 else f"⚠️ Removal incomplete: {result.get('message', 'Not found')}"
             )
         except Exception as e:
-            return f"❌ Topic removal failed: {str(e)}"
+            return f"❌ Memories removal failed: {str(e)}"
 
     return handle_memory_forget
 
@@ -127,7 +97,7 @@ Use from_date and to_date to filter memories by time whenever posible, Eg: yeste
         },
     }
 
-    tool_required = ["phrases"]
+    tool_required = ["query"]
 
     if provider == "claude":
         return {
@@ -177,8 +147,7 @@ def memory_instruction_prompt():
     <Memory_Management>
       - Remove outdated/conflicting information when corrected
       - Clear sensitive data when requested
-      - Use precise topic phrases to avoid over-deletion
-      - Prefer ID-based removal for surgical precision
+      - Search and Use ID-based removal for surgical precision
     </Memory_Management>
   </Usage_Guidelines>
 </Memory_System>"""
