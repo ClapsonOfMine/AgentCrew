@@ -108,7 +108,7 @@ class UIEffects:
             live_panel,
             console=self.console,
             auto_refresh=True,
-            refresh_per_second=10,
+            refresh_per_second=8,
             vertical_overflow="crop",
         )
         self.live.start()
@@ -134,7 +134,7 @@ class UIEffects:
 
         # Only show the last part that fits in the console
         lines = self.updated_text.split("\n")
-        height_limit = self.console.size.height - 4
+        height_limit = int(self.console.size.height * 0.9)
         if len(lines) > height_limit:
             if (
                 self._visible_buffer == -1
@@ -167,7 +167,7 @@ class UIEffects:
                 subtitle=subtitle,
                 title_align="left",
                 expand=False,
-                height=height_limit,
+                height=height_limit if len(lines) >= height_limit else None,
                 border_style=RICH_STYLE_GREEN,
             )
             self.live.update(live_panel)
