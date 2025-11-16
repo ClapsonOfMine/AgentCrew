@@ -288,7 +288,7 @@ class ConsoleUI(Observer):
         import os
         import time
 
-        if self.input_handler.is_message_processing and self._is_resizing:
+        if self.input_handler.is_message_processing or self._is_resizing:
             return  # Ignore resize during message processing
         self._is_resizing = True
         time.sleep(0.5)  # brief pause to allow resize to complete
