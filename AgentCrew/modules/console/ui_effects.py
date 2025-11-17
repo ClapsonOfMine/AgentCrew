@@ -107,6 +107,7 @@ class UIEffects:
         self.live = Live(
             live_panel,
             console=self.console,
+            auto_refresh=False,
             vertical_overflow="crop",
         )
         self.live.start()
