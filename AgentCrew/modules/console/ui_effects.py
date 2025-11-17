@@ -107,8 +107,6 @@ class UIEffects:
         self.live = Live(
             live_panel,
             console=self.console,
-            auto_refresh=True,
-            refresh_per_second=8,
             vertical_overflow="crop",
         )
         self.live.start()
@@ -167,7 +165,7 @@ class UIEffects:
                 subtitle=subtitle,
                 title_align="left",
                 expand=False,
-                height=height_limit if len(lines) >= height_limit - 10 else None,
+                height=min(height_limit, len(lines)),
                 border_style=RICH_STYLE_GREEN,
             )
             self.live.update(live_panel)
