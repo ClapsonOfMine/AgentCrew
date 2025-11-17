@@ -167,7 +167,7 @@ class UIEffects:
                 subtitle=subtitle,
                 title_align="left",
                 expand=False,
-                height=height_limit if len(lines) >= height_limit else None,
+                height=height_limit if len(lines) >= height_limit - 10 else None,
                 border_style=RICH_STYLE_GREEN,
             )
             self.live.update(live_panel)
