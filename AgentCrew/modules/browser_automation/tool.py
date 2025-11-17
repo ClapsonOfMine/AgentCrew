@@ -196,7 +196,7 @@ def get_browser_get_content_tool_handler(
                 tool_result.append(context_image.get("screenshot", {}))
             return tool_result
         else:
-            raise RuntimeError(f"❌ Content extraction failed: {result['error']}")
+            raise RuntimeError(f"Content extraction failed: {result['error']}")
 
     return handle_browser_get_content
 
@@ -221,9 +221,9 @@ def get_browser_navigate_tool_handler(
                 if result.get("profile")
                 else ""
             )
-            return f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}{profile_info}"
+            return f"{result.get('message', 'Success')}. Use `browser_get_content` to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}{profile_info}"
         else:
-            raise RuntimeError(f"❌ Navigation failed: {result['error']}")
+            raise RuntimeError(f"Navigation failed: {result['error']}")
 
     return handle_browser_navigate
 
@@ -245,12 +245,12 @@ def get_browser_click_tool_handler(
 
         if result.get("success", True):
             return (
-                f"✅ {result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\n"
+                f"{result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\n"
                 f"UUID: {element_uuid}\nClickedElement: {result.get('elementInfo', {}).get('text', 'Unknown')}.\n"
                 f"Content delta changes:\n{diff_summary}"
             )
         else:
-            return f"❌ Click failed: {result['error']}\nUUID: {element_uuid}.\nUse `browser_get_content` to get the updated UUID"
+            return f"Click failed: {result['error']}\nUUID: {element_uuid}.\nUse `browser_get_content` to get the updated UUID"
 
     return handle_browser_click
 
@@ -276,10 +276,10 @@ def get_browser_scroll_tool_handler(
         result = browser_service.scroll_page(direction, amount, element_uuid)
 
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}, Use `browser_get_content` to get the updated content."
+            return f"{result.get('message', 'Success')}, Use `browser_get_content` to get the updated content."
         else:
             uuid_info = f"\nUUID: {element_uuid}" if element_uuid else ""
-            raise RuntimeError(f"❌ Scroll failed: {result['error']}{uuid_info}")
+            raise RuntimeError(f"Scroll failed: {result['error']}{uuid_info}")
 
     return handle_browser_scroll
 
@@ -343,10 +343,10 @@ def get_browser_input_tool_handler(
         diff_summary = _get_content_delta_changes(browser_service)
 
         if result.get("success", True):
-            return f"✅ {result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}\nContent delta changes:\n{diff_summary}"
+            return f"{result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}\nContent delta changes:\n{diff_summary}"
         else:
             raise RuntimeError(
-                f"❌ Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
+                f"Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
             )
 
     return handle_browser_input
@@ -405,16 +405,15 @@ def get_browser_get_elements_by_text_tool_handler(
         if result.get("success", False):
             elements_found = result.get("elements_found", 0)
             if elements_found == 0:
-                return f"✅ No elements found containing text: '{text}'"
+                return f"No elements found containing text: '{text}'"
 
             content = result.get("content", "")
             return (
-                f"✅ Found {elements_found} elements containing text: '{text}'\n"
-                + content
+                f"Found {elements_found} elements containing text: '{text}'\n" + content
             )
         else:
             raise RuntimeError(
-                f"❌ Search failed: {result.get('error', 'Unknown error')}\nSearch text: '{text}'"
+                f"Search failed: {result.get('error', 'Unknown error')}\nSearch text: '{text}'"
             )
 
     return handle_browser_get_elements_by_text
@@ -500,7 +499,7 @@ def get_browser_capture_screenshot_tool_handler(
             return [screenshot_data]
         else:
             raise RuntimeError(
-                f"❌ Screenshot capture failed: {result.get('error', 'Unknown error')}"
+                f"Screenshot capture failed: {result.get('error', 'Unknown error')}"
             )
 
     return handle_browser_capture_screenshot
@@ -617,13 +616,13 @@ def get_browser_send_key_tool_handler(
                 else ""
             )
             diff_summary = _get_content_delta_changes(browser_service)
-            success_msg = f"✅ {result.get('message', 'Success')}. {key_info}\nContent delta changes:\n{diff_summary}"
+            success_msg = f"{result.get('message', 'Success')}. {key_info}\nContent delta changes:\n{diff_summary}"
             if modifiers_info:
                 success_msg += f". {modifiers_info}"
             return success_msg
         else:
             raise RuntimeError(
-                f"❌ Key send failed: {result.get('error', 'Unknown error')}"
+                f"Key send failed: {result.get('error', 'Unknown error')}"
             )
 
     return handle_browser_send_key

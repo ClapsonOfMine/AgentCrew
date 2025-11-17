@@ -115,13 +115,13 @@ def get_file_write_or_edit_tool_handler(
         text_or_search_replace_blocks = params.get("text_or_search_replace_blocks")
 
         if not file_path:
-            raise ValueError("❌ Error: No file path provided.")
+            raise ValueError("Error: No file path provided.")
 
         if percentage_to_change is None:
-            raise ValueError("❌ Error: No percentage_to_change provided.")
+            raise ValueError("Error: No percentage_to_change provided.")
 
         if not text_or_search_replace_blocks:
-            raise ValueError("❌ Error: No content or search/replace blocks provided.")
+            raise ValueError("Error: No content or search/replace blocks provided.")
 
         result = file_editing_service.write_or_edit_file(
             file_path=file_path,
@@ -130,7 +130,7 @@ def get_file_write_or_edit_tool_handler(
         )
 
         if result["status"] == "success":
-            parts = [f"✅ {result['file_path']}"]
+            parts = [f"{result['file_path']}"]
             parts.append(f"{result.get('changes_applied', 1)} change(s)")
             if result.get("syntax_check", {}).get("is_valid"):
                 parts.append(
@@ -153,21 +153,19 @@ def get_file_write_or_edit_tool_handler(
                 else ""
             )
             restore = " | Backup restored" if result.get("backup_restored") else ""
-            return (
-                f"❌ Syntax ({result.get('language', '?')}):\n{errors}{extra}{restore}"
-            )
+            return f"Syntax ({result.get('language', '?')}):\n{errors}{extra}{restore}"
 
         elif result["status"] in ["no_match", "ambiguous"]:
-            return f"❌ {result['status'].title()}: {result.get('error', '?')} (block {result.get('block_index', '?')})"
+            return f"{result['status'].title()}: {result.get('error', '?')} (block {result.get('block_index', '?')})"
 
         elif result["status"] == "denied":
-            return f"❌ Access denied: {result.get('error', 'Permission error')}"
+            return f"Access denied: {result.get('error', 'Permission error')}"
 
         elif result["status"] == "parse_error":
-            return f"❌ Parse: {result.get('error', 'Invalid block format')}"
+            return f"Parse: {result.get('error', 'Invalid block format')}"
 
         else:
-            return f"❌ {result.get('error', 'Unknown error')}"
+            return f"{result.get('error', 'Unknown error')}"
 
     return handle_file_write_or_edit
 

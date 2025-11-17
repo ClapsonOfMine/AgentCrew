@@ -62,12 +62,12 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
         try:
             result = memory_service.forget_ids(ids, agent_name)
             return (
-                f"✅ Removed memories: {result.get('message', 'Success')}"
+                f"Removed memories: {result.get('message', 'Success')}"
                 if result.get("success")
-                else f"⚠️ Removal incomplete: {result.get('message', 'Not found')}"
+                else f"Removal incomplete: {result.get('message', 'Not found')}"
             )
         except Exception as e:
-            return f"❌ Memories removal failed: {str(e)}"
+            return f"Memories removal failed: {str(e)}"
 
     return handle_memory_forget
 
@@ -162,11 +162,11 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
         to_date = params.get("to_date", None)
 
         if not query:
-            raise ValueError("❌ Phrases required for memory search. Try again.")
+            raise ValueError("Phrases required for memory search. Try again.")
 
         if len(query) < 3:
             raise ValueError(
-                f"⚠️ Search term '{query}' too short. Try again with more semantica and descriptive phrases."
+                f"Search term '{query}' too short. Try again with more semantica and descriptive phrases."
             )
 
         # Use provided agent_name or fallback to current agent
@@ -188,13 +188,13 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
             )
 
             if not result or result.strip() == "":
-                return f"📝 No memories found for '{query}'. Try broader phrases or related terms."
+                return f"No memories found for '{query}'. Try broader phrases or related terms."
 
             # Count memories for user feedback
-            return f"📚 Found relevant memories:\n\n{result}"
+            return f"Found relevant memories:\n\n{result}"
 
         except Exception as e:
-            return f"❌ Memory search failed: {str(e)}"
+            return f"Memory search failed: {str(e)}"
 
     return handle_memory_retrieve
 
@@ -261,15 +261,15 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
         scope = params.get("scope", "global").strip().lower()
 
         if not behavior_id:
-            return "❌ Behavior ID required (e.g., 'communication_style_technical')."
+            return "Behavior ID required (e.g., 'communication_style_technical')."
 
         if not behavior:
-            return "❌ Behavior description required in 'when...do...' format."
+            return "Behavior description required in 'when...do...' format."
 
         # Validate format
         behavior_lower = behavior.lower()
         if not behavior_lower.startswith("when "):
-            return "❌ Use format: 'when [condition], [action]'"
+            return "Use format: 'when [condition], [action]'"
 
         current_agent = AgentManager.get_instance().get_current_agent()
         agent_name = current_agent.name if current_agent else "default"
@@ -279,14 +279,14 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
                 agent_name, behavior_id, behavior, scope == "local"
             )
             return (
-                f"✅ Stored behavior '{behavior_id}': {behavior}"
+                f"Stored behavior '{behavior_id}': {behavior}"
                 if success
-                else "⚠️ Storage completed but may need verification."
+                else "Storage completed but may need verification."
             )
         except ValueError as e:
-            return f"❌ Invalid format: {str(e)}"
+            return f"Invalid format: {str(e)}"
         except Exception as e:
-            return f"❌ Storage failed: {str(e)}"
+            return f"Storage failed: {str(e)}"
 
     return handle_adapt
 
