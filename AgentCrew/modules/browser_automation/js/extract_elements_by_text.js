@@ -8,33 +8,36 @@
 function extractElementsByText(text) {
   const elementsFound = [];
 
+  function isInViewport(rect) {
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight;
+
+    return (
+      rect.top < viewportHeight &&
+      rect.bottom > 0 &&
+      rect.left < viewportWidth &&
+      rect.right > 0
+    );
+  }
+
   // Utility function to check if element is truly visible (including parent chain)
   function isElementVisible(element) {
     if (!element || !element.nodeType === 1) {
       return false;
     }
 
-    // Walk up the parent chain checking visibility
-    let currentElement = element;
-
-    if (currentElement.clientWidth <= 1 && currentElement.clientHeight <= 1) {
+    if (!element.checkVisibility()) {
       return false;
     }
 
-    while (
-      currentElement &&
-      currentElement !== document.body &&
-      currentElement !== document.documentElement
-    ) {
-      const style = window.getComputedStyle(currentElement);
-
-      // Check if current element is hidden
-      if (style.display === "none" || style.visibility === "hidden") {
-        return false;
-      }
-
-      // Move to parent element
-      currentElement = currentElement.parentElement;
+    bounding_box = element.getBoundingClientRect();
+    if (!isInViewport(bounding_box)) {
+      return false;
+    }
+    if (bounding_box.width <= 1 && bounding_box.height <= 1) {
+      return false;
     }
 
     return true;
@@ -120,4 +123,3 @@ function extractElementsByText(text) {
 //     const text = '{TEXT_PLACEHOLDER}';
 //     return extractElementsByText(text);
 // })();
-

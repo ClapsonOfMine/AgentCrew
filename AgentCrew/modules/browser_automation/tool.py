@@ -52,13 +52,11 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
 
 def get_browser_click_tool_definition(provider="claude") -> Dict[str, Any]:
     """Get tool definition for browser element clicking."""
-    tool_description = (
-        "Click an element using its UUID. Get UUIDs from browser_get_content first."
-    )
+    tool_description = "Click an element using its UUID. Get UUIDs from get_browser_content tool result first."
     tool_arguments = {
         "element_uuid": {
             "type": "string",
-            "description": "UUID identifier from browser_get_content clickable elements table.",
+            "description": "UUID identifier from get_browser_content tool result clickable elements table.",
         }
     }
     tool_required = ["element_uuid"]
@@ -143,7 +141,7 @@ def get_browser_get_content_tool_definition(provider="claude") -> Dict[str, Any]
     """Get tool definition for browser content extraction."""
     tool_description = (
         "Extract page content as markdown with tables of clickable, input, and scrollable elements. UUIDs reset on each call."
-        "browser_get_content result is UNIQUE in whole conversation. Remember to summarize important information before calling again."
+        "get_browser_content tool's result is UNIQUE in whole conversation. Remember to summarize important information before calling again."
     )
     tool_arguments = {}
     tool_required = []
@@ -222,7 +220,7 @@ def get_browser_navigate_tool_handler(
                 if result.get("profile")
                 else ""
             )
-            return f"{result.get('message', 'Success')}. Use `browser_get_content` to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}{profile_info}"
+            return f"{result.get('message', 'Success')}. Call `get_browser_content` tool to read the url content.\nCurrent URL: {result.get('current_url', 'Unknown')}{profile_info}"
         else:
             raise RuntimeError(f"Navigation failed: {result['error']}")
 
@@ -242,16 +240,15 @@ def get_browser_click_tool_handler(
 
         result = browser_service.click_element(element_uuid)
 
-        diff_summary = _get_content_delta_changes(browser_service)
-
         if result.get("success", True):
+            diff_summary = _get_content_delta_changes(browser_service)
             return (
-                f"{result.get('message', 'Success')}. Use `browser_get_content` to get the updated content.\n"
+                f"{result.get('message', 'Success')}. Call `get_browser_content` tool to get the updated content.\n"
                 f"UUID: {element_uuid}\nClickedElement: {result.get('elementInfo', {}).get('text', 'Unknown')}.\n"
                 f"Content delta changes:\n{diff_summary}"
             )
         else:
-            return f"Click failed: {result['error']}\nUUID: {element_uuid}.\nUse `browser_get_content` to get the updated UUID"
+            return f"Click failed: {result['error']}\nUUID: {element_uuid}.\nCall `get_browser_content` tool to get the updated UUID"
 
     return handle_browser_click
 
@@ -279,7 +276,7 @@ def get_browser_scroll_tool_handler(
         )
 
         if result.get("success", True):
-            return f"{result.get('message', 'Success')}, Use `browser_get_content` to get the updated content."
+            return f"{result.get('message', 'Success')}, Call `get_browser_content` tool to get the updated content."
         else:
             uuid_info = f"\nUUID: {element_uuid}" if element_uuid else ""
             raise RuntimeError(f"Scroll failed: {result['error']}{uuid_info}")
@@ -289,11 +286,11 @@ def get_browser_scroll_tool_handler(
 
 def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
     """Get tool definition for browser input."""
-    tool_description = "Input data into form fields using UUID. Get UUIDs from browser_get_content first."
+    tool_description = "Input data into form fields using UUID. Get UUIDs from get_browser_content tool first."
     tool_arguments = {
         "element_uuid": {
             "type": "string",
-            "description": "UUID identifier from browser_get_content input elements table.",
+            "description": "UUID identifier from get_browser_content tool result's input elements table.",
         },
         "value": {
             "type": "string",
@@ -343,13 +340,13 @@ def get_browser_input_tool_handler(
             return "Error: No value provided for input."
 
         result = browser_service.input_data(element_uuid, str(value))
-        diff_summary = _get_content_delta_changes(browser_service)
 
         if result.get("success", True):
+            diff_summary = _get_content_delta_changes(browser_service)
             return f"{result.get('message', 'Success')}\nUUID: {element_uuid}\nValue: {value}\nContent delta changes:\n{diff_summary}"
         else:
             raise RuntimeError(
-                f"Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Use `browser_get_content` to get updated UUID."
+                f"Input failed: {result['error']}\nUUID: {element_uuid}\nValue: {value}.\n Call `get_browser_content` tool to get updated UUID."
             )
 
     return handle_browser_input

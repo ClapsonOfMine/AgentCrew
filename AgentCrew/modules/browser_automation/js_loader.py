@@ -15,9 +15,7 @@ class JavaScriptExecutor:
     """Handles JavaScript code execution and result parsing for browser automation."""
 
     @staticmethod
-    def execute_and_parse_result(
-        chrome_interface: Any, js_code: str
-    ) -> Dict[str, Any]:
+    def execute_and_parse_result(chrome_interface: Any, js_code: str) -> Dict[str, Any]:
         """
         Execute JavaScript code and parse the result.
 
@@ -29,15 +27,30 @@ class JavaScriptExecutor:
             Parsed result dictionary
         """
         try:
-            result = chrome_interface.Runtime.evaluate(
-                expression=js_code, returnByValue=True
-            )
+            result = (None, [])
+            retried = 0
+            while result[0] is None and retried < 10:
+                result = chrome_interface.Runtime.evaluate(
+                    expression=js_code,
+                    returnByValue=True,
+                    awaitPromise=True,
+                    timeout=60000,
+                )
+                retried += 1
+                time.sleep(0.4)
 
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):
-                    return result[1].get("result", {}).get("result", {}).get("value", {})
+                    return (
+                        result[1].get("result", {}).get("result", {}).get("value", {})
+                    )
                 elif isinstance(result[1], list) and len(result[1]) > 0:
-                    return result[1][0].get("result", {}).get("result", {}).get("value", {})
+                    return (
+                        result[1][0]
+                        .get("result", {})
+                        .get("result", {})
+                        .get("value", {})
+                    )
                 else:
                     return {
                         "success": False,
@@ -96,9 +109,7 @@ class JavaScriptExecutor:
             return "Unknown"
 
     @staticmethod
-    def focus_and_clear_element(
-        chrome_interface: Any, xpath: str
-    ) -> Dict[str, Any]:
+    def focus_and_clear_element(chrome_interface: Any, xpath: str) -> Dict[str, Any]:
         """
         Focus an element and clear its content.
 
@@ -111,6 +122,63 @@ class JavaScriptExecutor:
         """
         js_code = js_loader.get_focus_and_clear_element_js(xpath)
         return JavaScriptExecutor.execute_and_parse_result(chrome_interface, js_code)
+
+    @staticmethod
+    def draw_element_boxes(
+        chrome_interface: Any, uuid_xpath_dict: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """
+        Draw colored rectangle boxes with UUID labels over elements.
+
+        Args:
+            uuid_xpath_dict: Dictionary mapping UUIDs to XPath selectors
+
+        Returns:
+            Dict containing the result of the drawing operation
+        """
+        try:
+            js_code = js_loader.get_draw_element_boxes_js(uuid_xpath_dict)
+            eval_result = JavaScriptExecutor.execute_and_parse_result(
+                chrome_interface, js_code
+            )
+
+            if not eval_result:
+                return {
+                    "success": False,
+                    "error": "No result from drawing element boxes",
+                }
+
+            return eval_result
+
+        except Exception as e:
+            logger.error(f"Draw element boxes error: {e}")
+            return {"success": False, "error": f"Draw element boxes error: {str(e)}"}
+
+    @staticmethod
+    def remove_element_boxes(chrome_interface: Any) -> Dict[str, Any]:
+        """
+        Remove the overlay container with element boxes.
+
+        Returns:
+            Dict containing the result of the removal operation
+        """
+        try:
+            js_code = js_loader.get_remove_element_boxes_js()
+            eval_result = JavaScriptExecutor.execute_and_parse_result(
+                chrome_interface, js_code
+            )
+
+            if not eval_result:
+                return {
+                    "success": False,
+                    "error": "No result from removing element boxes",
+                }
+
+            return eval_result
+
+        except Exception as e:
+            logger.error(f"Remove element boxes error: {e}")
+            return {"success": False, "error": f"Remove element boxes error: {str(e)}"}
 
     @staticmethod
     def trigger_input_events(
@@ -279,6 +347,21 @@ class JavaScriptExecutor:
                 "modifiers": modifiers,
             }
 
+    @staticmethod
+    def filter_hidden_elements(chrome_interface: Any) -> Dict[str, Any]:
+        """
+        Filter hidden elements from HTML using computed styles.
+        Does not modify the actual page, returns filtered HTML string.
+
+        Args:
+            chrome_interface: Chrome DevTools Protocol interface
+
+        Returns:
+            Result dictionary with filtered HTML string
+        """
+        js_code = js_loader.get_filter_hidden_elements_js()
+        return JavaScriptExecutor.execute_and_parse_result(chrome_interface, js_code)
+
 
 class JavaScriptLoader:
     """Loads and processes JavaScript files for browser automation."""
@@ -405,6 +488,15 @@ class JavaScriptLoader:
         wrapper = """
         (() => {
             return removeElementBoxes();
+        })();
+        """
+        return js_code + "\n" + wrapper
+
+    def get_filter_hidden_elements_js(self) -> str:
+        js_code = self.load_js_file("filter_hidden_elements.js")
+        wrapper = """
+        (() => {
+            return filterHiddenElements();
         })();
         """
         return js_code + "\n" + wrapper

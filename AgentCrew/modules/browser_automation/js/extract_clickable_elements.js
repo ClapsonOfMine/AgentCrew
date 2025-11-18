@@ -10,6 +10,20 @@
   const seenHrefs = new Set();
   const seenElements = new Set();
 
+  function isInViewport(rect) {
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight;
+
+    return (
+      rect.top < viewportHeight &&
+      rect.bottom > 0 &&
+      rect.left < viewportWidth &&
+      rect.right > 0
+    );
+  }
+
   // Utility function to check if element is truly visible (including parent chain)
   function isElementVisible(element) {
     if (!element || !element.nodeType === 1) {
@@ -34,6 +48,9 @@
     }
 
     bounding_box = element.getBoundingClientRect();
+    if (!isInViewport(bounding_box)) {
+      return false;
+    }
     if (bounding_box.width <= 1 && bounding_box.height <= 1) {
       return false;
     }

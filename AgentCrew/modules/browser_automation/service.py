@@ -309,27 +309,39 @@ class BrowserAutomationService:
                 if retry_count >= 5:
                     break
 
-            # Find HTML node
-            html_node = None
-            for node in dom_data[0]["result"]["root"]["children"]:
-                if node.get("nodeName") == "HTML":
-                    html_node = node
-                    break
+            result = JavaScriptExecutor.filter_hidden_elements(self.chrome_interface)
 
-            if not html_node:
-                return {"success": False, "error": "Could not find HTML node in page"}
+            if result.get("success"):
+                filtered_html = result.get("html", "")
+                logger.info(
+                    "Successfully filtered hidden elements using computed styles"
+                )
 
-            # Get outer HTML
-            html_content, _ = self.chrome_interface.DOM.getOuterHTML(
-                nodeId=html_node["nodeId"]
-            )
-            raw_html = html_content.get("result", {}).get("outerHTML", "")
+            else:
+                # Find HTML node
+                html_node = None
+                for node in dom_data[0]["result"]["root"]["children"]:
+                    if node.get("nodeName") == "HTML":
+                        html_node = node
+                        break
 
-            if not raw_html:
-                return {"success": False, "error": "Could not extract HTML content"}
+                if not html_node:
+                    return {
+                        "success": False,
+                        "error": "Could not find HTML node in page",
+                    }
 
-            # Filter out hidden elements before processing
-            filtered_html = self._filter_hidden_elements(raw_html)
+                # Get outer HTML
+                html_content, _ = self.chrome_interface.DOM.getOuterHTML(
+                    nodeId=html_node["nodeId"]
+                )
+                raw_html = html_content.get("result", {}).get("outerHTML", "")
+
+                if not raw_html:
+                    return {"success": False, "error": "Could not extract HTML content"}
+
+                # Filter out hidden elements using JavaScript (doesn't modify page)
+                filtered_html = self._filter_hidden_elements(raw_html)
 
             # Convert HTML to markdown
             raw_markdown_content = convert_to_markdown(
@@ -546,8 +558,6 @@ class BrowserAutomationService:
             JavaScriptExecutor.trigger_input_events(self.chrome_interface, xpath, value)
             time.sleep(1.5)
 
-            self.dispatch_key_event("escape")
-
             return {
                 "success": True,
                 "message": f"Successfully typed '{value}' using keyboard simulation",
@@ -625,69 +635,6 @@ class BrowserAutomationService:
                 "text": text,
             }
 
-    def draw_element_boxes(self, uuid_xpath_dict: Dict[str, str]) -> Dict[str, Any]:
-        """
-        Draw colored rectangle boxes with UUID labels over elements.
-
-        Args:
-            uuid_xpath_dict: Dictionary mapping UUIDs to XPath selectors
-
-        Returns:
-            Dict containing the result of the drawing operation
-        """
-        try:
-            self._ensure_chrome_running()
-
-            if self.chrome_interface is None:
-                raise RuntimeError("Chrome interface is not initialized")
-
-            js_code = js_loader.get_draw_element_boxes_js(uuid_xpath_dict)
-            eval_result = JavaScriptExecutor.execute_and_parse_result(
-                self.chrome_interface, js_code
-            )
-
-            if not eval_result:
-                return {
-                    "success": False,
-                    "error": "No result from drawing element boxes",
-                }
-
-            return eval_result
-
-        except Exception as e:
-            logger.error(f"Draw element boxes error: {e}")
-            return {"success": False, "error": f"Draw element boxes error: {str(e)}"}
-
-    def remove_element_boxes(self) -> Dict[str, Any]:
-        """
-        Remove the overlay container with element boxes.
-
-        Returns:
-            Dict containing the result of the removal operation
-        """
-        try:
-            self._ensure_chrome_running()
-
-            if self.chrome_interface is None:
-                raise RuntimeError("Chrome interface is not initialized")
-
-            js_code = js_loader.get_remove_element_boxes_js()
-            eval_result = JavaScriptExecutor.execute_and_parse_result(
-                self.chrome_interface, js_code
-            )
-
-            if not eval_result:
-                return {
-                    "success": False,
-                    "error": "No result from removing element boxes",
-                }
-
-            return eval_result
-
-        except Exception as e:
-            logger.error(f"Remove element boxes error: {e}")
-            return {"success": False, "error": f"Remove element boxes error: {str(e)}"}
-
     def capture_screenshot(
         self,
         format: str = "png",
@@ -717,7 +664,9 @@ class BrowserAutomationService:
 
             boxes_drawn = False
             if self.uuid_to_xpath_mapping:
-                draw_result = self.draw_element_boxes(self.uuid_to_xpath_mapping)
+                draw_result = JavaScriptExecutor.draw_element_boxes(
+                    self.chrome_interface, self.uuid_to_xpath_mapping
+                )
                 if draw_result.get("success"):
                     boxes_drawn = True
                     logger.info(
@@ -789,7 +738,9 @@ class BrowserAutomationService:
             current_url = JavaScriptExecutor.get_current_url(self.chrome_interface)
 
             if boxes_drawn:
-                remove_result = self.remove_element_boxes()
+                remove_result = JavaScriptExecutor.remove_element_boxes(
+                    self.chrome_interface
+                )
                 if not remove_result.get("success"):
                     logger.warning(
                         f"Failed to remove element boxes: {remove_result.get('error')}"
