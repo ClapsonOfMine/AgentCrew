@@ -54,7 +54,7 @@ class ChromaMemoryService(BaseMemoryService):
         ## set to groq if key available
         if self.llm_service:
             if self.llm_service.provider_name == "google":
-                self.llm_service.model = "gemini-2.5-flash-lite-preview-06-17"
+                self.llm_service.model = "gemini-2.5-flash-lite"
             elif self.llm_service.provider_name == "claude":
                 self.llm_service.model = "claude-3-5-haiku-latest"
             elif self.llm_service.provider_name == "openai":
@@ -241,88 +241,66 @@ class ChromaMemoryService(BaseMemoryService):
             session_id = operation_data["session_id"]
 
             # Use the existing storage logic but make it synchronous
-            ids = []
-            memory_data = {}
-            # avaialble_ids = collection.get(
-            #     where={
-            #         "agent": agent_name,
-            #     },
-            #     include=[],
-            # )["ids"]
+            memory_data = None
+            retried = 0
             if self.llm_service:
-                try:
-                    # Process with LLM using asyncio.run to handle async call in worker thread
-                    if self.current_conversation_context.get(session_id, ""):
-                        analyzed_prompt = PRE_ANALYZE_WITH_CONTEXT_PROMPT.replace(
-                            "{conversation_context}",
-                            f"""<PREVIOUS_CONVERSATION_CONTEXT>
-    {self.current_conversation_context[session_id]}
-    </PREVIOUS_CONVERSATION_CONTEXT>""",
+                while retried < 3:
+                    try:
+                        # Process with LLM using asyncio.run to handle async call in worker thread
+                        if self.current_conversation_context.get(session_id, ""):
+                            analyzed_prompt = PRE_ANALYZE_WITH_CONTEXT_PROMPT.replace(
+                                "{conversation_context}",
+                                f"""<PREVIOUS_CONVERSATION_CONTEXT>
+        {self.current_conversation_context[session_id]}
+        </PREVIOUS_CONVERSATION_CONTEXT>""",
+                            )
+                        else:
+                            analyzed_prompt = PRE_ANALYZE_PROMPT
+                        analyzed_prompt = (
+                            analyzed_prompt.replace(
+                                "{current_date}",
+                                datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
+                            )
+                            .replace("{user_message}", user_message)
+                            .replace("{assistant_response}", assistant_response)
                         )
-                    else:
-                        analyzed_prompt = PRE_ANALYZE_PROMPT
-                    analyzed_prompt = (
-                        analyzed_prompt.replace(
-                            "{current_date}",
-                            datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
+                        analyzed_text = await self.llm_service.process_message(
+                            analyzed_prompt
                         )
-                        .replace("{user_message}", user_message)
-                        .replace("{assistant_response}", assistant_response)
-                    )
-                    analyzed_text = await self.llm_service.process_message(
-                        analyzed_prompt
-                    )
-                    start_xml = analyzed_text.index("<MEMORY>")
-                    end_xml = analyzed_text.index("</MEMORY>")
-                    xml_content = analyzed_text[start_xml : end_xml + len("</MEMORY>")]
-                    xml_content.replace("&", "&amp;").replace("'", "&apos;").replace(
-                        '"', "&quot;"
-                    )
-                    memory_data = xmltodict.parse(xml_content)
-                    if (
-                        "MEMORY" in memory_data
-                        and "ID" in memory_data["MEMORY"]
-                        and memory_data["MEMORY"]["ID"]
-                    ):
-                        ids.append(memory_data["MEMORY"]["ID"])
-                    # if (
-                    #     "MEMORY" in memory_data
-                    #     and "USER_REQUEST" not in memory_data["MEMORY"]
-                    # ):
-                    #     memory_data["MEMORY"]["USER_REQUEST"] = user_message
-                    # if (
-                    #     "MEMORY" in memory_data
-                    #     and "ASSISTANT_RESPONSE" not in memory_data["MEMORY"]
-                    # ):
-                    #     memory_data["MEMORY"]["ASSISTANT_RESPONSE"] = assistant_response
+                        start_xml = analyzed_text.index("<MEMORY>")
+                        end_xml = analyzed_text.index("</MEMORY>")
+                        xml_content = analyzed_text[
+                            start_xml : end_xml + len("</MEMORY>")
+                        ]
+                        xml_content = (
+                            xml_content.replace("&", "&amp;")
+                            .replace("'", "&apos;")
+                            .replace('"', "&quot;")
+                        )
+                        memory_data = xmltodict.parse(xml_content)
+                        break
+                    except Exception as e:
+                        logger.warning(
+                            f"Error processing conversation with LLM: {e} {xml_content}"  # type: ignore
+                        )
+                        retried += 1
+                        continue
 
-                except Exception as e:
-                    logger.warning(f"Error processing conversation with LLM: {e}")
-                    # Fallback to simple concatenation if LLM fails
-                    memory_data = {
-                        "MEMORY": {
-                            "DATE": datetime.today().strftime("%Y-%m-%d"),
-                            "USER_REQUEST": user_message,
-                            "ASSISTANT_RESPONSE": assistant_response
-                            if len(assistant_response) < 200
-                            else assistant_response[:197] + "...",
-                        }
-                    }
-            else:
+            if memory_data is None:
                 # Create the memory document by combining user message and response
                 memory_data = {
                     "MEMORY": {
                         "DATE": datetime.today().strftime("%Y-%m-%d"),
-                        "USER_REQUEST": user_message,
-                        "ASSISTANT_RESPONSE": assistant_response
-                        if len(assistant_response) < 200
-                        else assistant_response[:197] + "...",
+                        "CONVERSATION_NOTES": {
+                            "NOTE": [user_message, assistant_response]
+                        },
                     }
                 }
 
             # Store in ChromaDB (existing logic)
-            memory_id = str(uuid.uuid4())
             timestamp = datetime.now().timestamp()
+
+            memory_header = memory_data["MEMORY"].get("HEAD", None)
             conversation_document = xmltodict.unparse(
                 memory_data, pretty=True, full_document=False
             )
@@ -335,27 +313,19 @@ class ChromaMemoryService(BaseMemoryService):
 
             metadata = {
                 "date": timestamp,
-                "conversation_id": memory_id,
                 "session_id": session_id,
                 "agent": agent_name,
                 "type": "conversation",
             }
+            if memory_header:
+                metadata["header"] = memory_header
 
-            # Add to ChromaDB collection (existing logic)
-            if ids:
-                collection.upsert(
-                    ids=[ids[0]],
-                    documents=[conversation_document],
-                    embeddings=conversation_embedding,
-                    metadatas=[metadata],
-                )
-            else:
-                collection.add(
-                    documents=[conversation_document],
-                    embeddings=conversation_embedding,
-                    metadatas=[metadata],
-                    ids=[memory_id],
-                )
+            collection.upsert(
+                ids=[f"{session_id}_{agent_name}"],
+                documents=[conversation_document],
+                embeddings=conversation_embedding,
+                metadatas=[metadata],
+            )
 
             logger.debug(f"Stored conversation: {operation_data['operation_id']}")
 
@@ -388,7 +358,7 @@ class ChromaMemoryService(BaseMemoryService):
         self.current_conversation_context = {}
         self.context_embedding = []
 
-    def load_conversation_context(self, session_id: str):
+    def load_conversation_context(self, session_id: str, agent_name: str = "None"):
         collection = self._initialize_collection()
         latest_memory = collection.get(
             where={
@@ -399,6 +369,7 @@ class ChromaMemoryService(BaseMemoryService):
             self.current_conversation_context[session_id] = latest_memory["documents"][
                 -1
             ]
+            print(self.current_conversation_context[session_id])
 
     def generate_user_context(self, user_input: str, agent_name: str = "None") -> str:
         """
@@ -425,7 +396,7 @@ class ChromaMemoryService(BaseMemoryService):
         else:
             return input
 
-    def list_memory_ids(
+    def list_memory_headers(
         self,
         from_date: Optional[int] = None,
         to_date: Optional[int] = None,
@@ -450,9 +421,14 @@ class ChromaMemoryService(BaseMemoryService):
             else and_conditions[0]
             if and_conditions
             else None,
-            include=[],
+            include=["metadatas"],
         )
-        return list_memory["ids"]
+        headers = []
+        if list_memory and list_memory["metadatas"]:
+            for metadata in list_memory["metadatas"]:
+                if metadata.get("header", None):
+                    headers.append(metadata.get("header"))
+        return headers
 
     def retrieve_memory(
         self,
@@ -498,36 +474,30 @@ class ChromaMemoryService(BaseMemoryService):
         if not results["documents"] or not results["documents"][0]:
             return "No relevant memories found."
 
-        # Group chunks by conversation_id
-        conversation_chunks = {}
-        for i, (doc, metadata) in enumerate(
-            zip(results["documents"][0], results["metadatas"][0])  # type:ignore
+        conversation_chunks = []
+        for i, (id, doc, metadata) in enumerate(
+            zip(results["ids"][0], results["documents"][0], results["metadatas"][0])  # type:ignore
         ):
-            conv_id = metadata.get("conversation_id", "unknown")
-            if conv_id not in conversation_chunks:
-                conversation_chunks[conv_id] = {
-                    "chunks": [],
+            conversation_chunks.append(
+                {
+                    "id": id,
+                    "document": doc,
                     "timestamp": metadata.get("date", None)
                     or metadata.get("timestamp", "unknown"),
                     "relevance": results["distances"][0][i]
                     if results["distances"]
                     else 99,
                 }
-            conversation_chunks[conv_id]["chunks"].append(
-                (metadata.get("chunk_index", 0), doc)
             )
 
         # Sort conversations by relevance
-        sorted_conversations = sorted(
-            conversation_chunks.items(), key=lambda x: x[1]["relevance"]
-        )
+        sorted_conversations = sorted(conversation_chunks, key=lambda x: x["relevance"])
 
         # Format the output
         output = []
-        for conv_id, conv_data in sorted_conversations:
+        for conv_data in sorted_conversations:
             # Sort chunks by index
-            sorted_chunks = sorted(conv_data["chunks"], key=lambda x: x[0])
-            conversation_text = "\n".join([chunk for _, chunk in sorted_chunks])
+            conversation_text = conv_data["document"]
             if conv_data["relevance"] > RELEVANT_THRESHOLD:
                 continue
             # Format timestamp
@@ -544,22 +514,10 @@ class ChromaMemoryService(BaseMemoryService):
                     timestamp = conv_data["timestamp"]
 
             output.append(
-                f"--- Memory from {timestamp} (relevance point(lower is better): {conv_data['relevance']}) ---\n{conversation_text}\n---"
+                f"--- Memory from {timestamp} [id:{conv_data['id']}] ---\n{conversation_text}\n---"
             )
 
         memories = "\n\n".join(output)
-        # if self.llm_service:
-        #     try:
-        #         return await self.llm_service.process_message(
-        #             POST_RETRIEVE_MEMORY.replace("{keywords}", keywords).replace(
-        #                 "{memory_list}", memories
-        #             )
-        #         )
-        #     except Exception as e:
-        #         logger.warning(f"Error processing retrieved memories with LLM: {e}")
-        #         # Fallback to returning raw memories if LLM processing fails
-        #         return memories
-        # else:
         return memories
 
     def _cosine_similarity(self, vec_a, vec_b):
@@ -663,23 +621,8 @@ class ChromaMemoryService(BaseMemoryService):
                     "count": 0,
                 }
 
-            # Collect all conversation IDs related to the topic
-            conversation_ids = set()
-            if results["metadatas"] and results["metadatas"][0]:
-                for metadata in results["metadatas"][0]:
-                    conv_id = metadata.get("conversation_id")
-                    if conv_id:
-                        conversation_ids.add(conv_id)
-
-            # Get all memories to find those with matching conversation IDs
-            all_memories = collection.get()
-
             # Find IDs to remove
-            ids_to_remove = []
-            if all_memories["metadatas"]:
-                for i, metadata in enumerate(all_memories["metadatas"]):
-                    if metadata.get("conversation_id") in conversation_ids:
-                        ids_to_remove.append(all_memories["ids"][i])
+            ids_to_remove = results["ids"][0]
 
             # Remove the memories
             if ids_to_remove:
@@ -689,7 +632,6 @@ class ChromaMemoryService(BaseMemoryService):
                 "success": True,
                 "message": f"Successfully removed {len(ids_to_remove)} memory chunks related to '{topic}'",
                 "count": len(ids_to_remove),
-                "conversations_affected": len(conversation_ids),
             }
 
         except Exception as e:

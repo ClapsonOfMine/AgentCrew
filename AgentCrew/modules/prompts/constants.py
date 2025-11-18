@@ -1,13 +1,14 @@
 PRE_ANALYZE_PROMPT = """
 <MEMORY_PROCESSING_REQUEST>
-    Extract this conversation for AI memory storage. Create a comprehensive xml record that includes all fields in <OUTPUT_FORMAT> below.
+    Extract this conversation for AI memory storage. Create a comprehensive xml record must start with <MEMORY> that includes all fields in <OUTPUT_FORMAT> below.
     <OUTPUT_FORMAT>
-    1. ID: meaningful id from summary written as snake_case.
+    1. HEAD: one short sentence that describe this conversation.
     2. DATE: {current_date}
-    3. SUMMARY: Brief summary of the conversation (3-6 sentences)
-    4. CONTEXT: Background information relevant to understanding this exchange
+    3. CONTEXT: Background information relevant to understanding this exchange
+    4. INSIGHTS: Important insights, lessons learned, or conclusions drawn from the conversation
     5. ENTITIES: Important people, organizations, products, or concepts mentioned including essential facts, concepts, or data points discussed about that entity
     6. DOMAINS: The subject domain(s) this conversation relates to
+    7. RESOURCES: Important urls, file paths has been mentioned in conversation.
     8. CONVERSATION_NOTES: The key extracted information from conversation.
     </OUTPUT_FORMAT>
 
@@ -22,7 +23,7 @@ PRE_ANALYZE_PROMPT = """
 
     <PROCESSING_INSTRUCTIONS>
     1. Format each section with its heading in ALL CAPS as a tag wrapped around the content.
-    2. If a section would be empty, include the heading with "None detected" as the content.
+    2. If a section would be empty, include the heading with empty text "" as the content.
     3. Focus on extracting factual information rather than making assumptions.
     4. <CONVERSATION_NOTES> should capture all the key points and the direction of flow of the whole conversation in concise.
     5. No explanations or additional text.
@@ -30,10 +31,12 @@ PRE_ANALYZE_PROMPT = """
 
     <EXAMPLES>
         <MEMORY>
-            <ID>donald_trump</ID>
+            <HEAD>discussion about donald trump</HEAD>
             <DATE>2025-01-03</DATE>
-            <SUMMARY>A summary about Donald Trump</SUMMARY>
-            <CONTEXT>Contact information, background, and other relevant details about Donald Trump</CONTEXT>
+            <CONTEXT>discussed with user about details and facts around Donald Trump</CONTEXT>
+            <INSIGHTS>
+                <INSIGHT>To get accurate information, assistant need to collect from multi sources</INSIGHT>
+            </INSIGHTS>
             <ENTITIES>
                 <ENTITY>
                     <NAME>DONALP TRUMP</NAME>
@@ -43,6 +46,9 @@ PRE_ANALYZE_PROMPT = """
             <DOMAINS>
                 <DOMAIN>Politics</DOMAIN>
             </DOMAINS>
+            <RESOURCES>
+                <RESOURCE>https://en.wikipedia.org/wiki/Donald_Trump</RESOURCE>
+            </RESOURCES>
             <CONVERSATION_NOTES>
                 <NOTE>User asked about Donald Trump's background. Assistant provided details on his presidency and key events.</NOTE>
             </CONVERSATION_NOTES>
@@ -53,16 +59,17 @@ PRE_ANALYZE_PROMPT = """
 
 PRE_ANALYZE_WITH_CONTEXT_PROMPT = """
 <MEMORY_PROCESSING_REQUEST>
-    Extract this conversation for AI memory storage. Create a comprehensive xml record following INSTRUCTIONS that includes all fields in <OUTPUT_FORMAT> below. No explanations or additional text.
+    Extract this conversation for AI memory storage. Create a comprehensive xml record must start with <MEMORY> following INSTRUCTIONS that includes all fields in <OUTPUT_FORMAT> below. No explanations or additional text.
 
     <INSTRUCTIONS>
-    1. ID: use existed id from <PREVIOUS_CONVERSATION_CONTEXT> if available or create one.
+    1. HEAD: update existed HEAD from <PREVIOUS_CONVERSATION_CONTEXT> if available or create one short sentence that describe this conversation.
     2. DATE: {current_date}
-    3. SUMMARY: Merge the SUMMARY of <PREVIOUS_CONVERSATION_CONTEXT> with new CONVERSATION_TURN (3-6 sentences)
-    4. CONTEXT: Merge the CONTEXT of <PREVIOUS_CONVERSATION_CONTEXT> with new context in CONVERSATION_TURN
+    3. CONTEXT: Merge the CONTEXT of <PREVIOUS_CONVERSATION_CONTEXT> with new context in CONVERSATION_TURN
+    4. INSIGHTS: Add to the INSIGHTS of <PREVIOUS_CONVERSATION_CONTEXT> for new important insights, lessons learned, or conclusions drawn from CONVERSATION_TURN.
     5. ENTITIES: Add to the ENTITIES of <PREVIOUS_CONVERSATION_CONTEXT> for new important people, organizations, products, or concepts mentioned in CONVERSATION_TURN including essential facts, concepts, or data points discussed about that entity
     6. DOMAINS: Add to the DOMAINS of <PREVIOUS_CONVERSATION_CONTEXT> for new subject domain(s) in CONVERSATION_TURN related
-    7. CONVERSATION_NOTES: Add the CONVERSATION_NOTES of <PREVIOUS_CONVERSATION_CONTEXT> for new key notes extracted information from CONVERSATION_TURN. PREVIOUS_CONVERSATION_CONTEXT CONVERSATION_NOTES must be keep intact.
+    7. RESOURCES: Add to the RESOURCES of <PREVIOUS_CONVERSATION_CONTEXT> for new important urls, file paths, mentioned in CONVERSATION_TURN
+    8. CONVERSATION_NOTES: Add the CONVERSATION_NOTES of <PREVIOUS_CONVERSATION_CONTEXT> for new key notes extracted information from CONVERSATION_TURN. PREVIOUS_CONVERSATION_CONTEXT CONVERSATION_NOTES must be keep intact.
     </INSTRUCTIONS>
 
     {conversation_context}
@@ -78,10 +85,13 @@ PRE_ANALYZE_WITH_CONTEXT_PROMPT = """
 
     <OUTPUT_FORMAT>
         <MEMORY>
-            <ID>[existed_id]</ID>
+            <HEAD>[head]</HEAD>
             <DATE>[current_date]</DATE>
             <SUMMARY>[merged_summary]</SUMMARY>
             <CONTEXT>[merged_context]</CONTEXT>
+            <INSIGHTS>
+                <INSIGHT>[added_insight]</INSIGHT>
+            </INSIGHTS>
             <ENTITIES>
                 <ENTITY>
                     <NAME>[added_entity_name]</NAME>
@@ -91,6 +101,9 @@ PRE_ANALYZE_WITH_CONTEXT_PROMPT = """
             <DOMAINS>
                 <DOMAIN>[added_domain]</DOMAIN>
             </DOMAINS>
+            <RESOURCES>
+                </RESOURCE>[added_resource]</RESOURCE>
+            </RESOURCES>
             <CONVERSATION_NOTES>
                 <NOTE>[added_notes]</NOTE>
             </CONVERSATION_NOTES>

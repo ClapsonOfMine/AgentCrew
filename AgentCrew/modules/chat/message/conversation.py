@@ -112,14 +112,6 @@ class ConversationManager:
                             msg["tool_call_id"] = tool_result.get("tool_use_id", "")
 
                 self.message_handler.current_conversation_id = conversation_id
-                if self.message_handler.memory_service:
-                    self.message_handler.memory_service.session_id = (
-                        self.message_handler.current_conversation_id
-                    )
-                    self.message_handler.memory_service.loaded_conversation = True
-                    self.message_handler.memory_service.load_conversation_context(
-                        self.message_handler.current_conversation_id
-                    )
                 last_agent_name = history[-1].get("agent", "")
                 if last_agent_name and self.message_handler.agent_manager.select_agent(
                     last_agent_name
@@ -128,6 +120,15 @@ class ConversationManager:
                         self.message_handler.agent_manager.get_current_agent()
                     )
                     self.message_handler._notify("agent_changed", last_agent_name)
+
+                if self.message_handler.memory_service:
+                    self.message_handler.memory_service.session_id = (
+                        self.message_handler.current_conversation_id
+                    )
+                    self.message_handler.memory_service.loaded_conversation = True
+                    self.message_handler.memory_service.load_conversation_context(
+                        self.message_handler.current_conversation_id, last_agent_name
+                    )
 
                 self.message_handler.streamline_messages = history
                 self.message_handler.agent_manager.rebuild_agents_messages(

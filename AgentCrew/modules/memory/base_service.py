@@ -50,7 +50,7 @@ class BaseMemoryService(ABC):
         pass
 
     @abstractmethod
-    def load_conversation_context(self, session_id: str):
+    def load_conversation_context(self, session_id: str, agent_name: str = "None"):
         pass
 
     @abstractmethod
@@ -88,7 +88,7 @@ class BaseMemoryService(ABC):
         pass
 
     @abstractmethod
-    def list_memory_ids(
+    def list_memory_headers(
         self,
         from_date: Optional[int] = None,
         to_date: Optional[int] = None,

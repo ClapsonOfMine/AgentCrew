@@ -634,6 +634,17 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
     - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
                     },
                 )
+            if self.services.get("memory"):
+                memory_headers = self.services["memory"].list_memory_headers(
+                    agent_name=self.name
+                )
+                if memory_headers:
+                    adaptive_messages["content"].append(
+                        {
+                            "type": "text",
+                            "text": f"Here are conversations that we have discussed:\n- {'\n- '.join(memory_headers)}",
+                        }
+                    )
         if len(adaptive_messages["content"]) > 0:
             final_messages.insert(last_user_index, adaptive_messages)
 
