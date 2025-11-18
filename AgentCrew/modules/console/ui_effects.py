@@ -169,7 +169,7 @@ class UIEffects:
                 height=min(height_limit, len(lines)),
                 border_style=RICH_STYLE_GREEN,
             )
-            self.live.update(live_panel)
+            self.live.update(live_panel, refresh=True)
 
     def finish_live_update(self):
         """Stop the live update display."""

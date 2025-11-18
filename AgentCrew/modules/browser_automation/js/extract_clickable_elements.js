@@ -21,27 +21,21 @@
       return false;
     }
 
-    // Walk up the parent chain checking visibility
-    let currentElement = element;
+    if (
+      element.tagName.toLowerCase() === "input" &&
+      !element.checkVisibility()
+    ) {
+      //go up to parent if input is not visible
+      return element.parentElement.checkVisibility();
+    }
 
-    if (currentElement.clientWidth <= 1 && currentElement.clientHeight <= 1) {
+    if (!element.checkVisibility()) {
       return false;
     }
 
-    while (
-      currentElement &&
-      currentElement !== document.body &&
-      currentElement !== document.documentElement
-    ) {
-      const style = window.getComputedStyle(currentElement);
-
-      // Check if current element is hidden
-      if (style.display === "none" || style.visibility === "hidden") {
-        return false;
-      }
-
-      // Move to parent element
-      currentElement = currentElement.parentElement;
+    bounding_box = element.getBoundingClientRect();
+    if (bounding_box.width <= 1 && bounding_box.height <= 1) {
+      return false;
     }
 
     return true;
@@ -103,7 +97,14 @@
       const href = element.href || element.getAttribute("href") || "";
 
       // Generate XPath
-      const xpath = getXPath(element);
+      let xpath = getXPath(element);
+
+      if (
+        element.tagName.toLowerCase() === "input" &&
+        !element.checkVisibility()
+      ) {
+        xpath = getXPath(element.parentElement);
+      }
 
       // Get display text
       let displayText = element.getAttribute("aria-label");
@@ -121,7 +122,7 @@
             altTexts.push(label);
           }
         });
-        if (altTexts.length > 0 && !displayText) {
+        if (altTexts.length > 0 && displayText) {
           displayText = altTexts.join(", ");
         }
       }
@@ -135,22 +136,25 @@
         if (!displayText) {
           displayText = element.title || "";
         }
-
-        // Limit text length
-        if (displayText.length > 50) {
-          displayText = displayText.substring(0, 50) + "...";
-        }
       }
 
       let elementType = element.tagName.toLowerCase();
       if (elementType === "input") {
         elementType = element.type;
-        if (elementType === "checkbox" || elementType === "radio") {
+        if (element.type === "checkbox" || element.type === "radio") {
+          elementType =
+            element.type + "_" + element.name + "[" + element.value + "]";
+          let parent = element.parentElement;
           while (!displayText) {
-            parent = element.parentElement;
             displayText = parent.textContent || "";
+            parent = parent.parentElement;
           }
         }
+      }
+
+      // Limit text length
+      if (displayText.length > 50) {
+        displayText = displayText.substring(0, 50) + "...";
       }
       // Only add if we have some meaningful content
       if (displayText || xpath) {
@@ -166,7 +170,7 @@
           }
         } else {
           // For elements without href, deduplicate by tagName + text combination
-          const elementKey = element.tagName.toLowerCase() + "|" + displayText;
+          const elementKey = elementType.toLowerCase() + "|" + displayText;
           if (!seenElements.has(elementKey)) {
             seenElements.add(elementKey);
             clickableElements.push({

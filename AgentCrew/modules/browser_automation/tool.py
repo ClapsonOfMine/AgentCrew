@@ -109,9 +109,10 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
         "element_uuid": {
             "type": "string",
             "description": "Optional UUID for specific element to scroll. Scrolls document if not provided.",
+            "default": "document",
         },
     }
-    tool_required = ["direction"]
+    tool_required = ["direction", "element_uuid"]
 
     if provider == "claude":
         return {
@@ -273,7 +274,9 @@ def get_browser_scroll_tool_handler(
                 "Error: Invalid scroll direction. Use 'up', 'down', 'left', or 'right'."
             )
 
-        result = browser_service.scroll_page(direction, amount, element_uuid)
+        result = browser_service.scroll_page(
+            direction, amount, element_uuid if element_uuid != "document" else None
+        )
 
         if result.get("success", True):
             return f"{result.get('message', 'Success')}, Use `browser_get_content` to get the updated content."

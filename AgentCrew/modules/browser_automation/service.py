@@ -22,7 +22,7 @@ from .element_extractor import (
     clean_markdown_images,
     remove_duplicate_lines,
 )
-from .js_loader import js_loader, key_codes
+from .js_loader import js_loader, JavaScriptExecutor
 
 import PyChromeDevTools
 from loguru import logger
@@ -116,7 +116,7 @@ class BrowserAutomationService:
                             "profile": profile,
                         }
 
-            current_url = self._get_current_url()
+            current_url = JavaScriptExecutor.get_current_url(self.chrome_interface)
 
             return {
                 "success": True,
@@ -150,7 +150,6 @@ class BrowserAutomationService:
         Returns:
             Dict containing click result
         """
-        # Resolve UUID to XPath
         xpath = self.uuid_to_xpath_mapping.get(element_uuid)
         if not xpath:
             return {
@@ -165,40 +164,10 @@ class BrowserAutomationService:
                 raise RuntimeError("Chrome interface is not initialized")
 
             js_code = js_loader.get_click_element_js(xpath)
-
-            result = self.chrome_interface.Runtime.evaluate(
-                expression=js_code, returnByValue=True
+            coord_result = JavaScriptExecutor.execute_and_parse_result(
+                self.chrome_interface, js_code
             )
 
-            # Parse JavaScript result
-            if isinstance(result, tuple) and len(result) >= 2:
-                if isinstance(result[1], dict):
-                    coord_result = (
-                        result[1].get("result", {}).get("result", {}).get("value", {})
-                    )
-                elif isinstance(result[1], list) and len(result[1]) > 0:
-                    coord_result = (
-                        result[1][0]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", {})
-                    )
-                else:
-                    return {
-                        "success": False,
-                        "error": "Invalid response format from coordinate calculation",
-                        "uuid": element_uuid,
-                        "xpath": xpath,
-                    }
-            else:
-                return {
-                    "success": False,
-                    "error": "No response from coordinate calculation",
-                    "uuid": element_uuid,
-                    "xpath": xpath,
-                }
-
-            # Check if coordinate calculation was successful
             if not coord_result.get("success", False):
                 return {
                     "success": False,
@@ -209,7 +178,6 @@ class BrowserAutomationService:
                     "xpath": xpath,
                 }
 
-            # Extract coordinates
             x = coord_result.get("x")
             y = coord_result.get("y")
 
@@ -221,23 +189,18 @@ class BrowserAutomationService:
                     "xpath": xpath,
                 }
 
-            # Wait a moment for scrollIntoView to complete
             time.sleep(0.5)
 
-            # Step 2: Dispatch mousePressed event using Chrome DevTools Protocol
             self.chrome_interface.Input.dispatchMouseEvent(
                 type="mousePressed", x=x, y=y, button="left", clickCount=1
             )
 
-            # Small delay between press and release (simulate realistic click timing)
             time.sleep(0.02)
 
-            # Step 3: Dispatch mouseReleased event using Chrome DevTools Protocol
             self.chrome_interface.Input.dispatchMouseEvent(
                 type="mouseReleased", x=x, y=y, button="left", clickCount=1
             )
 
-            # Wait for click to be processed
             time.sleep(1)
 
             return {
@@ -281,7 +244,6 @@ class BrowserAutomationService:
 
             scroll_distance = amount * 300
 
-            # Resolve UUID to XPath if provided
             xpath = None
             if element_uuid:
                 xpath = self.uuid_to_xpath_mapping.get(element_uuid)
@@ -294,34 +256,13 @@ class BrowserAutomationService:
                         "amount": amount,
                     }
 
-            # Load JavaScript code from external file
             js_code = js_loader.get_scroll_page_js(
                 direction, scroll_distance, xpath or "", element_uuid or ""
             )
 
-            result = self.chrome_interface.Runtime.evaluate(
-                expression=js_code, returnByValue=True
+            scroll_result = JavaScriptExecutor.execute_and_parse_result(
+                self.chrome_interface, js_code
             )
-
-            if isinstance(result, tuple) and len(result) >= 2:
-                if isinstance(result[1], dict):
-                    scroll_result = (
-                        result[1].get("result", {}).get("result", {}).get("value", {})
-                    )
-                elif isinstance(result[1], list) and len(result[1]) > 0:
-                    scroll_result = (
-                        result[1][0]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", {})
-                    )
-                else:
-                    scroll_result = {
-                        "success": False,
-                        "error": "Invalid response format",
-                    }
-            else:
-                scroll_result = {"success": False, "error": "No response from browser"}
 
             time.sleep(1.5)
 
@@ -433,7 +374,7 @@ class BrowserAutomationService:
                 "utf-8", "ignore"
             )
 
-            current_url = self._get_current_url()
+            current_url = JavaScriptExecutor.get_current_url(self.chrome_interface)
 
             return {
                 "success": True,
@@ -548,41 +489,6 @@ class BrowserAutomationService:
             # Return original content if filtering fails
             return html_content
 
-    def _get_current_url(self) -> str:
-        """Get the current page URL."""
-        try:
-            if self.chrome_interface is None:
-                raise RuntimeError("Chrome interface is not initialized")
-            runtime_result = self.chrome_interface.Runtime.evaluate(
-                expression="window.location.href"
-            )
-
-            if isinstance(runtime_result, tuple) and len(runtime_result) >= 2:
-                if isinstance(runtime_result[1], dict):
-                    current_url = (
-                        runtime_result[1]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", "Unknown")
-                    )
-                elif isinstance(runtime_result[1], list) and len(runtime_result[1]) > 0:
-                    current_url = (
-                        runtime_result[1][0]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", "Unknown")
-                    )
-                else:
-                    current_url = "Unknown"
-            else:
-                current_url = "Unknown"
-
-            return current_url
-
-        except Exception as e:
-            logger.warning(f"Could not get current URL: {e}")
-            return "Unknown"
-
     def cleanup(self):
         """Clean up browser resources."""
         try:
@@ -618,15 +524,17 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            # Focus the element and clear any existing content
-            focus_result = self._focus_and_clear_element(xpath)
+            focus_result = JavaScriptExecutor.focus_and_clear_element(
+                self.chrome_interface, xpath
+            )
             if not focus_result.get("success", False):
                 return focus_result
 
             can_simulate_typing = focus_result.get("canSimulateTyping", False)
-            # Simulate typing each character
             if can_simulate_typing:
-                typing_result = self._simulate_typing(value)
+                typing_result = JavaScriptExecutor.simulate_typing(
+                    self.chrome_interface, value
+                )
                 if not typing_result.get("success", False):
                     return {
                         **typing_result,
@@ -635,8 +543,10 @@ class BrowserAutomationService:
                         "input_value": value,
                     }
 
-            self._trigger_input_events(xpath, value)
+            JavaScriptExecutor.trigger_input_events(self.chrome_interface, xpath, value)
             time.sleep(1.5)
+
+            self.dispatch_key_event("escape")
 
             return {
                 "success": True,
@@ -658,130 +568,35 @@ class BrowserAutomationService:
                 "typing_method": "keyboard_simulation",
             }
 
-    def _focus_and_clear_element(self, xpath: str) -> Dict[str, Any]:
+    def dispatch_key_event(self, key: str, modifiers: List[str] = []) -> Dict[str, Any]:
         """
-        Focus the target element and clear any existing content.
+        Dispatch key events using CDP input.dispatchKeyEvent.
 
         Args:
-            xpath: XPath selector for the element
+            key: Key to dispatch (e.g., 'Enter', 'Up', 'Down', 'F1', 'PageUp')
+            modifiers: Optional modifiers like 'ctrl', 'alt', 'shift'
 
         Returns:
-            Dict containing focus result
+            Dict containing dispatch result
         """
-        # Load JavaScript code from external file
-        js_code = js_loader.get_focus_and_clear_element_js(xpath)
-
-        if self.chrome_interface is None:
-            raise RuntimeError("Chrome interface is not initialized")
-
-        result = self.chrome_interface.Runtime.evaluate(
-            expression=js_code, returnByValue=True
-        )
-
-        if isinstance(result, tuple) and len(result) >= 2:
-            if isinstance(result[1], dict):
-                focus_result = (
-                    result[1].get("result", {}).get("result", {}).get("value", {})
-                )
-            elif isinstance(result[1], list) and len(result[1]) > 0:
-                focus_result = (
-                    result[1][0].get("result", {}).get("result", {}).get("value", {})
-                )
-            else:
-                focus_result = {
-                    "success": False,
-                    "error": "Invalid response format from focus operation",
-                }
-        else:
-            focus_result = {
-                "success": False,
-                "error": "No response from focus operation",
-            }
-
-        return focus_result
-
-    def _simulate_typing(self, text: str) -> Dict[str, Any]:
-        """Simulate keyboard typing character by character."""
-        if self.chrome_interface is None:
-            raise RuntimeError("Chrome interface is not initialized")
-
         try:
-            for char in text:
-                time.sleep(0.05)
+            self._ensure_chrome_running()
 
-                if char == "\n":
-                    self.chrome_interface.Input.dispatchKeyEvent(
-                        **{
-                            "type": "rawKeyDown",
-                            "windowsVirtualKeyCode": 13,
-                            "unmodifiedText": "\r",
-                            "text": "\r",
-                        }
-                    )
-                    self.chrome_interface.Input.dispatchKeyEvent(
-                        **{
-                            "type": "char",
-                            "windowsVirtualKeyCode": 13,
-                            "unmodifiedText": "\r",
-                            "text": "\r",
-                        }
-                    )
-                    self.chrome_interface.Input.dispatchKeyEvent(
-                        **{
-                            "type": "keyUp",
-                            "windowsVirtualKeyCode": 13,
-                            "unmodifiedText": "\r",
-                            "text": "\r",
-                        }
-                    )
-                elif char == "\t":
-                    self.chrome_interface.Input.dispatchKeyEvent(type="char", text="\t")
-                else:
-                    self.chrome_interface.Input.dispatchKeyEvent(type="char", text=char)
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
 
-            return {
-                "success": True,
-                "message": f"Successfully typed {len(text)} characters",
-                "characters_typed": len(text),
-            }
+            return JavaScriptExecutor.dispatch_key_event(
+                self.chrome_interface, key, modifiers
+            )
 
         except Exception as e:
-            logger.error(f"Error during typing simulation: {e}")
-            return {"success": False, "error": f"Typing simulation failed: {str(e)}"}
-
-    def _trigger_input_events(self, xpath: str, value: str) -> Dict[str, Any]:
-        """Trigger input and change events to notify the page of input changes."""
-        # Load JavaScript code from external file
-        js_code = js_loader.get_trigger_input_events_js(xpath, value)
-
-        if self.chrome_interface is None:
-            raise RuntimeError("Chrome interface is not initialized")
-
-        result = self.chrome_interface.Runtime.evaluate(
-            expression=js_code, returnByValue=True
-        )
-
-        if isinstance(result, tuple) and len(result) >= 2:
-            if isinstance(result[1], dict):
-                event_result = (
-                    result[1].get("result", {}).get("result", {}).get("value", {})
-                )
-            elif isinstance(result[1], list) and len(result[1]) > 0:
-                event_result = (
-                    result[1][0].get("result", {}).get("result", {}).get("value", {})
-                )
-            else:
-                event_result = {
-                    "success": False,
-                    "error": "Invalid response format from event triggering",
-                }
-        else:
-            event_result = {
+            logger.error(f"Key dispatch error: {e}")
+            return {
                 "success": False,
-                "error": "No response from event triggering",
+                "error": f"Key dispatch error: {str(e)}",
+                "key": key,
+                "modifiers": modifiers,
             }
-
-        return event_result
 
     def get_elements_by_text(self, text: str) -> Dict[str, Any]:
         """Find elements containing specified text using XPath."""
@@ -827,34 +642,9 @@ class BrowserAutomationService:
                 raise RuntimeError("Chrome interface is not initialized")
 
             js_code = js_loader.get_draw_element_boxes_js(uuid_xpath_dict)
-
-            result = self.chrome_interface.Runtime.evaluate(
-                expression=js_code, returnByValue=True
+            eval_result = JavaScriptExecutor.execute_and_parse_result(
+                self.chrome_interface, js_code
             )
-            print(result)
-
-            if isinstance(result, tuple) and len(result) >= 2:
-                if isinstance(result[1], dict):
-                    eval_result = (
-                        result[1].get("result", {}).get("result", {}).get("value", {})
-                    )
-                elif isinstance(result[1], list) and len(result[1]) > 0:
-                    eval_result = (
-                        result[1][0]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", {})
-                    )
-                else:
-                    return {
-                        "success": False,
-                        "error": "Invalid response format from drawing element boxes",
-                    }
-            else:
-                return {
-                    "success": False,
-                    "error": "No response from drawing element boxes",
-                }
 
             if not eval_result:
                 return {
@@ -882,33 +672,9 @@ class BrowserAutomationService:
                 raise RuntimeError("Chrome interface is not initialized")
 
             js_code = js_loader.get_remove_element_boxes_js()
-
-            result = self.chrome_interface.Runtime.evaluate(
-                expression=js_code, returnByValue=True
+            eval_result = JavaScriptExecutor.execute_and_parse_result(
+                self.chrome_interface, js_code
             )
-
-            if isinstance(result, tuple) and len(result) >= 2:
-                if isinstance(result[1], dict):
-                    eval_result = (
-                        result[1].get("result", {}).get("result", {}).get("value", {})
-                    )
-                elif isinstance(result[1], list) and len(result[1]) > 0:
-                    eval_result = (
-                        result[1][0]
-                        .get("result", {})
-                        .get("result", {})
-                        .get("value", {})
-                    )
-                else:
-                    return {
-                        "success": False,
-                        "error": "Invalid response format from removing element boxes",
-                    }
-            else:
-                return {
-                    "success": False,
-                    "error": "No response from removing element boxes",
-                }
 
             if not eval_result:
                 return {
@@ -952,7 +718,6 @@ class BrowserAutomationService:
             boxes_drawn = False
             if self.uuid_to_xpath_mapping:
                 draw_result = self.draw_element_boxes(self.uuid_to_xpath_mapping)
-                print(draw_result)
                 if draw_result.get("success"):
                     boxes_drawn = True
                     logger.info(
@@ -1000,7 +765,20 @@ class BrowserAutomationService:
             if not screenshot_data:
                 return {"success": False, "error": "No screenshot data received"}
 
-            # Determine MIME type based on format
+            # import base64
+            # from datetime import datetime
+            #
+            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # filename = f"screenshot_{timestamp}.{format}"
+            #
+            # try:
+            #     screenshot_bytes = base64.b64decode(screenshot_data)
+            #     with open(filename, "wb") as f:
+            #         f.write(screenshot_bytes)
+            #     logger.info(f"Screenshot saved to {filename} for debugging")
+            # except Exception as save_error:
+            #     logger.warning(f"Failed to save screenshot to file: {save_error}")
+            #
             mime_type_map = {
                 "png": "image/png",
                 "jpeg": "image/jpeg",
@@ -1008,7 +786,7 @@ class BrowserAutomationService:
             }
             mime_type = mime_type_map.get(format, "image/png")
 
-            current_url = self._get_current_url()
+            current_url = JavaScriptExecutor.get_current_url(self.chrome_interface)
 
             if boxes_drawn:
                 remove_result = self.remove_element_boxes()
@@ -1031,101 +809,6 @@ class BrowserAutomationService:
         except Exception as e:
             logger.error(f"Screenshot capture error: {e}")
             return {"success": False, "error": f"Screenshot capture error: {str(e)}"}
-
-    def dispatch_key_event(self, key: str, modifiers: List[str] = []) -> Dict[str, Any]:
-        """
-        Dispatch key events using CDP input.dispatchKeyEvent.
-
-        Args:
-            key: Key to dispatch (e.g., 'Enter', 'Up', 'Down', 'F1', 'PageUp')
-            modifiers: Optional modifiers like 'ctrl', 'alt', 'shift' (comma-separated)
-
-        Returns:
-            Dict containing dispatch result
-        """
-        try:
-            self._ensure_chrome_running()
-
-            if self.chrome_interface is None:
-                raise RuntimeError("Chrome interface is not initialized")
-
-            key_name = key.lower().strip()
-            key_code = key_codes.get(key_name)
-
-            if key_code is None:
-                return {
-                    "success": False,
-                    "error": f"Unknown key '{key}'. Supported keys: {', '.join(sorted(key_codes.keys()))}",
-                    "key": key,
-                    "modifiers": modifiers,
-                }
-
-            # Parse modifiers
-            modifier_flags = 0
-            if modifiers:
-                modifier_names = [m.strip().lower() for m in modifiers]
-                for mod in modifier_names:
-                    if mod in ["alt"]:
-                        modifier_flags |= 1  # Alt = 1
-                    elif mod in ["ctrl", "control"]:
-                        modifier_flags |= 2  # Ctrl = 2
-                    elif mod in ["meta", "cmd", "command"]:
-                        modifier_flags |= 4  # Meta = 4
-                    elif mod in ["shift"]:
-                        modifier_flags |= 8  # Shift = 8
-
-            # Dispatch keyDown event
-            self.chrome_interface.Input.dispatchKeyEvent(
-                type="rawKeyDown",
-                windowsVirtualKeyCode=key_code,
-                modifiers=modifier_flags,
-            )
-
-            # For printable characters, also send char event
-            printable_keys = {"space", "spacebar", "enter", "return", "tab"}
-            if key_name in printable_keys:
-                if key_name in ["space", "spacebar"]:
-                    char_text = " "
-                elif key_name in ["enter", "return"]:
-                    char_text = "\r"
-                elif key_name == "tab":
-                    char_text = "\t"
-                else:
-                    char_text = ""
-
-                if char_text:
-                    self.chrome_interface.Input.dispatchKeyEvent(
-                        type="char",
-                        windowsVirtualKeyCode=key_code,
-                        text=char_text,
-                        unmodifiedText=char_text,
-                        modifiers=modifier_flags,
-                    )
-
-            # Dispatch keyUp event
-            self.chrome_interface.Input.dispatchKeyEvent(
-                type="keyUp", windowsVirtualKeyCode=key_code, modifiers=modifier_flags
-            )
-
-            time.sleep(0.1)  # Small delay for event processing
-
-            return {
-                "success": True,
-                "message": f"Successfully dispatched key '{key}' with modifiers '{modifiers}'",
-                "key": key,
-                "key_code": key_code,
-                "modifiers": modifiers,
-                "modifier_flags": modifier_flags,
-            }
-
-        except Exception as e:
-            logger.error(f"Key dispatch error: {e}")
-            return {
-                "success": False,
-                "error": f"Key dispatch error: {str(e)}",
-                "key": key,
-                "modifiers": modifiers,
-            }
 
     def __del__(self):
         """Cleanup when service is destroyed."""
