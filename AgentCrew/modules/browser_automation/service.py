@@ -461,13 +461,20 @@ class BrowserAutomationService:
                 super().__init__()
                 self.filtered_html = []
                 self.skip_depth = 0
+                self.tag_stack = []
 
             def handle_starttag(self, tag, attrs):
                 # Convert attrs to dict for easier access
                 attr_dict = dict(attrs)
-
-                # Check if element should be hidden
                 should_hide = False
+
+                if self.skip_depth > 0:
+                    if tag in self.tag_stack:
+                        self.skip_depth += 1
+                    return
+
+                if tag.lower() in ["script", "style", "svg"]:
+                    should_hide = True
 
                 # Check for style="display:none" (case insensitive, flexible matching)
                 style = attr_dict.get("style", "")
@@ -487,6 +494,10 @@ class BrowserAutomationService:
                     should_hide = True
 
                 if should_hide:
+                    if tag.lower() in ["img", "input", "br", "hr", "meta", "link"]:
+                        # Self-closing tags, just skip
+                        return
+                    self.tag_stack.append(tag)
                     self.skip_depth += 1
                     return
 
@@ -500,8 +511,11 @@ class BrowserAutomationService:
 
             def handle_endtag(self, tag):
                 if self.skip_depth > 0:
-                    self.skip_depth -= 1
-                    return
+                    if tag in self.tag_stack:
+                        self.skip_depth -= 1
+                        if self.skip_depth == 0:
+                            self.tag_stack.remove(tag)
+                        return
 
                 if self.skip_depth == 0:
                     self.filtered_html.append(f"</{tag}>")
@@ -796,6 +810,118 @@ class BrowserAutomationService:
                 "text": text,
             }
 
+    def draw_element_boxes(self, uuid_xpath_dict: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Draw colored rectangle boxes with UUID labels over elements.
+
+        Args:
+            uuid_xpath_dict: Dictionary mapping UUIDs to XPath selectors
+
+        Returns:
+            Dict containing the result of the drawing operation
+        """
+        try:
+            self._ensure_chrome_running()
+
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            js_code = js_loader.get_draw_element_boxes_js(uuid_xpath_dict)
+
+            result = self.chrome_interface.Runtime.evaluate(
+                expression=js_code, returnByValue=True
+            )
+            print(result)
+
+            if isinstance(result, tuple) and len(result) >= 2:
+                if isinstance(result[1], dict):
+                    eval_result = (
+                        result[1].get("result", {}).get("result", {}).get("value", {})
+                    )
+                elif isinstance(result[1], list) and len(result[1]) > 0:
+                    eval_result = (
+                        result[1][0]
+                        .get("result", {})
+                        .get("result", {})
+                        .get("value", {})
+                    )
+                else:
+                    return {
+                        "success": False,
+                        "error": "Invalid response format from drawing element boxes",
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": "No response from drawing element boxes",
+                }
+
+            if not eval_result:
+                return {
+                    "success": False,
+                    "error": "No result from drawing element boxes",
+                }
+
+            return eval_result
+
+        except Exception as e:
+            logger.error(f"Draw element boxes error: {e}")
+            return {"success": False, "error": f"Draw element boxes error: {str(e)}"}
+
+    def remove_element_boxes(self) -> Dict[str, Any]:
+        """
+        Remove the overlay container with element boxes.
+
+        Returns:
+            Dict containing the result of the removal operation
+        """
+        try:
+            self._ensure_chrome_running()
+
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            js_code = js_loader.get_remove_element_boxes_js()
+
+            result = self.chrome_interface.Runtime.evaluate(
+                expression=js_code, returnByValue=True
+            )
+
+            if isinstance(result, tuple) and len(result) >= 2:
+                if isinstance(result[1], dict):
+                    eval_result = (
+                        result[1].get("result", {}).get("result", {}).get("value", {})
+                    )
+                elif isinstance(result[1], list) and len(result[1]) > 0:
+                    eval_result = (
+                        result[1][0]
+                        .get("result", {})
+                        .get("result", {})
+                        .get("value", {})
+                    )
+                else:
+                    return {
+                        "success": False,
+                        "error": "Invalid response format from removing element boxes",
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": "No response from removing element boxes",
+                }
+
+            if not eval_result:
+                return {
+                    "success": False,
+                    "error": "No result from removing element boxes",
+                }
+
+            return eval_result
+
+        except Exception as e:
+            logger.error(f"Remove element boxes error: {e}")
+            return {"success": False, "error": f"Remove element boxes error: {str(e)}"}
+
     def capture_screenshot(
         self,
         format: str = "png",
@@ -805,7 +931,7 @@ class BrowserAutomationService:
         capture_beyond_viewport: bool = False,
     ) -> Dict[str, Any]:
         """
-        Capture a screenshot of the current page.
+        Capture a screenshot of the current page with colored boxes and UUID labels drawn over identified elements.
 
         Args:
             format: Image format ("png", "jpeg", or "webp"). Defaults to "png"
@@ -823,6 +949,20 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
+            boxes_drawn = False
+            if self.uuid_to_xpath_mapping:
+                draw_result = self.draw_element_boxes(self.uuid_to_xpath_mapping)
+                print(draw_result)
+                if draw_result.get("success"):
+                    boxes_drawn = True
+                    logger.info(
+                        f"Drew {draw_result.get('count', 0)} element boxes for screenshot"
+                    )
+                else:
+                    logger.warning(
+                        f"Failed to draw element boxes: {draw_result.get('error')}"
+                    )
+
             # Prepare parameters for screenshot capture
             screenshot_params = {
                 "format": format,
@@ -838,17 +978,8 @@ class BrowserAutomationService:
             if clip is not None:
                 screenshot_params["clip"] = clip
 
-            # self.chrome_interface.Emulation.setDeviceMetricsOverride(
-            #     height=1280,
-            #     width=720,
-            #     deviceScaleFactor=1,
-            #     mobile=False,
-            # )
-
             # Capture the screenshot
             result = self.chrome_interface.Page.captureScreenshot(**screenshot_params)
-
-            # self.chrome_interface.Emulation.clearDeviceMetricsOverride()
 
             if isinstance(result, tuple) and len(result) >= 2:
                 if isinstance(result[1], dict):
@@ -877,8 +1008,14 @@ class BrowserAutomationService:
             }
             mime_type = mime_type_map.get(format, "image/png")
 
-            # Get current URL for context
             current_url = self._get_current_url()
+
+            if boxes_drawn:
+                remove_result = self.remove_element_boxes()
+                if not remove_result.get("success"):
+                    logger.warning(
+                        f"Failed to remove element boxes: {remove_result.get('error')}"
+                    )
 
             return {
                 "success": True,

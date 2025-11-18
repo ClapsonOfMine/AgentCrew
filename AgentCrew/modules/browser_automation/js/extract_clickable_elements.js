@@ -80,6 +80,8 @@
     'input[type="button"]',
     'input[type="submit"]',
     'input[type="reset"]',
+    'input[type="checkbox"]',
+    'input[type="radio"]',
     "[onclick]", // Elements with onclick handlers
     '[role="button"]', // ARIA buttons
     "[tabindex]", // Focusable elements
@@ -140,6 +142,16 @@
         }
       }
 
+      let elementType = element.tagName.toLowerCase();
+      if (elementType === "input") {
+        elementType = element.type;
+        if (elementType === "checkbox" || elementType === "radio") {
+          while (!displayText) {
+            parent = element.parentElement;
+            displayText = parent.textContent || "";
+          }
+        }
+      }
       // Only add if we have some meaningful content
       if (displayText || xpath) {
         // Deduplication logic
@@ -158,6 +170,7 @@
           if (!seenElements.has(elementKey)) {
             seenElements.add(elementKey);
             clickableElements.push({
+              type: elementType,
               xpath: xpath,
               text: displayText,
             });

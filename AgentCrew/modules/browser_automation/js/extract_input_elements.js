@@ -113,8 +113,6 @@
     'input[type="email"]',
     'input[type="password"]',
     'input[type="number"]',
-    'input[type="checkbox"]',
-    'input[type="radio"]',
     'input[type="tel"]',
     'input[type="url"]',
     'input[type="search"]',
@@ -198,9 +196,7 @@
 
       // Get current value
       let elementValue = "";
-      if (elementType === "checkbox" || elementType === "radio") {
-        elementValue = element.checked ? "checked" : "unchecked";
-      } else if (elementType === "select") {
+      if (elementType === "select") {
         elementValue = element.value || "";
         // Also show selected text for better understanding
         if (element.selectedOptions && element.selectedOptions.length > 0) {

@@ -197,6 +197,51 @@ class JavaScriptLoader:
 
         return js_code + "\n" + wrapper
 
+    def get_draw_element_boxes_js(self, uuid_xpath_dict: Dict[str, str]) -> str:
+        """
+        Get JavaScript code for drawing colored boxes with UUID labels over elements.
+
+        Args:
+            uuid_xpath_dict: Dictionary mapping UUIDs to XPath selectors
+
+        Returns:
+            JavaScript code with uuid_xpath_dict parameter injected
+        """
+        import json
+
+        js_code = self.load_js_file("draw_element_boxes.js")
+
+        # Convert dict to JSON string for JavaScript
+        json_str = json.dumps(uuid_xpath_dict)
+
+        # Wrap with IIFE and inject the uuid_xpath_dict parameter
+        wrapper = f"""
+        (() => {{
+            const uuidXpathMap = {json_str};
+            return drawElementBoxes(uuidXpathMap);
+        }})();
+        """
+
+        return js_code + "\n" + wrapper
+
+    def get_remove_element_boxes_js(self) -> str:
+        """
+        Get JavaScript code for removing element boxes overlay.
+
+        Returns:
+            JavaScript code to remove the overlay
+        """
+        js_code = self.load_js_file("remove_element_boxes.js")
+
+        # Wrap with IIFE
+        wrapper = """
+        (() => {
+            return removeElementBoxes();
+        })();
+        """
+
+        return js_code + "\n" + wrapper
+
     def clear_cache(self):
         """Clear the JavaScript file cache."""
         self._js_cache.clear()

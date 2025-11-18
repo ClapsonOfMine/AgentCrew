@@ -421,7 +421,7 @@ def get_browser_get_elements_by_text_tool_handler(
 
 def get_browser_capture_screenshot_tool_definition(provider="claude") -> Dict[str, Any]:
     """Get tool definition for browser screenshot capture."""
-    tool_description = "Capture page screenshot as base64 image data. Supports different formats and full page capture."
+    tool_description = "Capture page screenshot as base64 image data with colored boxes and UUID labels drawn over all identified elements. Supports different formats and full page capture."
     tool_arguments = {
         "format": {
             "type": "string",

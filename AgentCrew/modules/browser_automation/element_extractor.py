@@ -162,12 +162,13 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
         markdown_output.append(
             "\n\n## Clickable Elements\nUse browser_click with UUID to click elements.\n"
         )
-        markdown_output.append("| UUID | Text/Alt |\n")
-        markdown_output.append("|------|----------|\n")
+        markdown_output.append("| UUID | Type | Text/Alt |\n")
+        markdown_output.append("|------|------|-----------|\n")
 
         for element in elements_data:
             xpath = element.get("xpath", "")
             text = element.get("text", "").strip()
+            element_type = element.get("type", "").strip()
 
             # Skip empty text entries
             if not text:
@@ -180,7 +181,7 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
             # Escape pipe characters in text for markdown table
             text = text.replace("|", "\\|")
 
-            markdown_output.append(f"| `{element_uuid}` | {text} |\n")
+            markdown_output.append(f"| `{element_uuid}` | {element_type} | {text} |\n")
 
         return "".join(markdown_output)
 
