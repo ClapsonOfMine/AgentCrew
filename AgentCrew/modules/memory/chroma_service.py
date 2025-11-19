@@ -369,7 +369,6 @@ class ChromaMemoryService(BaseMemoryService):
             self.current_conversation_context[session_id] = latest_memory["documents"][
                 -1
             ]
-            print(self.current_conversation_context[session_id])
 
     def generate_user_context(self, user_input: str, agent_name: str = "None") -> str:
         """
