@@ -218,6 +218,7 @@ class InputHandler:
 
         @kb.add(Keys.ControlUp)
         @kb.add(Keys.Escape, Keys.Up)
+        @kb.add(Keys.ControlK)
         def _(event):
             """Navigate to previous history entry."""
             buffer = event.current_buffer
@@ -241,6 +242,7 @@ class InputHandler:
 
         @kb.add(Keys.ControlDown)
         @kb.add(Keys.Escape, Keys.Down)
+        @kb.add(Keys.ControlJ)
         def _(event):
             """Navigate to next history entry if cursor is at last line."""
             buffer = event.current_buffer
