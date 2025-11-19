@@ -196,6 +196,7 @@ class OpenAIService(BaseLLMService):
             "stream_options": {"include_usage": True},
             "max_tokens": 20000,
         }
+
         if "thinking" in ModelRegistry.get_model_capabilities(full_model_id):
             stream_params.pop("max_tokens", None)
             if self.reasoning_effort:
@@ -203,6 +204,20 @@ class OpenAIService(BaseLLMService):
         else:
             stream_params["temperature"] = self.temperature
             stream_params["top_p"] = 0.95
+            forced_sample_params = ModelRegistry.get_model_sample_params(full_model_id)
+            if forced_sample_params:
+                if forced_sample_params.temperature is not None:
+                    stream_params["temperature"] = forced_sample_params.temperature
+                if forced_sample_params.top_p is not None:
+                    stream_params["top_p"] = forced_sample_params.top_p
+                if forced_sample_params.frequency_penalty is not None:
+                    stream_params["frequency_penalty"] = (
+                        forced_sample_params.frequency_penalty
+                    )
+                if forced_sample_params.presence_penalty is not None:
+                    stream_params["presence_penalty"] = (
+                        forced_sample_params.presence_penalty
+                    )
 
         # Add system message if provided
         if self.system_prompt:

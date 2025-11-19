@@ -393,6 +393,19 @@ class GoogleAINativeService(BaseLLMService):
             top_p=0.95,
         )
 
+        forced_sample_params = ModelRegistry.get_model_sample_params(full_model_id)
+        if forced_sample_params:
+            if forced_sample_params.temperature is not None:
+                config.temperature = forced_sample_params.temperature
+            if forced_sample_params.top_p is not None:
+                config.top_p = forced_sample_params.top_p
+            if forced_sample_params.top_k is not None:
+                config.top_k = forced_sample_params.top_k
+            if forced_sample_params.frequency_penalty is not None:
+                config.frequency_penalty = forced_sample_params.frequency_penalty
+            if forced_sample_params.presence_penalty is not None:
+                config.presence_penalty = forced_sample_params.presence_penalty
+
         # Add system instruction if available
         if self.system_prompt:
             config.system_instruction = self.system_prompt

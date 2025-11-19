@@ -1,4 +1,4 @@
-from .types import Model
+from .types import Model, SampleParam
 
 _ANTHROPIC_MODELS = [
     Model(
@@ -227,6 +227,17 @@ _GOOGLE_MODELS = [
         input_token_price_1m=1.25,
         output_token_price_1m=10,
     ),
+    Model(
+        id="gemini-3-pro-preview",
+        provider="google",
+        name="Gemini 3 Pro",
+        max_context_token=1_000_000,
+        description="Google's most intelligent model family to date, built on a foundation of state-of-the-art reasoning",
+        capabilities=["tool_use", "thinking", "vision", "structured_output"],
+        force_sample_params=SampleParam(temperature=1.0),
+        input_token_price_1m=2,
+        output_token_price_1m=12,
+    ),
 ]
 
 _DEEPINFRA_MODELS = [
@@ -254,6 +265,9 @@ _DEEPINFRA_MODELS = [
         name="Qwen 3 Coder",
         description="Qwen3-Coder-480B-A35B-Instruct is the Qwen3's most agentic code model",
         capabilities=["tool_use", "stream", "structured_output"],
+        force_sample_params=SampleParam(
+            temperature=0.7, top_p=0.8, top_k=20, repetition_penalty=1.05
+        ),
         input_token_price_1m=0.4,
         output_token_price_1m=1.6,
     ),
@@ -263,6 +277,9 @@ _DEEPINFRA_MODELS = [
         name="Qwen 3 Coder",
         description="Qwen3-Coder-480B-A35B-Instruct is the Qwen3's most agentic code model",
         capabilities=["tool_use", "stream", "structured_output"],
+        force_sample_params=SampleParam(
+            temperature=0.7, top_p=0.8, top_k=20, min_p=0.0
+        ),
         input_token_price_1m=0.14,
         output_token_price_1m=1.1,
     ),
@@ -272,6 +289,9 @@ _DEEPINFRA_MODELS = [
         name="Qwen 3 MoE 235B-22B",
         description="Qwen3 is the latest generation of large language models in Qwen series, offering a comprehensive suite of dense and mixture-of-experts (MoE) models",
         capabilities=["tool_use", "thinking", "stream", "structured_output"],
+        force_sample_params=SampleParam(
+            temperature=0.6, top_p=0.95, top_k=20, min_p=0.0
+        ),
         input_token_price_1m=0.2,
         output_token_price_1m=0.6,
     ),
@@ -280,6 +300,7 @@ _DEEPINFRA_MODELS = [
         provider="deepinfra",
         name="Zai GLM-4.6",
         description="The GLM-4.6 series models are foundation models designed for intelligent agents",
+        force_sample_params=SampleParam(temperature=1, top_p=0.95, top_k=40),
         capabilities=["tool_use", "stream", "structured_output"],
         input_token_price_1m=0.6,
         output_token_price_1m=2.0,
@@ -290,6 +311,9 @@ _DEEPINFRA_MODELS = [
         name="Qwen 3 32B",
         description="Qwen3 is the latest generation of large language models in Qwen series, offering a comprehensive suite of dense and mixture-of-experts (MoE) models",
         capabilities=["tool_use", "stream", "structured_output"],
+        force_sample_params=SampleParam(
+            temperature=0.6, top_p=0.95, top_k=20, min_p=0.0
+        ),
         input_token_price_1m=0.1,
         output_token_price_1m=0.3,
     ),
@@ -308,6 +332,7 @@ _DEEPINFRA_MODELS = [
         name="DeepSeek R1 0528",
         description="The DeepSeek R1 model has undergone a minor version upgrade, with the current version being DeepSeek-R1-0528.",
         capabilities=["tool_use", "thinking", "stream", "structured_output"],
+        force_sample_params=SampleParam(temperature=0.6),
         input_token_price_1m=0.5,
         output_token_price_1m=2.18,
     ),
@@ -317,6 +342,7 @@ _DEEPINFRA_MODELS = [
         name="Kimi K2 Instruct",
         description="Kimi K2 is a large-scale Mixture-of-Experts (MoE) language model developed by Moonshot AI, featuring 1 trillion total parameters with 32 billion active per forward pass",
         capabilities=["tool_use", "stream", "structured_output"],
+        force_sample_params=SampleParam(temperature=0.6),
         input_token_price_1m=0.5,
         output_token_price_1m=2.0,
     ),
@@ -340,6 +366,17 @@ _GITHUB_COPILOT_MODELS = [
         capabilities=["tool_use", "vision", "stream"],
         default=False,
         input_token_price_1m=0.0,
+        output_token_price_1m=0.0,
+    ),
+    Model(
+        id="gemini-3-pro-preview",
+        provider="github_copilot",
+        name="Gemini 3 Pro",
+        description="",
+        capabilities=["tool_use", "vision", "stream"],
+        default=False,
+        input_token_price_1m=0.0,
+        force_sample_params=SampleParam(temperature=1.0),
         output_token_price_1m=0.0,
     ),
     Model(

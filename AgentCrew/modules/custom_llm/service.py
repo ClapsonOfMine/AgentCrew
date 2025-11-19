@@ -121,15 +121,37 @@ class CustomLLMService(OpenAIService):
             # "max_tokens": 16000,
         }
         stream_params["temperature"] = self.temperature
-        stream_params["extra_body"] = {"min_p": 0.1}
+        stream_params["extra_body"] = {"min_p": 0.02}
 
+        full_model_id = f"{self._provider_name}/{self.model}"
+
+        forced_sample_params = ModelRegistry.get_model_sample_params(full_model_id)
+        if forced_sample_params:
+            if forced_sample_params.temperature is not None:
+                stream_params["temperature"] = forced_sample_params.temperature
+            if forced_sample_params.top_p is not None:
+                stream_params["top_p"] = forced_sample_params.top_p
+            if forced_sample_params.top_k is not None:
+                stream_params["extra_body"]["top_k"] = forced_sample_params.top_k
+            if forced_sample_params.frequency_penalty is not None:
+                stream_params["frequency_penalty"] = (
+                    forced_sample_params.frequency_penalty
+                )
+            if forced_sample_params.presence_penalty is not None:
+                stream_params["presence_penalty"] = (
+                    forced_sample_params.presence_penalty
+                )
+            if forced_sample_params.repetition_penalty is not None:
+                stream_params["extra_body"]["repetition_penalty"] = (
+                    forced_sample_params.repetition_penalty
+                )
+            if forced_sample_params.min_p is not None:
+                stream_params["extra_body"]["min_p"] = forced_sample_params.min_p
         # Add system message if provided
         if self.system_prompt:
             stream_params["messages"] = self._convert_internal_format(
                 [{"role": "system", "content": self.system_prompt}] + messages
             )
-
-        full_model_id = f"{self._provider_name}/{self.model}"
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(

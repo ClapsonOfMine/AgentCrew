@@ -46,6 +46,15 @@ class ModelRegistry:
             return 128_000
         return model.max_context_token
 
+    @classmethod
+    def get_model_sample_params(cls, mode_id):
+        registry = ModelRegistry.get_instance()
+        model = registry.get_model(mode_id)
+        if not model or not model.force_sample_params:
+            logger.warning(f"Model not found in registry: {mode_id}")
+            return None
+        return model.force_sample_params
+
     def _load_custom_models_from_config(self):
         """Loads models from custom LLM provider configurations and registers them."""
         try:

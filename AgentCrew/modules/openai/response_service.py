@@ -225,7 +225,15 @@ class OpenAIResponseService(BaseLLMService):
             "input": input_data,
             "stream": True,
             "instructions": self.system_prompt or None,
+            "temperature": self.temperature,
         }
+
+        forced_sample_params = ModelRegistry.get_model_sample_params(full_model_id)
+        if forced_sample_params:
+            if forced_sample_params.temperature is not None:
+                stream_params["temperature"] = forced_sample_params.temperature
+            if forced_sample_params.top_p is not None:
+                stream_params["top_p"] = forced_sample_params.top_p
 
         # Add reasoning configuration for thinking models
         if "thinking" in ModelRegistry.get_model_capabilities(full_model_id):
@@ -251,17 +259,17 @@ class OpenAIResponseService(BaseLLMService):
 
             stream_params["tools"] = all_tools
 
-        # if (
-        #     "structured_output" in ModelRegistry.get_model_capabilities(full_model_id)
-        #     and self.structured_output
-        # ):
-        #     from openai.types import ResponseFormatJSONSchema
-        #
-        #     stream_params["text"] = {
-        #         "format": ResponseFormatJSONSchema.model_validate(
-        #             {"type": "json_schema", "json_schema": self.structured_output}
-        #         )
-        #     }
+        if (
+            "structured_output" in ModelRegistry.get_model_capabilities(full_model_id)
+            and self.structured_output
+        ):
+            stream_params["text"] = {
+                "format": {
+                    "name": "default",
+                    "type": "json_schema",
+                    "json_schema": self.structured_output,
+                }
+            }
 
         return await self.client.responses.create(**stream_params)
 
