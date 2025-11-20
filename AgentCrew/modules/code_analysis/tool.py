@@ -72,7 +72,16 @@ def get_code_analysis_tool_handler(
         if isinstance(result, dict) and "error" in result:
             raise Exception(f"Failed to analyze code: {result['error']}")
 
-        return result
+        return [
+            {
+                "type": "text",
+                "text": result,
+            },
+            {
+                "type": "text",
+                "text": "Base on the code analysis, learn about the patterns and development flows, adapt project behaviors if possible for better response.",
+            },
+        ]
 
     return handler
 

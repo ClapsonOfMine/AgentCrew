@@ -26,6 +26,7 @@ class CodeAnalysisService:
         ".cxx": "cpp",
         ".hxx": "cpp",
         ".rb": "ruby",
+        ".sh": "bash",
         ".rake": "ruby",
         ".go": "go",
         ".rs": "rust",
@@ -36,6 +37,7 @@ class CodeAnalysisService:
         ".json": "config",
         ".toml": "config",
         ".yaml": "config",
+        ".yml": "config",
         # Add more languages as needed
     }
 
@@ -783,6 +785,43 @@ class CodeAnalysisService:
                                 )
                                 return result
                             break  # Only capture the first identifier
+                        return result
+                else:
+                    if node.type in [
+                        "type_declaration",
+                        "function_declaration",
+                        "method_declaration",
+                        "interface_declaration",
+                    ]:
+                        for child in node.children:
+                            if (
+                                child.type == "identifier"
+                                or child.type == "field_identifier"
+                            ):
+                                result["name"] = self._extract_node_text(
+                                    child, source_code
+                                )
+                                result["first_line"] = (
+                                    self._extract_node_text(node, source_code)
+                                    .split("\n")[0]
+                                    .strip("{")
+                                )
+                                return result
+                        return result
+                    elif (
+                        node.type == "var_declaration"
+                        or node.type == "const_declaration"
+                    ):
+                        # Handle Go variable and constant declarations
+                        for child in node.children:
+                            if child.type == "var_spec" or child.type == "const_spec":
+                                for subchild in child.children:
+                                    if subchild.type == "identifier":
+                                        result["type"] = "variable_declaration"
+                                        result["name"] = self._extract_node_text(
+                                            subchild, source_code
+                                        )
+                                        return result
                         return result
 
                 # Recursively process children

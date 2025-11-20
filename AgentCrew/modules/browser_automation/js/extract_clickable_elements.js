@@ -186,10 +186,8 @@
             });
           }
         } else {
-          // For elements without href, deduplicate by tagName + text combination
-          const elementKey = elementType.toLowerCase() + "|" + displayText;
-          if (!seenElements.has(elementKey)) {
-            seenElements.add(elementKey);
+          if (!seenElements.has(xpath)) {
+            seenElements.add(xpath);
             clickableElements.push({
               type: elementType,
               xpath: xpath,
