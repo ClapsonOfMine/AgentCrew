@@ -544,6 +544,58 @@ class ConsoleUI(Observer):
                         self.command_handlers.handle_edit_config_command()
                         continue
 
+                    # Handle list_behaviors command
+                    elif user_input.strip() == "/list_behaviors":
+                        self.command_handlers.handle_list_behaviors_command()
+                        continue
+
+                    # Handle update_behavior command
+                    elif user_input.strip().startswith("/update_behavior "):
+                        args = user_input.strip()[17:].strip()
+                        if args:
+                            parts = args.split(maxsplit=2)
+                            if len(parts) == 3:
+                                scope, behavior_id, behavior_text = parts
+                                self.command_handlers.handle_update_behavior_command(
+                                    behavior_id, behavior_text, scope
+                                )
+                            else:
+                                self.console.print(
+                                    Text(
+                                        "Usage: /update_behavior <scope> <id> <behavior_text>\n"
+                                        "Example: /update_behavior project my_behavior_id when user asks about X, do provide detailed examples",
+                                        style=RICH_STYLE_YELLOW,
+                                    )
+                                )
+                        else:
+                            self.console.print(
+                                Text(
+                                    "Usage: /update_behavior <scope> <id> <behavior_text>\n"
+                                    "Example: /update_behavior project my_behavior_id when user asks about X, do provide detailed examples",
+                                    style=RICH_STYLE_YELLOW,
+                                )
+                            )
+                        continue
+
+                    # Handle delete_behavior command
+                    elif user_input.strip().startswith("/delete_behavior "):
+                        args = user_input.strip()[17:].strip()
+                        parts = args.split(maxsplit=1)
+                        if len(parts) == 2:
+                            scope, behavior_id = parts
+                            self.command_handlers.handle_delete_behavior_command(
+                                behavior_id, scope
+                            )
+                        else:
+                            self.console.print(
+                                Text(
+                                    "Usage: /delete_behavior <scope> <id>\n"
+                                    "Example: /delete_behavior <scope> my_behavior_id",
+                                    style=RICH_STYLE_YELLOW,
+                                )
+                            )
+                        continue
+
                     elif user_input.startswith("/voice"):
                         self.input_handler._stop_input_thread()
                         self.voice_recording = True

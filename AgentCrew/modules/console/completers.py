@@ -121,6 +121,7 @@ class ChatCompleter(Completer):
         self.jump_completer = JumpCompleter(message_handler)
         self.mcp_completer = MCPCompleter(message_handler)
         self.drop_completer = DropCompleter(message_handler)
+        self.behavior_completer = BehaviorIDCompleter(message_handler)
 
     def get_completions(self, document, complete_event):
         text = document.text
@@ -140,6 +141,8 @@ class ChatCompleter(Completer):
             yield from self.file_completer.get_completions(document, complete_event)
         elif text.startswith("/drop "):
             yield from self.drop_completer.get_completions(document, complete_event)
+        elif text.startswith(("/delete_behavior ", "/update_behavior ")):
+            yield from self.behavior_completer.get_completions(document, complete_event)
         elif text.startswith("/export_agent "):
             remaining_text = text[14:]  # Remove "/export_agent "
 
@@ -220,6 +223,15 @@ class ChatCompleter(Completer):
             (
                 "/toggle_session_yolo",
                 "Toggle Auto-Approve Mode for Tool Calls (this session only)",
+            ),
+            ("/list_behaviors", "List all agent adaptive behaviors"),
+            (
+                "/update_behavior",
+                "Update or create an adaptive behavior (usage: /update_behavior <scope> <id> <behavior_text>)",
+            ),
+            (
+                "/delete_behavior",
+                "Delete an adaptive behavior (usage: /delete_behavior <id>)",
             ),
             ("/exit", "Exit the application"),
             ("/quit", "Exit the application"),
@@ -302,6 +314,61 @@ class DropCompleter(Completer):
                     yield Completion(
                         file_path,
                         display=file_path,
+                    )
+
+
+class BehaviorIDCompleter(Completer):
+    """Completer that shows available behavior IDs when typing /delete_behavior or /update_behavior commands."""
+
+    def __init__(self, message_handler=None):
+        self.message_handler = message_handler
+
+    def get_completions(self, document, complete_event):
+        text = document.text
+
+        if text.startswith(
+            (
+                "/delete_behavior global ",
+                "/delete_behavior project ",
+                "/update_behavior global ",
+                "/update_behavior project ",
+            )
+        ):
+            word_before_cursor = document.get_word_before_cursor(
+                pattern=COMPLETER_PATTERN
+            )
+
+            if self.message_handler and self.message_handler.persistent_service:
+                try:
+                    scope = text.split(" ")[1].strip()
+                    all_behaviors = (
+                        self.message_handler.persistent_service.get_adaptive_behaviors(
+                            self.message_handler.agent.name, is_local=scope == "project"
+                        )
+                    )
+                    behavior_ids = []
+                    for id, _ in all_behaviors.items():
+                        behavior_ids.append(id)
+
+                    for behavior_id in behavior_ids:
+                        if behavior_id.startswith(word_before_cursor):
+                            yield Completion(
+                                behavior_id,
+                                start_position=-len(word_before_cursor),
+                                display=behavior_id,
+                            )
+                except Exception:
+                    pass
+        elif text.startswith(("/delete_behavior ", "/update_behavior ")):
+            word_before_cursor = document.get_word_before_cursor(
+                pattern=COMPLETER_PATTERN
+            )
+            for scope in ["global", "project"]:
+                if scope.startswith(word_before_cursor):
+                    yield Completion(
+                        scope,
+                        start_position=-len(word_before_cursor),
+                        display=scope,
                     )
 
 

@@ -350,6 +350,18 @@ class DisplayHandlers:
                 "Use '/toggle_session_yolo' to toggle YOLO mode (auto-approval of tool calls) in this session only.",
                 style=RICH_STYLE_YELLOW,
             ),
+            Text(
+                "Use '/list_behaviors' to list all adaptive behaviors (global and project-specific).",
+                style=RICH_STYLE_YELLOW,
+            ),
+            Text(
+                "Use '/update_behavior <scope> <id> <behavior>' to create or update an adaptive behavior (format: 'when..., do...').",
+                style=RICH_STYLE_YELLOW,
+            ),
+            Text(
+                "Use '/delete_behavior <scope> <id>' to delete an adaptive behavior.",
+                style=RICH_STYLE_YELLOW,
+            ),
             Text("Use '/list' to list saved conversations.", style=RICH_STYLE_YELLOW),
             Text(
                 "Use '/load <id>' or '/load <number>' to load a conversation.",

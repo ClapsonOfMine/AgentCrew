@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 from rich.text import Text
+from rich.table import Table
 
 from .constants import (
     RICH_STYLE_YELLOW,
@@ -19,7 +20,7 @@ from .constants import (
 from AgentCrew.modules.config.config_management import ConfigManagement
 from loguru import logger
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
     from .console_ui import ConsoleUI
@@ -38,6 +39,7 @@ class CommandHandlers:
         """
         self.console = console_ui.console
         self.message_handler = console_ui.message_handler
+        self.context_service = console_ui.message_handler.persistent_service
 
     def open_file_in_editor(self, file_path: str) -> bool:
         """
@@ -278,3 +280,186 @@ class CommandHandlers:
                 )
             )
             logger.error(f"Import agent error: {str(e)}", exc_info=True)
+
+    def handle_list_behaviors_command(self) -> None:
+        try:
+            if not self.context_service:
+                self.console.print(
+                    Text(
+                        "❌ Context persistence service not available", style="bold red"
+                    )
+                )
+                return
+
+            global_behaviors = self.context_service.get_adaptive_behaviors(
+                self.message_handler.agent.name
+            )
+            project_behaviors = self.context_service.get_adaptive_behaviors(
+                self.message_handler.agent.name, is_local=True
+            )
+
+            if not global_behaviors and not project_behaviors:
+                self.console.print(
+                    Text("ℹ️  No adaptive behaviors found.", style=RICH_STYLE_YELLOW)
+                )
+                return
+
+            self._display_behaviors_table(global_behaviors, project_behaviors)
+
+        except Exception as e:
+            self.console.print(
+                Text(f"❌ Error listing behaviors: {str(e)}", style="bold red")
+            )
+            logger.error(f"List behaviors error: {str(e)}", exc_info=True)
+
+    def _display_behaviors_table(
+        self,
+        global_behaviors: Dict[str, str],
+        project_behaviors: Dict[str, str],
+    ) -> None:
+        if global_behaviors:
+            global_table = Table(
+                title="🌍 Global Behaviors",
+                show_header=True,
+                header_style="bold cyan",
+                title_style="bold blue",
+            )
+            global_table.add_column("ID", style="yellow", no_wrap=True)
+            global_table.add_column("Behavior", style="white")
+
+            for behavior_id, behavior_text in global_behaviors.items():
+                global_table.add_row(behavior_id, behavior_text)
+
+            self.console.print(global_table)
+            self.console.print()
+
+        if project_behaviors:
+            project_table = Table(
+                title="📁 Project Behaviors",
+                show_header=True,
+                header_style="bold green",
+                title_style="bold magenta",
+            )
+            project_table.add_column("ID", style="yellow", no_wrap=True)
+            project_table.add_column("Behavior", style="white")
+
+            for behavior_id, behavior_text in project_behaviors.items():
+                project_table.add_row(behavior_id, behavior_text)
+
+                self.console.print(project_table)
+                self.console.print()
+
+    def handle_update_behavior_command(
+        self, behavior_id: str, behavior_text: str, scope: str = "global"
+    ) -> None:
+        try:
+            if not self.context_service:
+                self.console.print(
+                    Text(
+                        "❌ Context persistence service not available", style="bold red"
+                    )
+                )
+                return
+
+            behavior_text = behavior_text.strip()
+
+            if not behavior_text:
+                self.console.print(
+                    Text("❌ Behavior text cannot be empty", style="bold red")
+                )
+                return
+
+            behavior_lower = behavior_text.lower().strip()
+            if not behavior_lower.startswith("when"):
+                self.console.print(
+                    Text(
+                        "❌ Behavior must follow 'when..., [action]...' format",
+                        style="bold red",
+                    )
+                )
+                return
+
+            is_local = scope == "project"
+            success = self.context_service.store_adaptive_behavior(
+                self.message_handler.agent.name,
+                behavior_id,
+                behavior_text,
+                is_local=is_local,
+            )
+
+            if success:
+                self.console.print(
+                    Text(
+                        f"✅ Behavior '{behavior_id}' updated successfully ({scope} scope)",
+                        style="bold green",
+                    )
+                )
+            else:
+                self.console.print(Text("❌ Failed to save behavior", style="bold red"))
+
+        except ValueError as e:
+            self.console.print(
+                Text(f"❌ Invalid behavior format: {str(e)}", style="bold red")
+            )
+        except Exception as e:
+            self.console.print(
+                Text(f"❌ Error updating behavior: {str(e)}", style="bold red")
+            )
+            logger.error(f"Update behavior error: {str(e)}", exc_info=True)
+
+    def handle_delete_behavior_command(
+        self, behavior_id: str, scope: str = "global"
+    ) -> None:
+        try:
+            if not self.context_service:
+                self.console.print(
+                    Text(
+                        "❌ Context persistence service not available", style="bold red"
+                    )
+                )
+                return
+
+            is_local = scope == "project"
+
+            success = self.context_service.remove_adaptive_behavior(
+                self.message_handler.agent.name, behavior_id, is_local=is_local
+            )
+            if success:
+                self.console.print(
+                    Text(
+                        f"✅ Behavior '{behavior_id}' deleted successfully",
+                        style="bold green",
+                    )
+                )
+            else:
+                self.console.print(
+                    Text(
+                        f"❌ Failed to delete behavior '{behavior_id}'",
+                        style="bold red",
+                    )
+                )
+
+        except Exception as e:
+            self.console.print(
+                Text(f"❌ Error deleting behavior: {str(e)}", style="bold red")
+            )
+            logger.error(f"Delete behavior error: {str(e)}", exc_info=True)
+
+    def get_all_behavior_ids(self) -> list[str]:
+        try:
+            if not self.context_service:
+                return []
+
+            all_behaviors = self.context_service.get_adaptive_behaviors(
+                self.message_handler.agent.name
+            ) | self.context_service.get_adaptive_behaviors(
+                self.message_handler.agent.name, is_local=True
+            )
+            behavior_ids = []
+
+            for id, _ in all_behaviors.items():
+                behavior_ids.extend(id)
+
+            return behavior_ids
+        except Exception:
+            return []

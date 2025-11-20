@@ -513,7 +513,9 @@ class ContextPersistenceService:
             logger.error(f"ERROR: Failed to store adaptive behavior: {e}")
             return False
 
-    def remove_adaptive_behavior(self, agent_name: str, behavior_id: str) -> bool:
+    def remove_adaptive_behavior(
+        self, agent_name: str, behavior_id: str, is_local: bool = False
+    ) -> bool:
         """
         Removes a specific adaptive behavior for an agent.
 
@@ -524,9 +526,13 @@ class ContextPersistenceService:
         Returns:
             True if successful or behavior didn't exist, False on error.
         """
-        adaptive_data = self._read_json_file(
-            self.adaptive_behaviors_file_path, default_value={}
+
+        adaptive_file_path = (
+            self.adaptive_behaviors_local_path
+            if is_local
+            else self.adaptive_behaviors_file_path
         )
+        adaptive_data = self._read_json_file(adaptive_file_path, default_value={})
 
         if not isinstance(adaptive_data, dict):
             logger.warning("WARNING: Adaptive behaviors file was not a dictionary.")
@@ -540,7 +546,7 @@ class ContextPersistenceService:
                 del adaptive_data[agent_name]
 
             try:
-                self._write_json_file(self.adaptive_behaviors_file_path, adaptive_data)
+                self._write_json_file(adaptive_file_path, adaptive_data)
                 logger.info(
                     f"INFO: Removed adaptive behavior '{behavior_id}' for agent '{agent_name}'"
                 )

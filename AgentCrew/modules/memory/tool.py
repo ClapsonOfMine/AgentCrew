@@ -220,8 +220,7 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
         "scope": {
             "type": "string",
             "enum": ["global", "project"],
-            "default": "global",
-            "description": "Scope of the behavior. 'global' for all interactions, 'project' for current project only. Default is 'global'. Optional.",
+            "description": "Scope of the behavior. 'global' apply for all conversations, 'project' applys for current project only. Use project scope when behavior is project-specific, use global if behavior is general.",
         },
     }
 
@@ -276,7 +275,7 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
 
         try:
             success = persistence_service.store_adaptive_behavior(
-                agent_name, behavior_id, behavior, scope == "local"
+                agent_name, behavior_id, behavior, scope == "project"
             )
             return (
                 f"Stored behavior '{behavior_id}': {behavior}"
