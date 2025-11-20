@@ -11,6 +11,8 @@ from a2a.types import (
     SecurityScheme,
     APIKeySecurityScheme,
     AgentProvider,
+    AgentInterface,
+    TransportProtocol,
 )
 from AgentCrew import __version__
 
@@ -107,16 +109,20 @@ def create_agent_card(agent: LocalAgent, base_url: str) -> AgentCard:
     )
 
     return AgentCard(
+        protocol_version="0.3.0",
         name=agent.name if hasattr(agent, "name") else "AgentCrew Assistant",
         description=agent.description
         if hasattr(agent, "description")
         else "An AI assistant powered by AgentCrew",
         url=base_url,
+        preferred_transport=TransportProtocol.jsonrpc,
+        additional_interfaces=[
+            AgentInterface(url=base_url, transport=TransportProtocol.jsonrpc)
+        ],
         provider=provider,
-        version=__version__,  # Should match AgentCrew version
+        version=__version__,
         capabilities=capabilities,
         skills=skills,
-        # Most SwissKnife agents work with text and files
         default_input_modes=["text/plain", "application/octet-stream"],
         default_output_modes=["text/plain", "application/octet-stream"],
         security_schemes={"apiKey": security_schemes},

@@ -58,7 +58,9 @@ def common_options(func):
         help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
     )
     @click.option(
-        "--agent-config", default=None, help="Path/URL to the agent configuration file."
+        "--agent-config",
+        default=None,
+        help="Path/URL to the agent configuration file.",
     )
     @click.option(
         "--mcp-config", default=None, help="Path to the mcp servers configuration file."

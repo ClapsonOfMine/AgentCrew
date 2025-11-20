@@ -20,7 +20,6 @@ from .registry import AgentRegistry
 from .task_manager import MultiAgentTaskManager
 from a2a.types import (
     A2ARequest,
-    JSONRPCError,
     JSONRPCResponse,
     JSONRPCErrorResponse,
     InvalidRequestError,
@@ -30,6 +29,8 @@ from a2a.types import (
     SendStreamingMessageRequest,
     GetTaskRequest,
     CancelTaskRequest,
+    TaskResubscriptionRequest,
+    MethodNotFoundError,
 )
 
 
@@ -228,13 +229,31 @@ class A2AServer:
                     result = await task_manager.on_cancel_task(json_rpc_request.root)
                     return JSONResponse(result.model_dump(exclude_none=True))
 
+                elif method == "tasks/resubscribe" and isinstance(
+                    json_rpc_request.root, TaskResubscriptionRequest
+                ):
+                    result_stream = task_manager.on_resubscribe_to_task(
+                        json_rpc_request.root
+                    )
+
+                    if isinstance(result_stream, JSONRPCResponse):
+                        return JSONResponse(result_stream.model_dump(exclude_none=True))
+
+                    async def event_generator():
+                        async for item in result_stream:  # type: ignore
+                            yield {
+                                "data": json.dumps(item.model_dump(exclude_none=True))
+                            }
+
+                    return EventSourceResponse(event_generator())
+
                 else:
                     logger.error(f"Invalid method requested: {method}")
                     logger.error(f"Request ID: {json_rpc_request.root.id}")
                     logger.error(f"Request params: {json_rpc_request.root.params}")  # type: ignore
                     error = JSONRPCErrorResponse(
                         id=json_rpc_request.root.id,
-                        error=JSONRPCError(code=-32601, message="Method not found"),
+                        error=MethodNotFoundError(),
                     )
                     return JSONResponse(
                         error.model_dump(exclude_none=True), status_code=400

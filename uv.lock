@@ -31,7 +31,7 @@ conflicts = [[
 
 [[package]]
 name = "a2a-sdk"
-version = "0.3.7"
+version = "0.3.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
@@ -40,9 +40,9 @@ dependencies = [
     { name = "protobuf" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8d/ad/b6ecb58f44459a24f1c260e91304e1ddbb7a8e213f1f82cc4c074f66e9bb/a2a_sdk-0.3.7.tar.gz", hash = "sha256:795aa2bd2cfb3c9e8654a1352bf5f75d6cf1205b262b1bf8f4003b5308267ea2", size = 223426, upload-time = "2025-09-23T16:27:29.585Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/73/7351f61a38ae0b9a0f0a24cd34c39cb564335b012897b274aa790241686a/a2a_sdk-0.3.15.tar.gz", hash = "sha256:df137fc3a18bb1d72c2018417aadd5d6263ded5c915b64d8a31719c098b968a5", size = 228712, upload-time = "2025-11-19T15:43:01.387Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/27/9cf8c6de4ae71e9c98ec96b3304449d5d0cd36ec3b95e66b6e7f58a9e571/a2a_sdk-0.3.7-py3-none-any.whl", hash = "sha256:0813b8fd7add427b2b56895cf28cae705303cf6d671b305c0aac69987816e03e", size = 137957, upload-time = "2025-09-23T16:27:27.546Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/95/8b6135cc307f81fe60c408132ea73f35e7b2533c25ad14867e7658ebe4b3/a2a_sdk-0.3.15-py3-none-any.whl", hash = "sha256:52e4f917346fbce6d809f38585184a8ddb4abe57b435a18a982340589cf9d4f5", size = 141380, upload-time = "2025-11-19T15:43:00.007Z" },
 ]
 
 [[package]]
@@ -137,7 +137,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2a-sdk", specifier = ">=0.2.9" },
+    { name = "a2a-sdk", specifier = ">=0.3.10" },
     { name = "anthropic" },
     { name = "chromadb", specifier = ">=1.0.0" },
     { name = "click" },

@@ -6,6 +6,7 @@ Refactored to use separate modules for different responsibilities.
 from __future__ import annotations
 import asyncio
 import time
+import sys
 import signal
 from typing import Any
 from rich.console import Console
@@ -421,11 +422,12 @@ class ConsoleUI(Observer):
 
         try:
             while True:
-                if (
-                    not signal.getsignal(signal.SIGWINCH)
-                    or signal.getsignal(signal.SIGWINCH) == signal.SIG_DFL
-                ):
-                    signal.signal(signal.SIGWINCH, self._handle_terminal_resize)
+                if sys.platform != "win32":
+                    if (
+                        not signal.getsignal(signal.SIGWINCH)
+                        or signal.getsignal(signal.SIGWINCH) == signal.SIG_DFL
+                    ):
+                        signal.signal(signal.SIGWINCH, self._handle_terminal_resize)
                 try:
                     # Get user input (now in separate thread)
                     self.input_handler.is_message_processing = False

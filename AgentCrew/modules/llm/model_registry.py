@@ -50,7 +50,7 @@ class ModelRegistry:
     def get_model_sample_params(cls, mode_id):
         registry = ModelRegistry.get_instance()
         model = registry.get_model(mode_id)
-        if not model or not model.force_sample_params:
+        if not model:
             logger.warning(f"Model not found in registry: {mode_id}")
             return None
         return model.force_sample_params

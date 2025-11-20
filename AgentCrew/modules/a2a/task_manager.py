@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from typing import TYPE_CHECKING
+from collections import defaultdict
 from AgentCrew.modules.agents.base import MessageType
 from loguru import logger
 import tempfile
@@ -26,8 +27,6 @@ from a2a.types import (
     TaskState,
     TaskStatusUpdateEvent,
     TaskArtifactUpdateEvent,
-    TaskNotFoundError,
-    TaskNotCancelableError,
 )
 
 from AgentCrew.modules.agents import LocalAgent
@@ -37,12 +36,14 @@ from .adapters import (
     convert_agent_message_to_a2a,
 )
 from .common.server.task_manager import TaskManager
+from .errors import A2AError
 
 if TYPE_CHECKING:
     from typing import Any, AsyncIterable, Dict, Optional, Union
     from AgentCrew.modules.agents import AgentManager
     from a2a.types import (
         CancelTaskRequest,
+        TaskNotCancelableError,
         GetTaskPushNotificationConfigRequest,
         GetTaskRequest,
         SendMessageRequest,
@@ -56,6 +57,8 @@ if TYPE_CHECKING:
 class AgentTaskManager(TaskManager):
     """Manages tasks for a specific agent"""
 
+    TERMINAL_STATES = {TaskState.completed, TaskState.canceled, TaskState.failed}
+
     def __init__(self, agent_name: str, agent_manager: AgentManager):
         self.agent_name = agent_name
         self.agent_manager = agent_manager
@@ -64,11 +67,37 @@ class AgentTaskManager(TaskManager):
         self.streaming_tasks: Dict[str, asyncio.Queue] = {}
         self.file_handler = None
 
+        self.task_events: Dict[
+            str, list[Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]]
+        ] = defaultdict(list)
+        self.streaming_enabled_tasks: set[str] = set()
+
         self.agent = self.agent_manager.get_agent(self.agent_name)
         if self.agent is None or not isinstance(self.agent, LocalAgent):
             raise ValueError(f"Agent {agent_name} not found or is not a LocalAgent")
 
         self.memory_service = self.agent.services["memory"]
+
+    def _is_terminal_state(self, state: TaskState) -> bool:
+        """Check if a state is terminal."""
+        return state in self.TERMINAL_STATES
+
+    def _validate_task_not_terminal(
+        self, task: Task, operation: str
+    ) -> Optional[TaskNotCancelableError]:
+        """
+        Validate that task is not in terminal state.
+
+        Args:
+            task: Task to check
+            operation: Operation being attempted
+
+        Returns:
+            JSONRPCError if invalid, None if valid
+        """
+        if self._is_terminal_state(task.status.state):
+            return A2AError.task_not_cancelable(task.id, task.status.state.value)
+        return None
 
     async def on_send_message(
         self, request: SendMessageRequest | SendStreamingMessageRequest
@@ -97,6 +126,14 @@ class AgentTaskManager(TaskManager):
             request.params.message.task_id
             or f"task_{request.params.message.message_id}"
         )
+
+        if task_id in self.tasks:
+            existing_task = self.tasks[task_id]
+            error = self._validate_task_not_terminal(existing_task, "send message")
+            if error:
+                return SendMessageResponse(
+                    root=JSONRPCErrorResponse(id=request.id, error=error)
+                )
 
         if task_id not in self.tasks:
             # Create task with initial state
@@ -176,6 +213,8 @@ class AgentTaskManager(TaskManager):
             or f"task_{request.params.message.message_id}"
         )
 
+        self.streaming_enabled_tasks.add(task_id)
+
         # Create streaming queue
         queue = asyncio.Queue()
         self.streaming_tasks[task_id] = queue
@@ -204,6 +243,27 @@ class AgentTaskManager(TaskManager):
             # Clean up
             self.streaming_tasks.pop(task_id, None)
 
+    def _record_and_emit_event(
+        self, task_id: str, event: Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]
+    ):
+        """
+        Record event for replay and broadcast to all active subscribers.
+
+        Args:
+            task_id: Task ID
+            event: Event to record and emit
+        """
+        self.task_events[task_id].append(event)
+
+        for key, queue in list(self.streaming_tasks.items()):
+            if key.startswith(task_id):
+                try:
+                    queue.put_nowait(event)
+                except asyncio.QueueFull:
+                    logger.warning(f"Queue full for {key}")
+                except Exception as e:
+                    logger.error(f"Error emitting event to {key}: {e}")
+
     async def _process_agent_task(self, agent: LocalAgent, task: Task):
         """
         Process a task with the agent (background task).
@@ -213,6 +273,12 @@ class AgentTaskManager(TaskManager):
             message: The message to process
             task: The task object to update
         """
+        if self._is_terminal_state(task.status.state):
+            logger.warning(
+                f"Attempted to process task {task.id} in terminal state {task.status.state}"
+            )
+            return
+
         try:
             artifacts = []
             if task.id not in self.task_history:
@@ -253,15 +319,14 @@ class AgentTaskManager(TaskManager):
                     task.status.timestamp = datetime.now().isoformat()
 
                     # If this is a streaming task, send updates
-                    if task.id in self.streaming_tasks:
-                        queue = self.streaming_tasks[task.id]
-
+                    if task.id in self.streaming_enabled_tasks:
                         # Send thinking update if available
                         if thinking_chunk:
                             think_text_chunk, signature = thinking_chunk
                             if think_text_chunk:
                                 thinking_content += think_text_chunk
-                                await queue.put(
+                                self._record_and_emit_event(
+                                    task.id,
                                     TaskStatusUpdateEvent(
                                         task_id=task.id,
                                         context_id=task.context_id,
@@ -276,7 +341,7 @@ class AgentTaskManager(TaskManager):
                                             ),
                                         ),
                                         final=False,
-                                    )
+                                    ),
                                 )
                             if signature:
                                 thinking_signature += signature
@@ -287,30 +352,30 @@ class AgentTaskManager(TaskManager):
                                 chunk_text,
                                 artifact_id=f"artifact_{task.id}_{len(artifacts)}",
                             )
-                            await queue.put(
+                            self._record_and_emit_event(
+                                task.id,
                                 TaskArtifactUpdateEvent(
                                     task_id=task.id,
                                     context_id=task.context_id,
                                     artifact=artifact,
-                                )
+                                ),
                             )
 
                 if tool_uses and len(tool_uses) > 0:
-                    if task.id in self.streaming_tasks:
-                        queue = self.streaming_tasks[task.id]
+                    if task.id in self.streaming_enabled_tasks:
                         artifact = convert_agent_response_to_a2a_artifact(
                             "",
                             artifact_id=f"artifact_{task.id}_{len(artifacts)}",
                             tool_uses=tool_uses,
                         )
-                        await queue.put(
+                        self._record_and_emit_event(
+                            task.id,
                             TaskArtifactUpdateEvent(
                                 task_id=task.id,
                                 context_id=task.context_id,
                                 artifact=artifact,
-                            )
+                            ),
                         )
-                        # prevent the execute_tool_call take the control of event loop before queue has been process
                         await asyncio.sleep(0.7)
 
                     # Add thinking content as a separate message if available
@@ -399,21 +464,21 @@ class AgentTaskManager(TaskManager):
             task.artifacts = artifacts
 
             # If this is a streaming task, send final update
-            if task.id in self.streaming_tasks:
-                queue = self.streaming_tasks[task.id]
-
-                # Send final status
-                await queue.put(
+            if task.id in self.streaming_enabled_tasks:
+                self._record_and_emit_event(
+                    task.id,
                     TaskStatusUpdateEvent(
                         task_id=task.id,
                         context_id=task.context_id,
                         status=task.status,
                         final=True,
-                    )
+                    ),
                 )
 
-                # Mark queue as done
-                await queue.put(None)
+                for key in list(self.streaming_tasks.keys()):
+                    if key.startswith(task.id):
+                        queue = self.streaming_tasks[key]
+                        await queue.put(None)
 
         except Exception as e:
             logger.error(str(e))
@@ -422,17 +487,21 @@ class AgentTaskManager(TaskManager):
             task.status.timestamp = datetime.now().isoformat()
 
             # If this is a streaming task, send error
-            if task.id in self.streaming_tasks:
-                queue = self.streaming_tasks[task.id]
-                await queue.put(
+            if task.id in self.streaming_enabled_tasks:
+                self._record_and_emit_event(
+                    task.id,
                     TaskStatusUpdateEvent(
                         task_id=task.id,
                         context_id=task.context_id,
                         status=task.status,
                         final=True,
-                    )
+                    ),
                 )
-                await queue.put(None)
+
+                for key in list(self.streaming_tasks.keys()):
+                    if key.startswith(task.id):
+                        queue = self.streaming_tasks[key]
+                        await queue.put(None)
 
     async def on_get_task(self, request: GetTaskRequest) -> GetTaskResponse:
         """
@@ -447,7 +516,9 @@ class AgentTaskManager(TaskManager):
         task_id = request.params.id
         if task_id not in self.tasks:
             return GetTaskResponse(
-                root=JSONRPCErrorResponse(id=request.id, error=TaskNotFoundError())
+                root=JSONRPCErrorResponse(
+                    id=request.id, error=A2AError.task_not_found(task_id)
+                )
             )
 
         return GetTaskResponse(
@@ -467,19 +538,17 @@ class AgentTaskManager(TaskManager):
         task_id = request.params.id
         if task_id not in self.tasks:
             return CancelTaskResponse(
-                root=JSONRPCErrorResponse(id=request.id, error=TaskNotFoundError())
+                root=JSONRPCErrorResponse(
+                    id=request.id, error=A2AError.task_not_found(task_id)
+                )
             )
 
         task = self.tasks[task_id]
 
-        # Check if task can be canceled
-        if task.status.state in [
-            TaskState.completed,
-            TaskState.failed,
-            TaskState.canceled,
-        ]:
+        error = self._validate_task_not_terminal(task, "cancel")
+        if error:
             return CancelTaskResponse(
-                root=JSONRPCErrorResponse(id=request.id, error=TaskNotCancelableError())
+                root=JSONRPCErrorResponse(id=request.id, error=error)
             )
 
         # Update task status
@@ -506,17 +575,89 @@ class AgentTaskManager(TaskManager):
     async def on_set_task_push_notification(
         self, request: SetTaskPushNotificationConfigRequest
     ) -> SetTaskPushNotificationConfigResponse:
-        raise NotImplementedError("")
+        return SetTaskPushNotificationConfigResponse(
+            root=JSONRPCErrorResponse(
+                id=request.id, error=A2AError.push_notification_not_supported()
+            )
+        )
 
     async def on_get_task_push_notification(
         self, request: GetTaskPushNotificationConfigRequest
     ) -> GetTaskPushNotificationConfigResponse:
-        raise NotImplementedError("")
+        return GetTaskPushNotificationConfigResponse(
+            root=JSONRPCErrorResponse(
+                id=request.id, error=A2AError.push_notification_not_supported()
+            )
+        )
 
     async def on_resubscribe_to_task(
         self, request: TaskResubscriptionRequest
     ) -> Union[AsyncIterable[SendStreamingMessageResponse], JSONRPCResponse]:
-        raise NotImplementedError("")
+        """
+        Handle tasks/resubscribe request.
+
+        Replays all events from task creation and continues with live updates.
+
+        Args:
+            request: The resubscription request
+
+        Yields:
+            Streaming responses with task updates
+        """
+        task_id = request.params.task_id
+
+        if task_id not in self.tasks:
+            error = A2AError.task_not_found(task_id)
+            yield SendStreamingMessageResponse(
+                root=JSONRPCErrorResponse(id=request.id, error=error)
+            )
+            return
+
+        if task_id not in self.streaming_enabled_tasks:
+            error = A2AError.unsupported_operation(
+                "Task was not created with streaming enabled"
+            )
+            yield SendStreamingMessageResponse(
+                root=JSONRPCErrorResponse(id=request.id, error=error)
+            )
+            return
+
+        task = self.tasks[task_id]
+
+        if task_id in self.task_events:
+            for event in self.task_events[task_id]:
+                yield SendStreamingMessageResponse(
+                    root=SendStreamingMessageSuccessResponse(
+                        id=request.id, result=event
+                    )
+                )
+
+        if self._is_terminal_state(task.status.state):
+            return
+
+        queue = asyncio.Queue()
+        resubscribe_key = f"{task_id}_resub_{request.id}"
+        self.streaming_tasks[resubscribe_key] = queue
+
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+
+                yield SendStreamingMessageResponse(
+                    root=SendStreamingMessageSuccessResponse(
+                        id=request.id, result=event
+                    )
+                )
+
+                if isinstance(event, TaskStatusUpdateEvent):
+                    if self._is_terminal_state(event.status.state):
+                        break
+
+        finally:
+            if resubscribe_key in self.streaming_tasks:
+                del self.streaming_tasks[resubscribe_key]
 
     # Legacy methods for backward compatibility
     async def on_send_task(self, request: SendMessageRequest) -> SendMessageResponse:
