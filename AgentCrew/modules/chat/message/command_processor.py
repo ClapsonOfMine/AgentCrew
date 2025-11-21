@@ -101,6 +101,9 @@ class CommandProcessor:
 
     async def _handle_copy_command(self, user_input: str) -> CommandResult:
         copy_idx = user_input[5:].strip() or 1
+        user_input_idxs = [
+            turn.message_index for turn in self.message_handler.conversation_turns
+        ]
 
         asssistant_messages_iterator = reversed(
             [
@@ -108,8 +111,7 @@ class CommandProcessor:
                 for i, msg in enumerate(self.message_handler.streamline_messages)
                 if msg.get("role") == "assistant"
                 and (
-                    self.message_handler.streamline_messages[i + 1].get("role")
-                    == "user"
+                    i + 1 in user_input_idxs
                     if i + 1 < len(self.message_handler.streamline_messages)
                     else True
                 )
