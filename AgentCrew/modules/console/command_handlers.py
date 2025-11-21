@@ -346,8 +346,8 @@ class CommandHandlers:
             for behavior_id, behavior_text in project_behaviors.items():
                 project_table.add_row(behavior_id, behavior_text)
 
-                self.console.print(project_table)
-                self.console.print()
+            self.console.print(project_table)
+            self.console.print()
 
     def handle_update_behavior_command(
         self, behavior_id: str, behavior_text: str, scope: str = "global"
