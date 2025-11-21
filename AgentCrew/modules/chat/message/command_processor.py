@@ -105,8 +105,14 @@ class CommandProcessor:
         asssistant_messages_iterator = reversed(
             [
                 msg
-                for msg in self.message_handler.streamline_messages
+                for i, msg in enumerate(self.message_handler.streamline_messages)
                 if msg.get("role") == "assistant"
+                and (
+                    self.message_handler.streamline_messages[i + 1].get("role")
+                    == "user"
+                    if i + 1 < len(self.message_handler.streamline_messages)
+                    else True
+                )
             ]
         )
         latest_assistant_blk = None

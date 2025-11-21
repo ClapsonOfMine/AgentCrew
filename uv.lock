@@ -67,7 +67,7 @@ wheels = [
 
 [[package]]
 name = "agentcrew-ai"
-version = "0.8.3"
+version = "0.8.4"
 source = { editable = "." }
 dependencies = [
     { name = "a2a-sdk" },
