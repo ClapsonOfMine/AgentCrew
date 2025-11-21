@@ -217,6 +217,9 @@ class DisplayHandlers:
                     transfer_text.append(f"{msg.get('agent', 'unknown')} agent")
                     self.display_message(transfer_text)
                     continue
+
+                elif content.startswith("Content of "):
+                    continue
                 self.display_user_message(content)
             elif role == "assistant":
                 agent_name = msg.get("agent") or default_agent_name

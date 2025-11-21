@@ -189,6 +189,7 @@ class ConsoleUI(Observer):
             )
             preview_text = Text("Conversation rewound to: ", style=RICH_STYLE_YELLOW)
             preview_text.append(data["preview"])
+            self._clean_and_reprint_chat()
 
             self.display_handlers.display_message(jump_text)
             self.display_handlers.display_message(preview_text)
@@ -286,25 +287,14 @@ class ConsoleUI(Observer):
         Signal handler for SIGWINCH.
         This function is called when the terminal window is resized.
         """
-        import os
         import time
 
         if self.input_handler.is_message_processing or self._is_resizing:
             return  # Ignore resize during message processing
         self._is_resizing = True
         time.sleep(0.5)  # brief pause to allow resize to complete
-        os.system("cls" if os.name == "nt" else "printf '\033c'")
-        self.display_handlers.display_loaded_conversation(
-            self.message_handler.streamline_messages, self.message_handler.agent.name
-        )
-        self.display_handlers.print_prompt_prefix(
-            self.message_handler.agent.name,
-            self.message_handler.agent.get_model(),
-            self.message_handler.tool_manager.get_effective_yolo_mode(),
-        )
-
+        self._clean_and_reprint_chat()
         self.display_handlers.print_divider("👤 YOU: ", with_time=True)
-
         prompt = Text(
             PROMPT_CHAR,
             style=RICH_STYLE_BLUE,
@@ -317,6 +307,21 @@ class ConsoleUI(Observer):
 
         self.console.print(prompt, end="")
         self._is_resizing = False
+
+    def _clean_and_reprint_chat(self):
+        """Clear and reprint the chat display."""
+
+        import os
+
+        os.system("cls" if os.name == "nt" else "printf '\033c'")
+        self.display_handlers.display_loaded_conversation(
+            self.message_handler.streamline_messages, self.message_handler.agent.name
+        )
+        self.display_handlers.print_prompt_prefix(
+            self.message_handler.agent.name,
+            self.message_handler.agent.get_model(),
+            self.message_handler.tool_manager.get_effective_yolo_mode(),
+        )
 
     def start_streaming_response(self, agent_name: str):
         """Start streaming the assistant's response."""

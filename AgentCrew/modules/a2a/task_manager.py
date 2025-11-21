@@ -604,7 +604,7 @@ class AgentTaskManager(TaskManager):
         Yields:
             Streaming responses with task updates
         """
-        task_id = request.params.task_id
+        task_id = request.params.id
 
         if task_id not in self.tasks:
             error = A2AError.task_not_found(task_id)
