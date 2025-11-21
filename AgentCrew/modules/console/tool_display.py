@@ -11,6 +11,7 @@ from rich.panel import Panel
 from rich.box import HORIZONTALS
 from rich.text import Text
 
+from .diff_display import DiffDisplay
 from .constants import (
     RICH_STYLE_GRAY,
     RICH_STYLE_YELLOW,
@@ -59,7 +60,19 @@ class ToolDisplayHandlers:
         header.append(tool_use["name"], style=RICH_STYLE_GRAY)
 
         tool_parameters = tool_use.get("input") or tool_use.get("arguments")
-        # Format tool input parameters
+
+        if tool_use["name"] == "write_or_edit_file" and isinstance(
+            tool_parameters, dict
+        ):
+            file_path = tool_parameters.get("file_path", "")
+            text_or_blocks = tool_parameters.get("text_or_search_replace_blocks", "")
+
+            if DiffDisplay.has_search_replace_blocks(text_or_blocks):
+                self._display_write_or_edit_file_use(
+                    tool_use, file_path, text_or_blocks
+                )
+                return
+
         if isinstance(tool_parameters, dict):
             tool_texts_group.append(Text("Parameters:", style=RICH_STYLE_YELLOW))
             for key, value in tool_parameters.items():
@@ -96,6 +109,27 @@ class ToolDisplayHandlers:
             )
         )
 
+    def _display_write_or_edit_file_use(
+        self, tool_use: Dict, file_path: str, blocks_text: str
+    ):
+        """Display write_or_edit_file tool with split diff view."""
+        tool_icon = self.get_tool_icon(tool_use["name"])
+
+        header = Text(f"{tool_icon} Tool: ", style=RICH_STYLE_GRAY)
+        header.append("write_or_edit_file", style=RICH_STYLE_GRAY)
+        header.append(f" → {file_path}", style=RICH_STYLE_BLUE)
+
+        self.console.print(Panel(header, box=HORIZONTALS, title_align="left"))
+
+        blocks = DiffDisplay.parse_search_replace_blocks(blocks_text)
+
+        if blocks:
+            for block in blocks:
+                diff_table = DiffDisplay.create_split_diff_table(
+                    block["search"], block["replace"], max_width=self.console.width - 4
+                )
+                self.console.print(diff_table)
+
     def display_tool_result(self, data: Dict):
         """Display the result of a tool execution."""
         tool_use = data["tool_use"]
@@ -104,13 +138,10 @@ class ToolDisplayHandlers:
 
         tool_texts_group = []
 
-        # Display tool result with better formatting
         header = Text(f"{tool_icon} Tool Result: ", style=RICH_STYLE_GREEN)
         header.append(tool_use["name"], style=RICH_STYLE_GREEN_BOLD)
 
-        # Format the result based on type
         result_str = str(tool_result)
-        # If result is very long, try to format it
         if len(result_str) > 500:
             result_line = Text(result_str[:500] + "...", style=RICH_STYLE_GREEN)
             tool_texts_group.append(result_line)
