@@ -7,7 +7,7 @@ scroll content, and extract page information using Chrome DevTools Protocol.
 
 import time
 from typing import Dict, Any, Optional, List
-from html_to_markdown import convert_to_markdown
+from html_to_markdown import convert, ConversionOptions, PreprocessingOptions
 import urllib.parse
 
 from html.parser import HTMLParser
@@ -344,13 +344,23 @@ class BrowserAutomationService:
                 filtered_html = self._filter_hidden_elements(raw_html)
 
             # Convert HTML to markdown
-            raw_markdown_content = convert_to_markdown(
+            # raw_markdown_content = convert_to_markdown(
+            #     filtered_html,
+            #     source_encoding="utf-8",
+            #     strip_newlines=True,
+            #     extract_metadata=False,
+            #     remove_forms=False,
+            #     remove_navigation=False,
+            # )
+            raw_markdown_content = convert(
                 filtered_html,
-                source_encoding="utf-8",
-                strip_newlines=True,
-                extract_metadata=False,
-                remove_forms=False,
-                remove_navigation=False,
+                ConversionOptions(
+                    strip_newlines=True,
+                    extract_metadata=False,
+                ),
+                PreprocessingOptions(
+                    remove_navigation=False, remove_forms=False, preset="minimal"
+                ),
             )
             if not raw_markdown_content:
                 return {"success": False, "error": "Could not convert HTML to markdown"}

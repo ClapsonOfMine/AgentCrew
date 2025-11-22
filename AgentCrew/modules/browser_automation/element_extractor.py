@@ -68,7 +68,7 @@ def clean_markdown_images(markdown_content: str) -> str:
         Cleaned markdown content
     """
     # Pattern for markdown images: ![alt](url)
-    markdown_img_pattern = r"!\[([^\]]*)\]\(([^)]+)\)"
+    markdown_img_pattern = r"!?\[([^\]]*)\]\(([^)]+)\)"
 
     def replace_markdown_img(match):
         alt_text = match.group(1)

@@ -321,6 +321,8 @@ class MessageHandler(Observable):
                                     .lstrip("\n")
                                 )
 
+            self.stream_generator = None
+
             # End thinking when break the response stream
             if not end_thinking and start_thinking:
                 self._notify("thinking_completed", thinking_content)
@@ -385,8 +387,6 @@ class MessageHandler(Observable):
                     return assistant_response, input_tokens, output_tokens
 
                 return await self.get_assistant_response()
-
-            self.stream_generator = None
 
             if thinking_content:
                 self._notify("agent_continue", self.agent.name)
