@@ -642,7 +642,7 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": f"Here are conversations that we have discussed:\n- {'\n- '.join(memory_headers)}",
+                            "text": f"Here are conversations that we have discussed from oldest to latest:\n - {'\n - '.join(memory_headers)}",
                         }
                     )
         if len(adaptive_messages["content"]) > 0:
