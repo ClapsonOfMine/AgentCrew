@@ -3,7 +3,7 @@ from .service import CustomLLMService
 import os
 from dotenv import load_dotenv
 from loguru import logger
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import json
 from uuid import uuid4
@@ -76,7 +76,8 @@ class GithubCopilotService(CustomLLMService):
         return False
 
     def _convert_internal_format(self, messages: List[Dict[str, Any]]):
-        for msg in messages:
+        thinking_block = None
+        for i, msg in enumerate(messages):
             msg.pop("agent", None)
             if "tool_calls" in msg and msg.get("tool_calls", []):
                 for tool_call in msg["tool_calls"]:
@@ -85,6 +86,23 @@ class GithubCopilotService(CustomLLMService):
                     tool_call["function"]["arguments"] = json.dumps(
                         tool_call.pop("arguments", {})
                     )
+            if msg.get("role") == "assistant":
+                if thinking_block:
+                    msg["reasoning_text"] = thinking_block.get("thinking", "")
+                    msg["reasoning_opaque"] = thinking_block.get("signature", "")
+                    thinking_block = None
+                    del messages[i - 1]
+                if isinstance(msg.get("content", ""), List):
+                    thinking_block = next(
+                        (
+                            block
+                            for block in msg.get("content", [])
+                            if block.get("type", "text") == "thinking"
+                        ),
+                        None,
+                    )
+                    msg["content"] = []
+
             if msg.get("role") == "tool":
                 # Special treatment for GitHub Copilot GPT-4.1 model
                 # At the the time of writing, GitHub Copilot GPT-4.1 model cannot read tool results with array content
@@ -115,6 +133,8 @@ class GithubCopilotService(CustomLLMService):
                         msg["content"] = (
                             "\n".join(parsed_tool_result) if parsed_tool_result else ""
                         )
+                elif isinstance(msg.get("content", ""), str):
+                    msg["content"] = [{"type": "text", "text": msg["content"]}]
 
         return messages
 
@@ -126,6 +146,141 @@ class GithubCopilotService(CustomLLMService):
                 self.extra_headers["X-Initiator"] = "user"
                 self.extra_headers["X-Request-Id"] = str(uuid4())
         return await super().process_message(prompt, temperature)
+
+    def _process_stream_chunk(
+        self, chunk, assistant_response: str, tool_uses: List[Dict]
+    ) -> Tuple[str, List[Dict], int, int, Optional[str], Optional[tuple]]:
+        """
+        Process a single chunk from the streaming response.
+
+        Args:
+            chunk: The chunk from the stream
+            assistant_response: Current accumulated assistant response
+            tool_uses: Current tool use information
+
+        Returns:
+            tuple: (
+                updated_assistant_response,
+                updated_tool_uses,
+                input_tokens,
+                output_tokens,
+                chunk_text,
+                thinking_data
+            )
+        """
+        chunk_text = ""
+        input_tokens = 0
+        output_tokens = 0
+        thinking_content = None  # OpenAI doesn't support thinking mode
+        thinking_signature = None
+
+        # Handle thinking content
+        if (
+            chunk.choices
+            and len(chunk.choices) > 0
+            and hasattr(chunk.choices[0].delta, "reasoning_text")
+            and chunk.choices[0].delta.reasoning_text is not None
+        ):
+            thinking_content = chunk.choices[0].delta.reasoning_text
+
+        if (
+            chunk.choices
+            and len(chunk.choices) > 0
+            and hasattr(chunk.choices[0].delta, "reasoning_opaque")
+            and chunk.choices[0].delta.reasoning_opaque is not None
+        ):
+            thinking_signature = chunk.choices[0].delta.reasoning_opaque
+        # Handle regular content chunks
+        if (
+            chunk.choices
+            and len(chunk.choices) > 0
+            and hasattr(chunk.choices[0].delta, "content")
+            and chunk.choices[0].delta.content is not None
+        ):
+            chunk_text = chunk.choices[0].delta.content
+            assistant_response += chunk_text
+
+        # Handle final chunk with usage information
+        if hasattr(chunk, "usage"):
+            if hasattr(chunk.usage, "prompt_tokens"):
+                input_tokens = chunk.usage.prompt_tokens
+            if hasattr(chunk.usage, "completion_tokens"):
+                output_tokens = chunk.usage.completion_tokens
+
+        # Handle tool call chunks
+        if (
+            chunk.choices
+            and len(chunk.choices) > 0
+            and hasattr(chunk.choices[0].delta, "tool_calls")
+        ):
+            delta_tool_calls = chunk.choices[0].delta.tool_calls
+            if delta_tool_calls:
+                # Process each tool call in the delta
+                for tool_call_delta in delta_tool_calls:
+                    # Check if this is a new tool call
+                    if getattr(tool_call_delta, "id"):
+                        # Create a new tool call entry
+                        tool_uses.append(
+                            {
+                                "id": getattr(tool_call_delta, "id")
+                                if hasattr(tool_call_delta, "id")
+                                else f"toolu_{len(tool_uses)}",
+                                "name": getattr(tool_call_delta.function, "name", "")
+                                if hasattr(tool_call_delta, "function")
+                                else "",
+                                "input": {},
+                                "type": "function",
+                                "response": "",
+                            }
+                        )
+                    tool_call_index = len(tool_uses) - 1
+
+                    # # Update existing tool call with new data
+                    # if hasattr(tool_call_delta, "id") and tool_call_delta.id:
+                    #     tool_uses[tool_call_index]["id"] = tool_call_delta.id
+
+                    if hasattr(tool_call_delta, "function"):
+                        if (
+                            hasattr(tool_call_delta.function, "name")
+                            and tool_call_delta.function.name
+                        ):
+                            tool_uses[tool_call_index]["name"] = (
+                                tool_call_delta.function.name
+                            )
+
+                        if (
+                            hasattr(tool_call_delta.function, "arguments")
+                            and tool_call_delta.function.arguments
+                        ):
+                            # Accumulate arguments as they come in chunks
+                            current_args = tool_uses[tool_call_index].get(
+                                "args_json", ""
+                            )
+                            tool_uses[tool_call_index]["args_json"] = (
+                                current_args + tool_call_delta.function.arguments
+                            )
+
+                            # Try to parse JSON if it seems complete
+                            try:
+                                args_json = tool_uses[tool_call_index]["args_json"]
+                                tool_uses[tool_call_index]["input"] = json.loads(
+                                    args_json
+                                )
+                                # Keep args_json for accumulation but use input for execution
+                            except json.JSONDecodeError:
+                                # Arguments JSON is still incomplete, keep accumulating
+                                pass
+
+        return (
+            assistant_response or " ",
+            tool_uses,
+            input_tokens,
+            output_tokens,
+            chunk_text,
+            (thinking_content, thinking_signature)
+            if thinking_content or thinking_signature
+            else None,
+        )
 
     async def stream_assistant_response(self, messages):
         """Stream the assistant's response with tool support."""

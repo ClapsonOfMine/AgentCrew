@@ -358,7 +358,7 @@ class CustomLLMService(OpenAIService):
                 thinking_data
             )
         """
-        chunk_text = None
+        chunk_text = ""
         input_tokens = 0
         output_tokens = 0
         thinking_content = None  # OpenAI doesn't support thinking mode
@@ -462,14 +462,6 @@ class CustomLLMService(OpenAIService):
                             except json.JSONDecodeError:
                                 # Arguments JSON is still incomplete, keep accumulating
                                 pass
-                return (
-                    assistant_response or " ",
-                    tool_uses,
-                    input_tokens,
-                    output_tokens,
-                    "",
-                    (thinking_content, None) if thinking_content else None,
-                )
 
         return (
             assistant_response or " ",
