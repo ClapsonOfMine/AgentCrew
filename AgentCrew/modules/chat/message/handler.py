@@ -279,7 +279,7 @@ class MessageHandler(Observable):
                     # Notify about response progress
                     if not self.agent.is_streaming():
                         # Delays it a bit when using without stream
-                        time.sleep(0.5)
+                        time.sleep(0.3)
                     self._notify("response_chunk", (chunk_text, assistant_response))
                     if voice_sentence is not None:
                         if (

@@ -93,15 +93,23 @@ class UIEffects:
             self._loading_thread.join(timeout=0.5)
             self._loading_thread = None
 
-    def start_streaming_response(self, agent_name: str):
+    def start_streaming_response(self, agent_name: str, is_thinking=False):
         """Start streaming the assistant's response."""
         from .constants import RICH_STYLE_GREEN_BOLD
         from rich.text import Text
 
-        header = Text(f"🤖 {agent_name.upper()}:", style=RICH_STYLE_GREEN_BOLD)
+        header = Text(
+            f"💭 {agent_name.upper()}'s thinking:"
+            if is_thinking
+            else f"🤖 {agent_name.upper()}:",
+            style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN_BOLD,
+        )
 
         live_panel = Panel(
-            "", title=header, box=HORIZONTALS, border_style=RICH_STYLE_GREEN
+            "",
+            title=header,
+            box=HORIZONTALS,
+            border_style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN,
         )
 
         self.live = Live(
@@ -123,13 +131,13 @@ class UIEffects:
         if self.live:
             self.update_live_display(self.updated_text)
 
-    def update_live_display(self, chunk: str):
+    def update_live_display(self, chunk: str, is_thinking: bool = False):
         """Update the live display with a new chunk of the response."""
         if not self.live:
-            self.start_streaming_response(self.message_handler.agent.name)
+            self.start_streaming_response(self.message_handler.agent.name, is_thinking)
 
         if chunk != self.updated_text:
-            self.updated_text = chunk
+            self.updated_text = self.updated_text + chunk if is_thinking else chunk
 
         # Only show the last part that fits in the console
         lines = self.updated_text.split("\n")
@@ -151,9 +159,13 @@ class UIEffects:
             from .constants import RICH_STYLE_GREEN_BOLD
             from rich.text import Text
 
+            agent_name = self.message_handler.agent.name
+
             header = Text(
-                f"🤖 {self.message_handler.agent.name.upper()}:",
-                style=RICH_STYLE_GREEN_BOLD,
+                f"💭 {agent_name.upper()}'s thinking:"
+                if is_thinking
+                else f"🤖 {agent_name.upper()}:",
+                style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN_BOLD,
             )
             subtitle = Text(
                 f"{next(self.spinner)}(Use Ctrl+U/Ctrl+D to scroll)",
@@ -163,11 +175,11 @@ class UIEffects:
                 Markdown("\n".join(lines), code_theme=CODE_THEME),
                 title=header,
                 box=HORIZONTALS,
-                subtitle=subtitle,
+                subtitle=subtitle if not is_thinking else None,
                 title_align="left",
                 expand=False,
                 height=min(height_limit, len(lines)),
-                border_style=RICH_STYLE_GREEN,
+                border_style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN,
             )
             self.live.update(live_panel, refresh=True)
 
@@ -182,7 +194,7 @@ class UIEffects:
             self.live.stop()
             self.live = None
 
-    def finish_response(self, response: str):
+    def finish_response(self, response: str, is_thinking: bool = False):
         """Finalize and display the complete response."""
         from .constants import RICH_STYLE_GREEN_BOLD
         from rich.text import Text
@@ -202,16 +214,20 @@ class UIEffects:
         if not markdown_formatted_response.strip():
             return
 
+        agent_name = self.message_handler.agent.name
+
         header = Text(
-            f"🤖 {self.message_handler.agent.name.upper()}:",
-            style=RICH_STYLE_GREEN_BOLD,
+            f"💭 {agent_name.upper()}'s thinking:"
+            if is_thinking
+            else f"🤖 {agent_name.upper()}:",
+            style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN_BOLD,
         )
         assistant_panel = Panel(
             Markdown(markdown_formatted_response, code_theme=CODE_THEME),
             title=header,
             box=HORIZONTALS,
             title_align="left",
-            border_style=RICH_STYLE_GREEN,
+            border_style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN,
         )
         self.console.print(assistant_panel)
 

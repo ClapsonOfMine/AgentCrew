@@ -83,11 +83,17 @@ class ConsoleUI(Observer):
 
         if event == "thinking_started":
             self.ui_effects.stop_loading_animation()  # Stop loading on first chunk
-            self.display_handlers.display_thinking_started(data)  # data is agent_name
+            # self.display_handlers.display_thinking_started(data)  # data is agent_name
         elif event == "thinking_chunk":
-            self.display_handlers.display_thinking_chunk(
-                data
-            )  # data is the thinking chunk
+            self.ui_effects.update_live_display(data, is_thinking=True)
+            # self.display_handlers.display_thinking_chunk(
+            #     data
+            # )  # data is the thinking chunk
+            #
+        elif event == "thinking_completed":
+            self.ui_effects.finish_response(
+                self.ui_effects.updated_text, is_thinking=True
+            )
         elif event == "user_message_created":
             pass
         elif event == "response_chunk":
@@ -178,10 +184,6 @@ class ConsoleUI(Observer):
                 f"{data['agent_name'] if 'agent_name' in data else 'other'} agent"
             )
             self.display_handlers.display_message(transfer_text)
-        elif event == "agent_continue":
-            self.display_handlers.display_message(
-                Text(f"\n🤖 {data.upper()}:", style=RICH_STYLE_GREEN_BOLD)
-            )
         elif event == "jump_performed":
             jump_text = Text(
                 f"🕰️ Jumping to turn {data['turn_number']}...\n",
@@ -194,8 +196,6 @@ class ConsoleUI(Observer):
             self.display_handlers.display_message(jump_text)
             self.display_handlers.display_message(preview_text)
             self.input_handler.set_current_buffer(data["message"])
-        elif event == "thinking_completed":
-            self.display_handlers.display_divider()
         elif event == "file_processing":
             self.ui_effects.stop_loading_animation()  # Stop loading on first chunk
             self.display_handlers.add_file(data["file_path"])
