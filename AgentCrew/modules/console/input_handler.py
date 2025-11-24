@@ -163,7 +163,7 @@ class InputHandler:
             else:
                 if (
                     hasattr(self.message_handler, "stream_generator")
-                    and self.message_handler.stream_generator
+                    and not self.message_handler.stop_streaming
                 ):
                     try:
                         self.message_handler.stop_streaming = True
