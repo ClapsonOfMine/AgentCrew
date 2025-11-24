@@ -20,7 +20,6 @@ from .constants import (
     RICH_STYLE_GREEN,
     RICH_STYLE_BLUE,
     RICH_STYLE_YELLOW,
-    RICH_STYLE_GREEN_BOLD,
     RICH_STYLE_YELLOW_BOLD,
     PROMPT_CHAR,
 )

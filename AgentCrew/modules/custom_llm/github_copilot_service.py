@@ -79,13 +79,6 @@ class GithubCopilotService(CustomLLMService):
         thinking_block = None
         for i, msg in enumerate(messages):
             msg.pop("agent", None)
-            if "tool_calls" in msg and msg.get("tool_calls", []):
-                for tool_call in msg["tool_calls"]:
-                    tool_call["function"] = {}
-                    tool_call["function"]["name"] = tool_call.pop("name", "")
-                    tool_call["function"]["arguments"] = json.dumps(
-                        tool_call.pop("arguments", {})
-                    )
             if msg.get("role") == "assistant":
                 if thinking_block:
                     msg["reasoning_text"] = thinking_block.get("thinking", "")
@@ -102,6 +95,14 @@ class GithubCopilotService(CustomLLMService):
                         None,
                     )
                     msg["content"] = []
+
+            if "tool_calls" in msg and msg.get("tool_calls", []):
+                for tool_call in msg["tool_calls"]:
+                    tool_call["function"] = {}
+                    tool_call["function"]["name"] = tool_call.pop("name", "")
+                    tool_call["function"]["arguments"] = json.dumps(
+                        tool_call.pop("arguments", {})
+                    )
 
             if msg.get("role") == "tool":
                 # Special treatment for GitHub Copilot GPT-4.1 model
@@ -174,29 +175,32 @@ class GithubCopilotService(CustomLLMService):
         thinking_content = None  # OpenAI doesn't support thinking mode
         thinking_signature = None
 
+        if (not chunk.choices) or (len(chunk.choices) == 0):
+            return (
+                assistant_response or " ",
+                tool_uses,
+                input_tokens,
+                output_tokens,
+                "",
+                (thinking_content, None) if thinking_content else None,
+            )
+
+        delta_chunk = chunk.choices[0].delta
+
         # Handle thinking content
         if (
-            chunk.choices
-            and len(chunk.choices) > 0
-            and hasattr(chunk.choices[0].delta, "reasoning_text")
-            and chunk.choices[0].delta.reasoning_text is not None
+            hasattr(delta_chunk, "reasoning_text")
+            and delta_chunk.reasoning_text is not None
         ):
-            thinking_content = chunk.choices[0].delta.reasoning_text
+            thinking_content = delta_chunk.reasoning_text
 
         if (
-            chunk.choices
-            and len(chunk.choices) > 0
-            and hasattr(chunk.choices[0].delta, "reasoning_opaque")
-            and chunk.choices[0].delta.reasoning_opaque is not None
+            hasattr(delta_chunk, "reasoning_opaque")
+            and delta_chunk.reasoning_opaque is not None
         ):
-            thinking_signature = chunk.choices[0].delta.reasoning_opaque
+            thinking_signature = delta_chunk.reasoning_opaque
         # Handle regular content chunks
-        if (
-            chunk.choices
-            and len(chunk.choices) > 0
-            and hasattr(chunk.choices[0].delta, "content")
-            and chunk.choices[0].delta.content is not None
-        ):
+        if hasattr(delta_chunk, "content") and delta_chunk.content is not None:
             chunk_text = chunk.choices[0].delta.content
             assistant_response += chunk_text
 
@@ -208,11 +212,7 @@ class GithubCopilotService(CustomLLMService):
                 output_tokens = chunk.usage.completion_tokens
 
         # Handle tool call chunks
-        if (
-            chunk.choices
-            and len(chunk.choices) > 0
-            and hasattr(chunk.choices[0].delta, "tool_calls")
-        ):
+        if hasattr(delta_chunk, "tool_calls"):
             delta_tool_calls = chunk.choices[0].delta.tool_calls
             if delta_tool_calls:
                 # Process each tool call in the delta

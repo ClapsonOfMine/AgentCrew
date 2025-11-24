@@ -45,19 +45,32 @@ class DeepInfraService(CustomLLMService):
                 thinking_data
             )
         """
-        chunk_text = None
+        chunk_text = ""
         input_tokens = 0
         output_tokens = 0
         thinking_content = None  # OpenAI doesn't support thinking mode
 
+        if (not chunk.choices) or (len(chunk.choices) == 0):
+            return (
+                assistant_response or " ",
+                tool_uses,
+                input_tokens,
+                output_tokens,
+                "",
+                (thinking_content, None) if thinking_content else None,
+            )
+
+        delta_chunk = chunk.choices[0].delta
         # Handle regular content chunks
+        #
         if (
-            chunk.choices
-            and len(chunk.choices) > 0
-            and hasattr(chunk.choices[0].delta, "content")
-            and chunk.choices[0].delta.content is not None
+            hasattr(delta_chunk, "reasoning_content")
+            and delta_chunk.reasoning_content is not None
         ):
-            chunk_text = chunk.choices[0].delta.content
+            thinking_content = delta_chunk.reasoning_content
+
+        if hasattr(delta_chunk, "content") and delta_chunk.content is not None:
+            chunk_text = delta_chunk.content
             if "<think>" in chunk_text:
                 self._is_thinking = True
 
@@ -87,11 +100,7 @@ class DeepInfraService(CustomLLMService):
                 output_tokens = chunk.usage.completion_tokens
 
         # Handle tool call chunks
-        if (
-            chunk.choices
-            and len(chunk.choices) > 0
-            and hasattr(chunk.choices[0].delta, "tool_calls")
-        ):
+        if hasattr(delta_chunk, "tool_calls"):
             delta_tool_calls = chunk.choices[0].delta.tool_calls
             if delta_tool_calls:
                 # Process each tool call in the delta
@@ -162,14 +171,6 @@ class DeepInfraService(CustomLLMService):
                             except json.JSONDecodeError:
                                 # Arguments JSON is still incomplete, keep accumulating
                                 pass
-                return (
-                    assistant_response or " ",
-                    tool_uses,
-                    input_tokens,
-                    output_tokens,
-                    "",
-                    (thinking_content, None) if thinking_content else None,
-                )
 
         return (
             assistant_response or " ",

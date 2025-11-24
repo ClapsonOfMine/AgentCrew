@@ -388,9 +388,6 @@ class MessageHandler(Observable):
 
                 return await self.get_assistant_response()
 
-            if thinking_content:
-                self._notify("agent_continue", self.agent.name)
-
             # Add assistant response to messages
             if assistant_response.strip():
                 self._messages_append(
