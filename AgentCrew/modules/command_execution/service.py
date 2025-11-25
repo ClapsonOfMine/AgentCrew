@@ -9,7 +9,6 @@ import atexit
 import hashlib
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
-from .metric import CommandMetrics
 from .types import CommandState, CommandProcess
 from .constants import (
     MAX_CONCURRENT_COMMANDS,
@@ -66,9 +65,6 @@ class CommandExecutionService:
 
         # Rate limiting (application-wide)
         self._rate_limiter: List[float] = []
-
-        # Metrics
-        self.metrics = CommandMetrics()
 
         # Register cleanup on shutdown
         atexit.register(self.shutdown)
@@ -423,7 +419,6 @@ class CommandExecutionService:
                 len(output) + len(error_output),
             )
 
-            self.metrics.record_execution(command, duration, "completed")
             self._cleanup_command_internal(command_id)
 
             result = {
@@ -456,7 +451,6 @@ class CommandExecutionService:
             logger.error(f"Command execution error: {e}")
 
             self._audit_log(command, "error", command_id)
-            self.metrics.record_execution(command, time.time() - start_time, "error")
 
             if command_id in self._instances:
                 self._cleanup_command_internal(command_id)
@@ -516,7 +510,6 @@ class CommandExecutionService:
                 duration,
                 len(output) + len(error_output),
             )
-            self.metrics.record_execution(cmd_process.command, duration, "completed")
             self._cleanup_command_internal(command_id)
 
             return {
@@ -660,11 +653,6 @@ class CommandExecutionService:
                             pass
 
                     cmd_process.transition_to(CommandState.KILLED)
-                    self.metrics.record_execution(
-                        cmd_process.command,
-                        time.time() - cmd_process.start_time,
-                        "killed",
-                    )
 
                 except Exception as e:
                     logger.error(f"Process termination error: {e}")
@@ -736,10 +724,6 @@ class CommandExecutionService:
             Dict with status and message
         """
         return self.cleanup_command(command_id)
-
-    def get_metrics(self) -> Dict[str, Any]:
-        """Get command execution metrics"""
-        return self.metrics.get_report()
 
     def shutdown(self):
         """Shutdown service and cleanup all running commands"""
