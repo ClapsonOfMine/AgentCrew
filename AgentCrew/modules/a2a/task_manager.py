@@ -179,8 +179,8 @@ class AgentTaskManager(TaskManager):
             self.tasks[task.id] = task
 
         task = self.tasks[task_id]
-        if task_id not in self.task_history:
-            self.task_history[task_id] = []
+        if task.context_id not in self.task_history:
+            self.task_history[task.context_id] = []
 
         # Convert A2A message to SwissKnife format
         message = convert_a2a_message_to_agent(request.params.message)
@@ -217,9 +217,8 @@ class AgentTaskManager(TaskManager):
 
             message["content"] = new_parts
 
-        self.task_history[task_id].append(message)
+        self.task_history[task.context_id].append(message)
 
-        # Process with agent (non-blocking)
         asyncio.create_task(self._process_agent_task(self.agent, task))
 
         # Return initial task state
@@ -342,7 +341,7 @@ class AgentTaskManager(TaskManager):
 
         try:
             artifacts = []
-            if task.id not in self.task_history:
+            if task.context_id not in self.task_history:
                 raise ValueError("Task history is not existed")
 
             input_tokens = 0
@@ -369,7 +368,7 @@ class AgentTaskManager(TaskManager):
                     chunk_text,
                     thinking_chunk,
                 ) in agent.process_messages(
-                    self.task_history[task.id], callback=process_result
+                    self.task_history[task.context_id], callback=process_result
                 ):
                     # Update current response
                     if response_message:
@@ -449,9 +448,8 @@ class AgentTaskManager(TaskManager):
                         MessageType.Thinking, {"thinking": thinking_data}
                     )
                     if thinking_message:
-                        self.task_history[task.id].append(thinking_message)
+                        self.task_history[task.context_id].append(thinking_message)
 
-                    # Format assistant message with the response and tool uses
                     assistant_message = agent.format_message(
                         MessageType.Assistant,
                         {
@@ -462,7 +460,7 @@ class AgentTaskManager(TaskManager):
                         },
                     )
                     if assistant_message:
-                        self.task_history[task.id].append(assistant_message)
+                        self.task_history[task.context_id].append(assistant_message)
 
                     for tool_use in tool_uses:
                         tool_name = tool_use["name"]
@@ -512,7 +510,9 @@ class AgentTaskManager(TaskManager):
                                 {"tool_use": tool_use, "tool_result": tool_result},
                             )
                             if tool_result_message:
-                                self.task_history[task.id].append(tool_result_message)
+                                self.task_history[task.context_id].append(
+                                    tool_result_message
+                                )
 
                             self._record_and_emit_event(
                                 task.id,
@@ -536,7 +536,9 @@ class AgentTaskManager(TaskManager):
                                     {"tool_use": tool_use, "tool_result": tool_result},
                                 )
                                 if tool_result_message:
-                                    self.task_history[task.id].append(tool_result_message)
+                                    self.task_history[task.context_id].append(
+                                        tool_result_message
+                                    )
 
                             except Exception as e:
                                 error_message = agent.format_message(
@@ -548,7 +550,9 @@ class AgentTaskManager(TaskManager):
                                     },
                                 )
                                 if error_message:
-                                    self.task_history[task.id].append(error_message)
+                                    self.task_history[task.context_id].append(
+                                        error_message
+                                    )
 
                     return await _process_task()
                 return current_response
@@ -562,9 +566,9 @@ class AgentTaskManager(TaskManager):
                     },
                 )
                 if assistant_message:
-                    self.task_history[task.id].append(assistant_message)
+                    self.task_history[task.context_id].append(assistant_message)
                 user_message = (
-                    self.task_history[task.id][0]
+                    self.task_history[task.context_id][0]
                     .get("content", [{}])[0]
                     .get("text", "")
                 )
