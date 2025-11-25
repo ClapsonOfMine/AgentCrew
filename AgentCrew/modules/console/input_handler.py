@@ -345,6 +345,8 @@ class InputHandler:
                 self.message_handler.history_manager.reset_position()
 
                 self._input_queue.put(user_input)
+                self.is_message_processing = True
+                self.display_handlers.print_divider()
 
             except KeyboardInterrupt:
                 # Handle Ctrl+C in input thread
@@ -428,9 +430,6 @@ class InputHandler:
                 # Add None check here
                 if user_input is None:
                     continue
-                self.is_message_processing = True
-
-                self.display_handlers.print_divider()
 
                 if user_input == "__EXIT__":
                     self.console.print(
