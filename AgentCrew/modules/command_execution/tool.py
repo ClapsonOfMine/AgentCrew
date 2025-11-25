@@ -258,9 +258,7 @@ def get_check_command_status_tool_handler(
         if not command_id:
             raise ValueError("Missing required parameter: command_id")
 
-        result = command_service.get_command_status(
-            command_id=command_id, consume_output=True
-        )
+        result = command_service.get_command_status(command_id=command_id)
 
         if result["status"] == "completed":
             response = f"Command completed.\nExit Code: {result['exit_code']}\nDuration: {result['duration_seconds']}s\n\n"

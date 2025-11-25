@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import uuid
-import queue
 import threading
 import subprocess
 import re
@@ -242,40 +241,47 @@ class CommandExecutionService:
     def _reader_thread(
         self,
         stream,
-        output_queue: queue.Queue,
+        output_list: list,
+        output_lock: threading.Lock,
         stop_event: threading.Event,
         max_size: int,
     ):
         """
-        Read stream line by line into queue with size enforcement.
+        Read stream line by line into persistent list with rolling buffer.
 
-        Uses sentinel values:
-        - ('data', line): Normal output line
-        - ('eof', None): End of stream
-        - ('error', msg): Error occurred
-        - ('size_limit', None): Output size limit reached
+        When output exceeds max_size, old lines are removed to keep recent output.
+
+        Args:
+            stream: Process stdout or stderr stream
+            output_list: Persistent list to append output lines
+            output_lock: Threading lock for thread-safe list access
+            stop_event: Event to signal thread stop
+            max_size: Maximum total output size in bytes (rolling buffer)
         """
-        total_bytes = 0
-
         try:
             for line in iter(stream.readline, b""):
                 if stop_event.is_set():
                     break
 
-                total_bytes += len(line)
-                if total_bytes > max_size:
-                    output_queue.put(("size_limit", None))
-                    logger.warning(f"Output size limit ({max_size} bytes) exceeded")
-                    break
-
                 decoded = line.decode("utf-8", errors="replace")
-                output_queue.put(("data", decoded))
+                line_size = len(decoded.encode("utf-8"))
+
+                with output_lock:
+                    output_list.append(decoded)
+
+                    # Calculate current total size
+                    total_size = sum(len(l.encode("utf-8")) for l in output_list)
+
+                    # Remove old lines if exceeding max_size (keep recent output)
+                    while total_size > max_size and len(output_list) > 1:
+                        removed = output_list.pop(0)
+                        total_size -= len(removed.encode("utf-8"))
 
         except Exception as e:
             logger.error(f"Reader thread error: {e}")
-            output_queue.put(("error", str(e)))
+            with output_lock:
+                output_list.append(f"\n[READER ERROR: {e}]\n")
         finally:
-            output_queue.put(("eof", None))
             stream.close()
 
     def execute_command(
@@ -371,7 +377,8 @@ class CommandExecutionService:
                 target=self._reader_thread,
                 args=(
                     process.stdout,
-                    cmd_process.output_queue,
+                    cmd_process.stdout_lines,
+                    cmd_process.output_lock,
                     cmd_process.stop_event,
                     MAX_OUTPUT_SIZE,
                 ),
@@ -383,7 +390,8 @@ class CommandExecutionService:
                 target=self._reader_thread,
                 args=(
                     process.stderr,
-                    cmd_process.error_queue,
+                    cmd_process.stderr_lines,
+                    cmd_process.output_lock,
                     cmd_process.stop_event,
                     MAX_OUTPUT_SIZE,
                 ),
@@ -405,21 +413,10 @@ class CommandExecutionService:
             cmd_process.exit_code = process.returncode
             cmd_process.transition_to(CommandState.COMPLETING)
 
-            output_lines = []
-            error_lines = []
-
-            while not cmd_process.output_queue.empty():
-                msg_type, data = cmd_process.output_queue.get()
-                if msg_type == "data":
-                    output_lines.append(data)
-
-            while not cmd_process.error_queue.empty():
-                msg_type, data = cmd_process.error_queue.get()
-                if msg_type == "data":
-                    error_lines.append(data)
-
-            output = "".join(output_lines)
-            error_output = "".join(error_lines)
+            # Get output from persistent storage (thread-safe)
+            with cmd_process.output_lock:
+                output = "".join(cmd_process.stdout_lines)
+                error_output = "".join(cmd_process.stderr_lines)
 
             duration = time.time() - start_time
 
@@ -473,15 +470,14 @@ class CommandExecutionService:
 
             return {"status": "error", "error": f"Execution failed: {str(e)}"}
 
-    def get_command_status(
-        self, command_id: str, consume_output: bool = True
-    ) -> Dict[str, Any]:
+    def get_command_status(self, command_id: str) -> Dict[str, Any]:
         """
         Check status of running command.
 
+        Output is persistent and will be returned in full on every call.
+
         Args:
             command_id: Command identifier
-            consume_output: If True, drain and return queued output
 
         Returns:
             Dict with status, output, exit_code, elapsed_time
@@ -494,30 +490,11 @@ class CommandExecutionService:
 
         exit_code = cmd_process.process.poll()
 
-        output_lines = []
-        error_lines = []
+        # Get output from persistent storage (thread-safe)
+        with cmd_process.output_lock:
+            output = "".join(cmd_process.stdout_lines)
+            error_output = "".join(cmd_process.stderr_lines)
 
-        if consume_output:
-            while not cmd_process.output_queue.empty():
-                try:
-                    msg_type, data = cmd_process.output_queue.get_nowait()
-                    if msg_type == "data":
-                        output_lines.append(data)
-                    elif msg_type == "size_limit":
-                        output_lines.append("\n[OUTPUT SIZE LIMIT REACHED]\n")
-                except queue.Empty:
-                    break
-
-            while not cmd_process.error_queue.empty():
-                try:
-                    msg_type, data = cmd_process.error_queue.get_nowait()
-                    if msg_type == "data":
-                        error_lines.append(data)
-                except queue.Empty:
-                    break
-
-        output = "".join(output_lines)
-        error_output = "".join(error_lines)
         elapsed = time.time() - cmd_process.start_time
 
         if elapsed > MAX_COMMAND_LIFETIME:

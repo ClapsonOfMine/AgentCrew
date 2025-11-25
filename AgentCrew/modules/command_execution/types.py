@@ -1,4 +1,3 @@
-import queue
 import threading
 import subprocess
 from enum import Enum
@@ -31,8 +30,9 @@ class CommandProcess:
     process: subprocess.Popen
     platform: str
     start_time: float
-    output_queue: queue.Queue = field(default_factory=queue.Queue)
-    error_queue: queue.Queue = field(default_factory=queue.Queue)
+    stdout_lines: List[str] = field(default_factory=list)
+    stderr_lines: List[str] = field(default_factory=list)
+    output_lock: threading.Lock = field(default_factory=threading.Lock)
     state: CommandState = CommandState.QUEUED
     exit_code: Optional[int] = None
     reader_threads: List[threading.Thread] = field(default_factory=list)
