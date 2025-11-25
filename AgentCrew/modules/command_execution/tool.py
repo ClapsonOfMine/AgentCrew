@@ -6,6 +6,7 @@ Tool definitions and handlers for secure shell command execution.
 
 from typing import Dict, Any, Callable
 from .service import CommandExecutionService
+import os
 
 
 def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
@@ -34,8 +35,7 @@ def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
         },
         "working_dir": {
             "type": "string",
-            "default": "./",
-            "description": "Working directory.",
+            "description": f"Working directory. Current working directory is {os.getcwd()}. Use ./ for current dir.",
         },
         "env_vars": {
             "type": "object",
@@ -50,7 +50,7 @@ def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
             "input_schema": {
                 "type": "object",
                 "properties": args,
-                "required": ["command"],
+                "required": ["command", "working_dir"],
             },
         }
     else:
@@ -62,7 +62,7 @@ def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
                 "parameters": {
                     "type": "object",
                     "properties": args,
-                    "required": ["command"],
+                    "required": ["command", "working_dir"],
                 },
             },
         }

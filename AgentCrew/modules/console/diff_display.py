@@ -111,20 +111,20 @@ class DiffDisplay:
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             if tag == "equal":
                 for i, j in zip(range(i1, i2), range(j1, j2)):
-                    orig_text = Text(original_lines[i], style="dim")
-                    mod_text = Text(modified_lines[j], style="dim")
+                    orig_text = Text(f"  {original_lines[i]}", style="dim")
+                    mod_text = Text(f"  {modified_lines[j]}", style="dim")
                     table.add_row(orig_text, mod_text)
 
             elif tag == "delete":
                 for i in range(i1, i2):
-                    orig_text = Text(original_lines[i], style="strike red")
+                    orig_text = Text(f"- {original_lines[i]}", style="red")
                     mod_text = Text("", style="dim")
                     table.add_row(orig_text, mod_text)
 
             elif tag == "insert":
                 for j in range(j1, j2):
                     orig_text = Text("", style="dim")
-                    mod_text = Text(modified_lines[j], style="bold green")
+                    mod_text = Text(f"+ {modified_lines[j]}", style="green")
                     table.add_row(orig_text, mod_text)
 
             elif tag == "replace":
@@ -149,19 +149,19 @@ class DiffDisplay:
                                 orig_line, mod_line, is_original=False
                             )
                         else:
-                            orig_text = Text(orig_line, style="strike red")
-                            mod_text = Text(mod_line, style="bold green")
+                            orig_text = Text(f"- {orig_line}", style="red")
+                            mod_text = Text(f"+ {mod_line}", style="green")
 
                         table.add_row(orig_text, mod_text)
 
                     elif orig_idx < i2:
-                        orig_text = Text(original_lines[orig_idx], style="strike red")
+                        orig_text = Text(f"- {original_lines[orig_idx]}", style="red")
                         mod_text = Text("", style="dim")
                         table.add_row(orig_text, mod_text)
 
                     elif mod_idx < j2:
                         orig_text = Text("", style="dim")
-                        mod_text = Text(modified_lines[mod_idx], style="bold green")
+                        mod_text = Text(f"+ {modified_lines[mod_idx]}", style="green")
                         table.add_row(orig_text, mod_text)
 
         return table
@@ -179,7 +179,7 @@ class DiffDisplay:
         Returns:
             Rich Text with character-level highlighting
         """
-        result = Text()
+        result = Text("- " if is_original else "+ ")
         matcher = difflib.SequenceMatcher(None, orig_line, mod_line)
 
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
@@ -188,16 +188,16 @@ class DiffDisplay:
                 if tag == "equal":
                     result.append(segment, style="dim")
                 elif tag == "delete":
-                    result.append(segment, style="bold red on #3d0000")
+                    result.append(segment, style="red on #3d0000")
                 elif tag == "replace":
-                    result.append(segment, style="bold red on #3d0000")
+                    result.append(segment, style="red on #3d0000")
             else:
                 segment = mod_line[j1:j2]
                 if tag == "equal":
                     result.append(segment, style="dim")
                 elif tag == "insert":
-                    result.append(segment, style="bold green on #003d00")
+                    result.append(segment, style="green on #003d00")
                 elif tag == "replace":
-                    result.append(segment, style="bold green on #003d00")
+                    result.append(segment, style="green on #003d00")
 
         return result
