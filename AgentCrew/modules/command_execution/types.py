@@ -37,7 +37,6 @@ class CommandProcess:
     exit_code: Optional[int] = None
     reader_threads: List[threading.Thread] = field(default_factory=list)
     stop_event: threading.Event = field(default_factory=threading.Event)
-    total_output_size: int = 0
     working_dir: Optional[str] = None
 
     def transition_to(self, new_state: CommandState):

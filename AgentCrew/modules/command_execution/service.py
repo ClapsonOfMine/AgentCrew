@@ -14,7 +14,7 @@ from .types import CommandState, CommandProcess
 from .constants import (
     MAX_CONCURRENT_COMMANDS,
     MAX_COMMAND_LIFETIME,
-    MAX_OUTPUT_SIZE,
+    MAX_OUTPUT_LINES,
     MAX_COMMANDS_PER_MINUTE,
     MAX_INPUT_SIZE,
     BLOCKED_PATTERNS,
@@ -244,19 +244,19 @@ class CommandExecutionService:
         output_list: list,
         output_lock: threading.Lock,
         stop_event: threading.Event,
-        max_size: int,
+        max_lines: int,
     ):
         """
         Read stream line by line into persistent list with rolling buffer.
 
-        When output exceeds max_size, old lines are removed to keep recent output.
+        When output exceeds max_lines, old lines are removed to keep recent output.
 
         Args:
             stream: Process stdout or stderr stream
             output_list: Persistent list to append output lines
             output_lock: Threading lock for thread-safe list access
             stop_event: Event to signal thread stop
-            max_size: Maximum total output size in bytes (rolling buffer)
+            max_lines: Maximum number of lines to keep (rolling buffer)
         """
         try:
             for line in iter(stream.readline, b""):
@@ -264,23 +264,16 @@ class CommandExecutionService:
                     break
 
                 decoded = line.decode("utf-8", errors="replace")
-                line_size = len(decoded.encode("utf-8"))
 
                 with output_lock:
                     output_list.append(decoded)
 
-                    # Calculate current total size
-                    total_size = sum(len(l.encode("utf-8")) for l in output_list)
-
-                    # Remove old lines if exceeding max_size (keep recent output)
-                    while total_size > max_size and len(output_list) > 1:
-                        removed = output_list.pop(0)
-                        total_size -= len(removed.encode("utf-8"))
+                    # Keep only recent lines using slice
+                    if len(output_list) > max_lines:
+                        output_list[:] = output_list[-max_lines:]
 
         except Exception as e:
             logger.error(f"Reader thread error: {e}")
-            with output_lock:
-                output_list.append(f"\n[READER ERROR: {e}]\n")
         finally:
             stream.close()
 
@@ -380,7 +373,7 @@ class CommandExecutionService:
                     cmd_process.stdout_lines,
                     cmd_process.output_lock,
                     cmd_process.stop_event,
-                    MAX_OUTPUT_SIZE,
+                    MAX_OUTPUT_LINES,
                 ),
                 daemon=True,
                 name=f"stdout-reader-{command_id}",
@@ -393,7 +386,7 @@ class CommandExecutionService:
                     cmd_process.stderr_lines,
                     cmd_process.output_lock,
                     cmd_process.stop_event,
-                    MAX_OUTPUT_SIZE,
+                    MAX_OUTPUT_LINES,
                 ),
                 daemon=True,
                 name=f"stderr-reader-{command_id}",

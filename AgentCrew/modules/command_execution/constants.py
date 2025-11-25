@@ -15,8 +15,8 @@ MAX_CONCURRENT_COMMANDS = 3
 # Maximum lifetime for a single command execution (seconds)
 MAX_COMMAND_LIFETIME = 600
 
-# Maximum output size per command (bytes)
-MAX_OUTPUT_SIZE = 1 * 1024 * 1024  # 1MB
+# Maximum output lines to keep in rolling buffer per stream (stdout/stderr)
+MAX_OUTPUT_LINES = 300
 
 # Maximum number of commands allowed per minute (application-wide rate limit)
 MAX_COMMANDS_PER_MINUTE = 10
