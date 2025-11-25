@@ -27,6 +27,11 @@ from a2a.types import (
     TaskState,
     TaskStatusUpdateEvent,
     TaskArtifactUpdateEvent,
+    Part,
+    TextPart,
+    DataPart,
+    Role,
+    Message,
 )
 
 from AgentCrew.modules.agents import LocalAgent
@@ -58,6 +63,7 @@ class AgentTaskManager(TaskManager):
     """Manages tasks for a specific agent"""
 
     TERMINAL_STATES = {TaskState.completed, TaskState.canceled, TaskState.failed}
+    INPUT_REQUIRED_STATES = {TaskState.input_required}
 
     def __init__(self, agent_name: str, agent_manager: AgentManager):
         self.agent_name = agent_name
@@ -72,6 +78,9 @@ class AgentTaskManager(TaskManager):
         ] = defaultdict(list)
         self.streaming_enabled_tasks: set[str] = set()
 
+        self.pending_ask_responses: Dict[str, asyncio.Event] = {}
+        self.ask_responses: Dict[str, str] = {}
+
         self.agent = self.agent_manager.get_agent(self.agent_name)
         if self.agent is None or not isinstance(self.agent, LocalAgent):
             raise ValueError(f"Agent {agent_name} not found or is not a LocalAgent")
@@ -81,6 +90,19 @@ class AgentTaskManager(TaskManager):
     def _is_terminal_state(self, state: TaskState) -> bool:
         """Check if a state is terminal."""
         return state in self.TERMINAL_STATES
+
+    def _extract_text_from_message(self, message: Dict[str, Any]) -> str:
+        """Extract text content from a message."""
+        content = message.get("content", [])
+        if isinstance(content, str):
+            return content
+        text_parts = []
+        for part in content:
+            if isinstance(part, str):
+                text_parts.append(part)
+            elif isinstance(part, dict) and part.get("type") == "text":
+                text_parts.append(part.get("text", ""))
+        return " ".join(text_parts)
 
     def _validate_task_not_terminal(
         self, task: Task, operation: str
@@ -121,7 +143,6 @@ class AgentTaskManager(TaskManager):
                 )
             )
 
-        # Generate task ID from message
         task_id = (
             request.params.message.task_id
             or f"task_{request.params.message.message_id}"
@@ -135,8 +156,19 @@ class AgentTaskManager(TaskManager):
                     root=JSONRPCErrorResponse(id=request.id, error=error)
                 )
 
+            if existing_task.status.state == TaskState.input_required:
+                message = convert_a2a_message_to_agent(request.params.message)
+                user_response = self._extract_text_from_message(message)
+
+                if task_id in self.pending_ask_responses:
+                    self.ask_responses[task_id] = user_response
+                    self.pending_ask_responses[task_id].set()
+
+                return SendMessageResponse(
+                    root=SendMessageSuccessResponse(id=request.id, result=existing_task)
+                )
+
         if task_id not in self.tasks:
-            # Create task with initial state
             task = Task(
                 id=task_id,
                 context_id=request.params.message.context_id or f"ctx_{task_id}",
@@ -242,6 +274,35 @@ class AgentTaskManager(TaskManager):
         finally:
             # Clean up
             self.streaming_tasks.pop(task_id, None)
+
+    def _create_ask_tool_message(
+        self, question: str, guided_answers: list[str]
+    ) -> Message:
+        """
+        Create an A2A message for the ask tool's input-required state.
+
+        Args:
+            question: The question to ask the user
+            guided_answers: List of suggested answers
+
+        Returns:
+            A2A Message with the question and guided answers
+        """
+        ask_data = {
+            "type": "ask",
+            "question": question,
+            "guided_answers": guided_answers,
+            "instruction": "Please respond with one of the guided answers or provide a custom response.",
+        }
+
+        return Message(
+            message_id=f"ask_{hash(question)}",
+            role=Role.agent,
+            parts=[
+                Part(root=TextPart(text=f"❓ {question}")),
+                Part(root=DataPart(data=ask_data)),
+            ],
+        )
 
     def _record_and_emit_event(
         self, task_id: str, event: Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]
@@ -403,13 +464,48 @@ class AgentTaskManager(TaskManager):
                     if assistant_message:
                         self.task_history[task.id].append(assistant_message)
 
-                    # Process each tool use
                     for tool_use in tool_uses:
-                        try:
-                            tool_result = await agent.execute_tool_call(
-                                tool_use["name"],
-                                tool_use["input"],
+                        tool_name = tool_use["name"]
+
+                        if tool_name == "ask":
+                            question = tool_use["input"].get("question", "")
+                            guided_answers = tool_use["input"].get("guided_answers", [])
+
+                            task.status.state = TaskState.input_required
+                            task.status.timestamp = datetime.now().isoformat()
+                            task.status.message = self._create_ask_tool_message(
+                                question, guided_answers
                             )
+
+                            self._record_and_emit_event(
+                                task.id,
+                                TaskStatusUpdateEvent(
+                                    task_id=task.id,
+                                    context_id=task.context_id,
+                                    status=task.status,
+                                    final=False,
+                                ),
+                            )
+
+                            wait_event = asyncio.Event()
+                            self.pending_ask_responses[task.id] = wait_event
+
+                            try:
+                                await asyncio.wait_for(wait_event.wait(), timeout=300)
+                                user_answer = self.ask_responses.get(
+                                    task.id, "No response received"
+                                )
+                            except asyncio.TimeoutError:
+                                user_answer = "User did not respond in time."
+                            finally:
+                                self.pending_ask_responses.pop(task.id, None)
+                                self.ask_responses.pop(task.id, None)
+
+                            tool_result = f"User's answer: {user_answer}"
+
+                            task.status.state = TaskState.working
+                            task.status.timestamp = datetime.now().isoformat()
+                            task.status.message = None
 
                             tool_result_message = agent.format_message(
                                 MessageType.ToolResult,
@@ -418,17 +514,41 @@ class AgentTaskManager(TaskManager):
                             if tool_result_message:
                                 self.task_history[task.id].append(tool_result_message)
 
-                        except Exception as e:
-                            error_message = agent.format_message(
-                                MessageType.ToolResult,
-                                {
-                                    "tool_use": tool_use,
-                                    "tool_result": str(e),
-                                    "is_error": True,
-                                },
+                            self._record_and_emit_event(
+                                task.id,
+                                TaskStatusUpdateEvent(
+                                    task_id=task.id,
+                                    context_id=task.context_id,
+                                    status=task.status,
+                                    final=False,
+                                ),
                             )
-                            if error_message:
-                                self.task_history[task.id].append(error_message)
+
+                        else:
+                            try:
+                                tool_result = await agent.execute_tool_call(
+                                    tool_name,
+                                    tool_use["input"],
+                                )
+
+                                tool_result_message = agent.format_message(
+                                    MessageType.ToolResult,
+                                    {"tool_use": tool_use, "tool_result": tool_result},
+                                )
+                                if tool_result_message:
+                                    self.task_history[task.id].append(tool_result_message)
+
+                            except Exception as e:
+                                error_message = agent.format_message(
+                                    MessageType.ToolResult,
+                                    {
+                                        "tool_use": tool_use,
+                                        "tool_result": str(e),
+                                        "is_error": True,
+                                    },
+                                )
+                                if error_message:
+                                    self.task_history[task.id].append(error_message)
 
                     return await _process_task()
                 return current_response

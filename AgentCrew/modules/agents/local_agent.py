@@ -111,24 +111,24 @@ class LocalAgent(BaseAgent):
             # self.tool_prompts.append(
             #     delegate_tool_prompt(self.services["agent_manager"])
             # )
+            from AgentCrew.modules.agents.tools.ask import (
+                register as register_ask,
+                ask_tool_prompt,
+            )
+
+            register_ask(self)
+            self.tool_prompts.append(ask_tool_prompt())
+
             if not self.is_remoting_mode:
                 from AgentCrew.modules.agents.tools.transfer import (
                     register as register_transfer,
                     transfer_tool_prompt,
-                )
-                from AgentCrew.modules.agents.tools.ask import (
-                    register as register_ask,
-                    ask_tool_prompt,
                 )
 
                 register_transfer(self.services["agent_manager"], self)
                 self.tool_prompts.append(
                     transfer_tool_prompt(self.services["agent_manager"])
                 )
-
-                # Register the ask tool (always available)
-                register_ask(self)
-                self.tool_prompts.append(ask_tool_prompt())
 
         for tool_name in self.tools:
             if self.services and tool_name in self.services:
