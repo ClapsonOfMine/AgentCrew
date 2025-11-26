@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from .agent_cards import create_agent_card
 from AgentCrew.modules.agents import LocalAgent
+from typing import Any, Dict, List, Optional
 
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
     from AgentCrew.modules.agents import AgentManager
     from a2a.types import AgentCard
 
