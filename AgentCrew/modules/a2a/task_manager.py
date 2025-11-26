@@ -272,6 +272,7 @@ class AgentTaskManager(TaskManager):
 
         finally:
             # Clean up
+            self.tasks.pop(task_id, None)
             self.streaming_tasks.pop(task_id, None)
 
     def _create_ask_tool_message(
