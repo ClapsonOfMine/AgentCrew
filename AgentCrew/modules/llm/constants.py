@@ -530,7 +530,6 @@ _GITHUB_COPILOT_MODELS = [
         provider="github_copilot",
         name="Claude Opus 4.5 (Preview)",
         description="",
-        max_context_token=144_000,
         capabilities=["tool_use", "vision", "stream"],
         default=False,
         input_token_price_1m=0.0,
