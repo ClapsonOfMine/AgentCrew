@@ -179,7 +179,11 @@ class DiffDisplay:
         Returns:
             Rich Text with character-level highlighting
         """
-        result = Text("- " if is_original else "+ ")
+        result = Text()
+        if is_original:
+            result.append("- ", style="red")
+        else:
+            result.append("+ ", style="green")
         matcher = difflib.SequenceMatcher(None, orig_line, mod_line)
 
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
