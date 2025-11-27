@@ -634,7 +634,7 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
     - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
                     },
                 )
-            if self.services.get("memory"):
+            if not self.is_remoting_mode and self.services.get("memory"):
                 memory_headers = self.services["memory"].list_memory_headers(
                     agent_name=self.name
                 )

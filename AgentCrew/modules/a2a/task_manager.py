@@ -85,7 +85,7 @@ class AgentTaskManager(TaskManager):
         if self.agent is None or not isinstance(self.agent, LocalAgent):
             raise ValueError(f"Agent {agent_name} not found or is not a LocalAgent")
 
-        self.memory_service = self.agent.services["memory"]
+        self.memory_service = self.agent.services.get("memory", None)
 
     def _is_terminal_state(self, state: TaskState) -> bool:
         """Check if a state is terminal."""
@@ -573,9 +573,10 @@ class AgentTaskManager(TaskManager):
                     .get("content", [{}])[0]
                     .get("text", "")
                 )
-                self.memory_service.store_conversation(
-                    user_message, current_response, self.agent_name
-                )
+                if self.memory_service:
+                    self.memory_service.store_conversation(
+                        user_message, current_response, self.agent_name
+                    )
 
             # Create artifact from final response
             artifact = convert_agent_response_to_a2a_artifact(
