@@ -116,7 +116,6 @@ class CustomLLMService(OpenAIService):
 
         stream_params = {
             "model": self.model,
-            "parallel_tool_calls": False,
             "messages": messages,
             # "max_tokens": 16000,
         }

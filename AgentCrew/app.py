@@ -584,7 +584,7 @@ tools = ["memory", "browser", "web_search", "code_analysis"]
                         "No LLM API key found. Please set either ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, or DEEPINFRA_API_KEY"
                     )
 
-            services = self.setup_services(provider, memory_llm)
+            services = self.setup_services(provider, memory_llm, need_memory=False)
 
             if mcp_config:
                 os.environ["MCP_CONFIG_PATH"] = mcp_config
