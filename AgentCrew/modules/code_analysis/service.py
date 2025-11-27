@@ -1290,9 +1290,7 @@ class CodeAnalysisService:
                     f"start_line {start_line} exceeds file length ({total_lines} lines)"
                 )
             if end_line > total_lines:
-                raise ValueError(
-                    f"end_line {end_line} exceeds file length ({total_lines} lines)"
-                )
+                end_line = total_lines
 
             # Extract the line range (convert to 0-indexed)
             selected_lines = lines[start_line - 1 : end_line]

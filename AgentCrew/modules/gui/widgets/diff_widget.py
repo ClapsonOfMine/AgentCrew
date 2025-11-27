@@ -8,7 +8,6 @@ from typing import List, Dict
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QLabel,
     QFrame,
 )
