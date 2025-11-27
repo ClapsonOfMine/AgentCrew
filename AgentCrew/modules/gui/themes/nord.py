@@ -1279,6 +1279,26 @@ QFrame {
         "default": "🔧",  # Default icon for unspecified tools
     }
 
+    # Diff Widget colors
+    DIFF_COLORS = {
+        "background": "#2e3440",  # Polar Night
+        "panel_bg": "#3b4252",  # Polar Night lighter
+        "header_bg": "#434c5e",  # Polar Night
+        "header_text": "#d8dee9",  # Snow Storm
+        "line_number_bg": "#2e3440",  # Polar Night
+        "line_number_text": "#4c566a",  # Polar Night
+        "removed_bg": "#3d2f3a",  # Subtle red background
+        "removed_text": "#bf616a",  # Aurora Red
+        "removed_highlight": "#bf616a",  # Aurora Red
+        "added_bg": "#2f3d38",  # Subtle green background
+        "added_text": "#a3be8c",  # Aurora Green
+        "added_highlight": "#a3be8c",  # Aurora Green
+        "unchanged_text": "#4c566a",  # Polar Night
+        "border": "#4c566a",  # Border
+        "block_header_bg": "#5e81ac",  # Frost
+        "block_header_text": "#eceff4",  # Snow Storm
+    }
+
     # JSON Editor styles
     JSON_EDITOR_COLORS = {
         "background": "#2e3440",

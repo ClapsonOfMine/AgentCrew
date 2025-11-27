@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from AgentCrew.modules.gui.themes import StyleProvider
+from AgentCrew.modules.gui.widgets.diff_widget import DiffWidget, CompactDiffWidget
 
 
 class ToolWidget(QWidget):
@@ -46,6 +47,7 @@ class ToolWidget(QWidget):
         self.is_error = is_error
         self.is_expanded = False
         self.style_provider = StyleProvider()
+        self.is_diff_view = False
 
         # Setup main layout - reduced margins and spacing for compactness
         self.main_layout = QVBoxLayout(self)
@@ -138,21 +140,54 @@ class ToolWidget(QWidget):
 
     def _create_content_section(self):
         """Create the single collapsible content section containing input and result"""
-        # Container for all content (input + result) - more compact
         self.content_container = QWidget()
         self.content_layout = QVBoxLayout(self.content_container)
-        self.content_layout.setContentsMargins(0, 2, 0, 0)  # Minimal margins
-        self.content_layout.setSpacing(4)  # Reduced spacing
+        self.content_layout.setContentsMargins(0, 2, 0, 0)
+        self.content_layout.setSpacing(4)
 
-        # Add input section
-        self._add_input_content()
+        if self._should_show_diff_view():
+            self._add_diff_content()
+        else:
+            self._add_input_content()
 
-        # Add result section if we have result data
         if self.result_data is not None:
             self._add_result_content()
 
-        # Add to card layout
         self.card_layout.addWidget(self.content_container)
+
+    def _should_show_diff_view(self) -> bool:
+        """Check if this tool should display a diff view."""
+        if self.tool_name != "write_or_edit_file":
+            return False
+
+        arg_key = "input" if "input" in self.tool_data else "arguments"
+        tool_params = self.tool_data.get(arg_key, {})
+
+        if not isinstance(tool_params, dict):
+            return False
+
+        text_or_blocks = tool_params.get("text_or_search_replace_blocks", "")
+        return DiffWidget.has_search_replace_blocks(text_or_blocks)
+
+    def _add_diff_content(self):
+        """Add diff view content for write_or_edit_file tool."""
+        self.is_diff_view = True
+
+        arg_key = "input" if "input" in self.tool_data else "arguments"
+        tool_params = self.tool_data.get(arg_key, {})
+        file_path = tool_params.get("file_path", "")
+        text_or_blocks = tool_params.get("text_or_search_replace_blocks", "")
+
+        diff_colors = self.style_provider.get_diff_colors()
+        file_label = QLabel(f"📝 <b>File:</b> {file_path}")
+        file_label.setStyleSheet(
+            f"font-size: 12px; color: {diff_colors.get('header_text', '#89b4fa')}; padding: 2px;"
+        )
+        self.content_layout.addWidget(file_label)
+
+        diff_widget = CompactDiffWidget(style_provider=self.style_provider)
+        diff_widget.set_diff_content(text_or_blocks, file_path)
+        self.content_layout.addWidget(diff_widget)
 
     def _add_input_content(self):
         """Add input parameters to the content section"""

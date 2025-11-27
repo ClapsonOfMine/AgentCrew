@@ -1273,6 +1273,26 @@ QFrame {
         "default": "🔧",  # Default icon for unspecified tools
     }
 
+    # Diff Widget colors
+    DIFF_COLORS = {
+        "background": "#334155",  # Slate 700
+        "panel_bg": "#475569",  # Slate 600
+        "header_bg": "#1e293b",  # Slate 800
+        "header_text": "#f8fafc",  # Slate 50
+        "line_number_bg": "#1e293b",  # Slate 800
+        "line_number_text": "#64748b",  # Slate 500
+        "removed_bg": "#4c2c3a",  # Subtle red
+        "removed_text": "#fca5a5",  # Red 300
+        "removed_highlight": "#fca5a5",  # Red 300
+        "added_bg": "#2c4c3a",  # Subtle green
+        "added_text": "#7fb239",  # Primary Green
+        "added_highlight": "#7fb239",  # Primary Green
+        "unchanged_text": "#64748b",  # Slate 500
+        "border": "#475569",  # Border
+        "block_header_bg": "#638b2c",  # Secondary Green
+        "block_header_text": "#f8fafc",  # Slate 50
+    }
+
     # JSON Editor styles
     JSON_EDITOR_COLORS = {
         "background": "#475569",  # Input Fields - Slate 600

@@ -1286,6 +1286,26 @@ QFrame {
         "default": "🔧",  # Default icon for unspecified tools
     }
 
+    # Diff Widget colors
+    DIFF_COLORS = {
+        "background": "#f8fafc",  # Very light background
+        "panel_bg": "#ffffff",  # White
+        "header_bg": "#f1f5f9",  # Light slate
+        "header_text": "#374151",  # Dark text
+        "line_number_bg": "#f8fafc",  # Very light
+        "line_number_text": "#9ca3af",  # Gray
+        "removed_bg": "#fef2f2",  # Light red
+        "removed_text": "#ef4444",  # Red
+        "removed_highlight": "#ef4444",  # Red
+        "added_bg": "#ecfdf5",  # Light green
+        "added_text": "#10b981",  # Green
+        "added_highlight": "#10b981",  # Green
+        "unchanged_text": "#9ca3af",  # Gray
+        "border": "#d1d5db",  # Border
+        "block_header_bg": "#e0e7ff",  # Light purple
+        "block_header_text": "#6b46c1",  # Purple
+    }
+
     # JSON Editor styles
     JSON_EDITOR_COLORS = {
         "background": "#ffffff",

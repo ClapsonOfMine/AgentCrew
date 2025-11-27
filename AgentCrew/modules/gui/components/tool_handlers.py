@@ -7,10 +7,12 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QPushButton,
     QLabel,
+    QScrollArea,
 )
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Qt
 from AgentCrew.modules.gui.widgets.tool_widget import ToolWidget
+from AgentCrew.modules.gui.widgets.diff_widget import DiffWidget
 
 
 class ToolEventHandler:
@@ -158,17 +160,18 @@ class ToolEventHandler:
         tool_use = tool_info.copy()
         confirmation_id = tool_use.pop("confirmation_id")
 
-        # Special handling for 'ask' tool
         if tool_use["name"] == "ask":
             self._handle_ask_tool_confirmation(tool_use, confirmation_id)
             return
 
-        # Create dialog
+        if tool_use["name"] == "write_or_edit_file":
+            self._handle_write_or_edit_file_confirmation(tool_use, confirmation_id)
+            return
+
         dialog = QMessageBox(self.chat_window)
         dialog.setWindowTitle("Tool Execution Confirmation")
         dialog.setIcon(QMessageBox.Icon.Question)
 
-        # Format tool information for display
         tool_description = f"The assistant wants to use the '{tool_use['name']}' tool."
         params_text = ""
 
@@ -189,7 +192,6 @@ class ToolEventHandler:
         text_edit.setReadOnly(True)
         text_edit.setText(params_text)
 
-        # Style the text edit to match the main theme
         text_edit.setStyleSheet(
             self.chat_window.style_provider.get_tool_dialog_text_edit_style()
         )
@@ -292,6 +294,167 @@ class ToolEventHandler:
 
         self.chat_window.current_response_bubble = None
         self.chat_window.current_response_container = None
+
+    def _handle_write_or_edit_file_confirmation(self, tool_use, confirmation_id):
+        """Handle write_or_edit_file tool confirmation with diff view."""
+        from PySide6.QtWidgets import QWidget, QHBoxLayout
+
+        tool_input = tool_use.get("input", {})
+        file_path = tool_input.get("file_path", "")
+        text_or_blocks = tool_input.get("text_or_search_replace_blocks", "")
+        percentage = tool_input.get("percentage_to_change", 0)
+
+        has_diff = DiffWidget.has_search_replace_blocks(text_or_blocks)
+
+        dialog = QDialog(self.chat_window)
+        dialog.setWindowTitle("File Edit Confirmation")
+        dialog.setMinimumWidth(800 if has_diff else 600)
+        dialog.setMinimumHeight(600 if has_diff else 400)
+
+        layout = QVBoxLayout()
+
+        diff_colors = self.chat_window.style_provider.get_diff_colors()
+        header_label = QLabel(f"📝 <b>Edit File:</b> {file_path}")
+        header_label.setStyleSheet(
+            f"font-size: 14px; padding: 10px; color: {diff_colors.get('header_text', '#89b4fa')};"
+        )
+        layout.addWidget(header_label)
+
+        info_label = QLabel(
+            f"Change percentage: {percentage}% | "
+            f"Mode: {'Search/Replace Blocks' if has_diff else 'Full Content'}"
+        )
+        info_label.setStyleSheet(
+            f"font-size: 11px; color: {diff_colors.get('line_number_text', '#6c7086')}; padding: 0 10px;"
+        )
+        layout.addWidget(info_label)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(350)
+
+        if has_diff:
+            diff_widget = DiffWidget(style_provider=self.chat_window.style_provider)
+            diff_widget.set_diff_content(text_or_blocks, file_path)
+            scroll_area.setWidget(diff_widget)
+        else:
+            content_widget = QTextEdit()
+            content_widget.setReadOnly(True)
+            content_widget.setText(text_or_blocks)
+            content_widget.setStyleSheet(
+                self.chat_window.style_provider.get_tool_dialog_text_edit_style()
+            )
+            scroll_area.setWidget(content_widget)
+
+        layout.addWidget(scroll_area)
+
+        buttons_container = QWidget()
+        buttons_layout = QHBoxLayout(buttons_container)
+        buttons_layout.setContentsMargins(0, 10, 0, 0)
+
+        yes_button = QPushButton("✓ Approve")
+        yes_button.setStyleSheet(
+            self.chat_window.style_provider.get_tool_dialog_yes_button_style()
+        )
+
+        all_button = QPushButton("✓✓ Yes to All")
+        all_button.setStyleSheet(
+            self.chat_window.style_provider.get_tool_dialog_all_button_style()
+        )
+
+        forever_button = QPushButton("∞ Forever")
+        forever_button.setStyleSheet(
+            self.chat_window.style_provider.get_tool_dialog_all_button_style()
+        )
+
+        no_button = QPushButton("✗ Deny")
+        no_button.setStyleSheet(
+            self.chat_window.style_provider.get_tool_dialog_no_button_style()
+        )
+
+        buttons_layout.addWidget(yes_button)
+        buttons_layout.addWidget(all_button)
+        buttons_layout.addWidget(forever_button)
+        buttons_layout.addStretch()
+        buttons_layout.addWidget(no_button)
+
+        layout.addWidget(buttons_container)
+
+        dialog.setLayout(layout)
+        dialog.setStyleSheet(self.chat_window.style_provider.get_config_window_style())
+
+        result = {"action": ""}
+
+        def on_yes():
+            result["action"] = "approve"
+            dialog.accept()
+
+        def on_all():
+            result["action"] = "approve_all"
+            dialog.accept()
+
+        def on_forever():
+            result["action"] = "approve_forever"
+            dialog.accept()
+
+        def on_no():
+            result["action"] = "deny"
+            dialog.reject()
+
+        yes_button.clicked.connect(on_yes)
+        all_button.clicked.connect(on_all)
+        forever_button.clicked.connect(on_forever)
+        no_button.clicked.connect(on_no)
+
+        approve_shortcut = QShortcut(QKeySequence("Ctrl+Return"), dialog)
+        approve_shortcut.activated.connect(on_yes)
+
+        dialog.exec()
+
+        if result["action"] == "approve":
+            self.chat_window.message_handler.resolve_tool_confirmation(
+                confirmation_id, {"action": "approve"}
+            )
+            self.chat_window.display_status_message(f"Approved file edit: {file_path}")
+
+        elif result["action"] == "approve_all":
+            self.chat_window.message_handler.resolve_tool_confirmation(
+                confirmation_id, {"action": "approve_all"}
+            )
+            self.chat_window.display_status_message(
+                "Approved all future write_or_edit_file calls"
+            )
+
+        elif result["action"] == "approve_forever":
+            from AgentCrew.modules.config import ConfigManagement
+
+            config_manager = ConfigManagement()
+            config_manager.write_auto_approval_tools("write_or_edit_file", add=True)
+
+            self.chat_window.message_handler.resolve_tool_confirmation(
+                confirmation_id, {"action": "approve_all"}
+            )
+            self.chat_window.display_status_message(
+                "write_or_edit_file will be auto-approved forever"
+            )
+
+        else:
+            denial_reason = self.show_denial_reason_dialog("write_or_edit_file")
+
+            if denial_reason:
+                self.chat_window.message_handler.resolve_tool_confirmation(
+                    confirmation_id, {"action": "deny", "reason": denial_reason}
+                )
+                self.chat_window.display_status_message(
+                    f"Denied file edit - Reason: {denial_reason[:50]}..."
+                    if len(denial_reason) > 50
+                    else f"Denied file edit - Reason: {denial_reason}"
+                )
+            else:
+                self.chat_window.message_handler.resolve_tool_confirmation(
+                    confirmation_id, {"action": "deny"}
+                )
+                self.chat_window.display_status_message("Denied file edit")
 
     def _handle_ask_tool_confirmation(self, tool_use, confirmation_id):
         """Handle the ask tool - display question and guided answers in GUI."""

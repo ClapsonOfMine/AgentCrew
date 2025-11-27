@@ -395,3 +395,28 @@ QPlainTextEdit:focus {
 }
 """,
         )
+
+    def get_diff_colors(self):
+        """Get color scheme for diff widget from current theme."""
+        return getattr(
+            self.theme_class,
+            "DIFF_COLORS",
+            {
+                "background": "#1e1e2e",
+                "panel_bg": "#313244",
+                "header_bg": "#45475a",
+                "header_text": "#cdd6f4",
+                "line_number_bg": "#181825",
+                "line_number_text": "#6c7086",
+                "removed_bg": "#3b2d33",
+                "removed_text": "#f38ba8",
+                "removed_highlight": "#f38ba8",
+                "added_bg": "#2d3b33",
+                "added_text": "#a6e3a1",
+                "added_highlight": "#a6e3a1",
+                "unchanged_text": "#6c7086",
+                "border": "#45475a",
+                "block_header_bg": "#585b70",
+                "block_header_text": "#b4befe",
+            },
+        )
