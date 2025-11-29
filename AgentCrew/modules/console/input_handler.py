@@ -105,9 +105,9 @@ class InputHandler:
                         file_command = paste_result["content"]
 
                         # Insert the file command into the current buffer
-                        event.current_buffer.insert_text(file_command)
-                        event.current_buffer.validate_and_handle()
-
+                        self._jumped_user_message = event.current_buffer.text
+                        event.current_buffer.reset()
+                        self._input_queue.put(file_command)
                         return
 
                 # For regular text content, use default paste behavior
@@ -268,13 +268,13 @@ class InputHandler:
             self._current_prompt_session.app.current_buffer.reset()
             if self._jumped_user_message:
                 self._current_prompt_session.app.current_buffer.insert_text(
-                    self._jumped_user_message
+                    self._jumped_user_message, overwrite=True
                 )
                 self._jumped_user_message = ""
-            if not self.is_message_processing:
-                self.display_handlers.print_divider("👤 YOU: ", with_time=True)
             self._current_prompt_session.message = HTML(PROMPT_CHAR)
             self._current_prompt_session.app.invalidate()
+            if not self.is_message_processing:
+                self.display_handlers.print_divider("👤 YOU: ", with_time=True)
 
     def get_choice_input(self, message: str, values: list[str], default=None) -> str:
         from prompt_toolkit.shortcuts import choice

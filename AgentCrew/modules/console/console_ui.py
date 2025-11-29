@@ -190,7 +190,7 @@ class ConsoleUI(Observer):
             )
             preview_text = Text("Conversation rewound to: ", style=RICH_STYLE_YELLOW)
             preview_text.append(data["preview"])
-            self._clean_and_reprint_chat()
+            self._clear_and_reprint_chat()
 
             self.display_handlers.display_message(jump_text)
             self.display_handlers.display_message(preview_text)
@@ -292,7 +292,7 @@ class ConsoleUI(Observer):
             return  # Ignore resize during message processing
         self._is_resizing = True
         time.sleep(0.5)  # brief pause to allow resize to complete
-        self._clean_and_reprint_chat()
+        self._clear_and_reprint_chat()
         self.display_handlers.print_divider("👤 YOU: ", with_time=True)
         prompt = Text(
             PROMPT_CHAR,
@@ -307,7 +307,7 @@ class ConsoleUI(Observer):
         self.console.print(prompt, end="")
         self._is_resizing = False
 
-    def _clean_and_reprint_chat(self):
+    def _clear_and_reprint_chat(self):
         """Clear and reprint the chat display."""
 
         import os
