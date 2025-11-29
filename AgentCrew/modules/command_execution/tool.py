@@ -31,6 +31,8 @@ def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
         "timeout": {
             "type": "integer",
             "description": "Seconds (default: 5, max: 60). Returns command_id if still running.",
+            "minimum": 5,
+            "maximum": 60,
             "default": 5,
         },
         "working_dir": {
@@ -220,8 +222,10 @@ def get_run_command_tool_handler(command_service: CommandExecutionService) -> Ca
 
         if not command:
             raise ValueError("Missing required parameter: command")
-        if timeout < 1 or timeout > 60:
-            raise ValueError("Timeout must be between 1 and 60 seconds")
+        if timeout < 5:
+            timeout = 5
+        elif timeout > 60:
+            timeout = 60
 
         result = command_service.execute_command(
             command=command, timeout=timeout, working_dir=working_dir, env_vars=env_vars
