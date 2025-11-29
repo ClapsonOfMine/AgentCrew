@@ -25,10 +25,15 @@ class AgentManager:
 
         Args:
             config_path: Path to the configuration file.
+                        Supports @hub/ prefix which converts to https://agentplace.cloud/
 
         Returns:
             List of agent dictionaries.
         """
+
+        if config_uri.startswith("@hub/"):
+            hub_host = os.environ.get("AGENTCREW_HUB_HOST", "https://agentplace.cloud")
+            config_uri = hub_host.rstrip("/") + "/" + config_uri[5:]
 
         if config_uri.startswith(("http://", "https://")):
             import requests

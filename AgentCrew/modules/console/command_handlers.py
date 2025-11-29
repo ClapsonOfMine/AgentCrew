@@ -227,9 +227,13 @@ class CommandHandlers:
 
         Args:
             file_or_url: Path to local file or URL to fetch agent configuration
+                        Supports @hub/ prefix which converts to https://agentplace.cloud/
         """
         try:
-            # Show download message if URL
+            if file_or_url.startswith("@hub/"):
+                hub_host = os.environ.get("AGENTCREW_HUB_HOST", "https://agentplace.cloud")
+                file_or_url = hub_host.rstrip("/") + "/" + file_or_url[5:]
+
             if file_or_url.startswith(("http://", "https://")):
                 self.console.print(
                     Text(
