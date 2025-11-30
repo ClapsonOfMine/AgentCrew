@@ -231,7 +231,9 @@ class CommandHandlers:
         """
         try:
             if file_or_url.startswith("@hub/"):
-                hub_host = os.environ.get("AGENTCREW_HUB_HOST", "https://agentplace.cloud")
+                hub_host = os.environ.get(
+                    "AGENTCREW_HUB_HOST", "https://agentplace.cloud"
+                )
                 file_or_url = hub_host.rstrip("/") + "/" + file_or_url[5:]
 
             if file_or_url.startswith(("http://", "https://")):
