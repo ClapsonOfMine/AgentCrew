@@ -20,8 +20,7 @@ function clickElement(xpath) {
   }
 
   // Check if element is visible and enabled
-  const style = window.getComputedStyle(element);
-  if (style.display === "none" || style.visibility === "hidden") {
+  if (!element.checkVisibility()) {
     return { success: false, error: "Element is not visible" };
   }
 

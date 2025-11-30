@@ -27,7 +27,7 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "navigate_url",
+            "name": "open_browser_url",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -39,7 +39,7 @@ def get_browser_navigate_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "navigate_url",
+                "name": "open_browser_url",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -86,35 +86,22 @@ def get_browser_click_tool_definition(provider="claude") -> Dict[str, Any]:
         }
 
 
-def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
-    """Get tool definition for browser scrolling."""
+def get_browser_scroll_to_element_tool_definition(provider="claude") -> Dict[str, Any]:
+    """Get tool definition for scrolling to a specific element."""
     tool_description = (
-        "Scroll page or element in specified direction. Each unit moves ~300px."
+        "Scroll to bring a specific element into view at the center of the viewport."
     )
     tool_arguments = {
-        "direction": {
-            "type": "string",
-            "enum": ["up", "down", "left", "right"],
-            "description": "Scroll direction.",
-        },
-        "amount": {
-            "type": "integer",
-            "description": "Scroll units (default: 3). Range 1-10.",
-            "default": 3,
-            "minimum": 1,
-            "maximum": 10,
-        },
         "element_uuid": {
             "type": "string",
-            "description": "Optional UUID for specific element to scroll. Scrolls document if not provided.",
-            "default": "document",
+            "description": "UUID of the element to scroll to. Get this from browser_get_content.",
         },
     }
-    tool_required = ["direction", "element_uuid"]
+    tool_required = ["element_uuid"]
 
     if provider == "claude":
         return {
-            "name": "scroll_browser",
+            "name": "scroll_to_browser_element",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -122,11 +109,11 @@ def get_browser_scroll_tool_definition(provider="claude") -> Dict[str, Any]:
                 "required": tool_required,
             },
         }
-    else:  # provider == "groq" or other OpenAI-compatible
+    else:
         return {
             "type": "function",
             "function": {
-                "name": "scroll_browser",
+                "name": "scroll_to_browser_element",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -253,35 +240,27 @@ def get_browser_click_tool_handler(
     return handle_browser_click
 
 
-def get_browser_scroll_tool_handler(
+def get_browser_scroll_to_element_tool_handler(
     browser_service: BrowserAutomationService,
 ) -> Callable:
-    """Get the handler function for the browser scroll tool."""
+    """Get the handler function for the scroll to element tool."""
 
-    def handle_browser_scroll(**params) -> str:
-        direction = params.get("direction")
-        amount = params.get("amount", 3)
+    def handle_browser_scroll_to_element(**params) -> str:
         element_uuid = params.get("element_uuid")
 
-        if not direction:
-            return "Error: No scroll direction provided."
+        if not element_uuid:
+            return "Error: No element_uuid provided."
 
-        if direction not in ["up", "down", "left", "right"]:
-            return (
-                "Error: Invalid scroll direction. Use 'up', 'down', 'left', or 'right'."
-            )
-
-        result = browser_service.scroll_page(
-            direction, amount, element_uuid if element_uuid != "document" else None
-        )
+        result = browser_service.scroll_to_element(element_uuid)
 
         if result.get("success", True):
             return f"{result.get('message', 'Success')}, Call `get_browser_content` tool to get the updated content."
         else:
-            uuid_info = f"\nUUID: {element_uuid}" if element_uuid else ""
-            raise RuntimeError(f"Scroll failed: {result['error']}{uuid_info}")
+            raise RuntimeError(
+                f"Scroll to element failed: {result['error']}\nUUID: {element_uuid}"
+            )
 
-    return handle_browser_scroll
+    return handle_browser_scroll_to_element
 
 
 def get_browser_input_tool_definition(provider="claude") -> Dict[str, Any]:
@@ -665,8 +644,8 @@ def register(service_instance=None, agent=None):
         agent,
     )
     register_tool(
-        get_browser_scroll_tool_definition,
-        get_browser_scroll_tool_handler,
+        get_browser_scroll_to_element_tool_definition,
+        get_browser_scroll_to_element_tool_handler,
         service_instance,
         agent,
     )

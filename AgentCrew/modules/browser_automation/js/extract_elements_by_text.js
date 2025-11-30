@@ -8,20 +8,6 @@
 function extractElementsByText(text) {
   const elementsFound = [];
 
-  function isInViewport(rect) {
-    const viewportWidth =
-      window.innerWidth || document.documentElement.clientWidth;
-    const viewportHeight =
-      window.innerHeight || document.documentElement.clientHeight;
-
-    return (
-      rect.top < viewportHeight &&
-      rect.bottom > 0 &&
-      rect.left < viewportWidth &&
-      rect.right > 0
-    );
-  }
-
   // Utility function to check if element is truly visible (including parent chain)
   function isElementVisible(element) {
     if (!element || !element.nodeType === 1) {
@@ -29,14 +15,6 @@ function extractElementsByText(text) {
     }
 
     if (!element.checkVisibility()) {
-      return false;
-    }
-
-    bounding_box = element.getBoundingClientRect();
-    if (!isInViewport(bounding_box)) {
-      return false;
-    }
-    if (bounding_box.width <= 1 && bounding_box.height <= 1) {
       return false;
     }
 
@@ -68,8 +46,18 @@ function extractElementsByText(text) {
     }
   }
 
+  function getDirectTextContent(element) {
+    let directText = "";
+    for (const node of element.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        directText += node.textContent;
+      }
+    }
+    return directText.trim();
+  }
+
   try {
-    const xpath = `//div[contains(., '${text}')]`;
+    const xpath = `//*[contains(., '${text}')]`;
     const result = document.evaluate(
       xpath,
       document,
@@ -80,32 +68,36 @@ function extractElementsByText(text) {
 
     let element = result.iterateNext();
     const seenElements = new Set();
+    const searchTextLower = text.toLowerCase();
 
     while (element) {
-      // Check if element is truly visible (including parent chain)
       if (isElementVisible(element)) {
-        const elementXPath = getXPath(element);
+        const directText = getDirectTextContent(element);
+        const ariaLabel = element.getAttribute("aria-label") || "";
 
-        if (!seenElements.has(elementXPath)) {
-          seenElements.add(elementXPath);
+        if (
+          directText.toLowerCase().includes(searchTextLower) ||
+          ariaLabel.toLowerCase().includes(searchTextLower)
+        ) {
+          const elementXPath = getXPath(element);
 
-          let elementText =
-            element.getAttribute("aria-label") ||
-            element.textContent ||
-            element.innerText ||
-            "";
-          elementText = elementText.trim().replace(/\\s+/g, " ");
-          if (elementText.length > 100) {
-            elementText = elementText.substring(0, 100) + "...";
+          if (!seenElements.has(elementXPath)) {
+            seenElements.add(elementXPath);
+
+            let displayText = ariaLabel || directText || "";
+            displayText = displayText.trim().replace(/\s+/g, " ");
+            if (displayText.length > 100) {
+              displayText = displayText.substring(0, 100) + "...";
+            }
+
+            elementsFound.push({
+              xpath: elementXPath,
+              text: displayText,
+              tagName: element.tagName.toLowerCase(),
+              className: element.className || "",
+              id: element.id || "",
+            });
           }
-
-          elementsFound.push({
-            xpath: elementXPath,
-            text: elementText,
-            tagName: element.tagName.toLowerCase(),
-            className: element.className || "",
-            id: element.id || "",
-          });
         }
       }
 

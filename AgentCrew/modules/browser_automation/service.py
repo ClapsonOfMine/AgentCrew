@@ -189,19 +189,19 @@ class BrowserAutomationService:
                     "xpath": xpath,
                 }
 
-            time.sleep(0.5)
+            time.sleep(0.2)
 
             self.chrome_interface.Input.dispatchMouseEvent(
                 type="mousePressed", x=x, y=y, button="left", clickCount=1
             )
 
-            time.sleep(0.02)
+            time.sleep(0.05)
 
             self.chrome_interface.Input.dispatchMouseEvent(
                 type="mouseReleased", x=x, y=y, button="left", clickCount=1
             )
 
-            time.sleep(1)
+            time.sleep(0.5)
 
             return {
                 "success": True,
@@ -222,16 +222,12 @@ class BrowserAutomationService:
                 "xpath": xpath,
             }
 
-    def scroll_page(
-        self, direction: str, amount: int = 3, element_uuid: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def scroll_to_element(self, element_uuid: str) -> Dict[str, Any]:
         """
-        Scroll the page or a specific element in specified direction.
+        Scroll to bring a specific element into view.
 
         Args:
-            direction: Direction to scroll ('up', 'down', 'left', 'right')
-            amount: Number of scroll units (default: 3)
-            element_uuid: Optional UUID of element to scroll (defaults to document)
+            element_uuid: UUID of the element to scroll to
 
         Returns:
             Dict containing scroll result
@@ -242,45 +238,32 @@ class BrowserAutomationService:
             if self.chrome_interface is None:
                 raise RuntimeError("Chrome interface is not initialized")
 
-            scroll_distance = amount * 300
+            xpath = self.uuid_to_xpath_mapping.get(element_uuid)
+            if not xpath:
+                return {
+                    "success": False,
+                    "error": f"Element UUID '{element_uuid}' not found. Please use browser_get_content to get current element UUIDs.",
+                    "uuid": element_uuid,
+                }
 
-            xpath = None
-            if element_uuid:
-                xpath = self.uuid_to_xpath_mapping.get(element_uuid)
-                if not xpath:
-                    return {
-                        "success": False,
-                        "error": f"Element UUID '{element_uuid}' not found. Please use browser_get_content to get current element UUIDs.",
-                        "uuid": element_uuid,
-                        "direction": direction,
-                        "amount": amount,
-                    }
-
-            js_code = js_loader.get_scroll_page_js(
-                direction, scroll_distance, xpath or "", element_uuid or ""
-            )
+            js_code = js_loader.get_scroll_to_element_js(xpath)
 
             scroll_result = JavaScriptExecutor.execute_and_parse_result(
                 self.chrome_interface, js_code
             )
 
-            time.sleep(1.5)
+            time.sleep(0.5)
 
-            result_data = {"direction": direction, "amount": amount, **scroll_result}
-            if element_uuid:
-                result_data["uuid"] = element_uuid
-                result_data["xpath"] = xpath
+            result_data = {"uuid": element_uuid, "xpath": xpath, **scroll_result}
             return result_data
 
         except Exception as e:
-            logger.error(f"Scroll error: {e}")
-            error_data = {
+            logger.error(f"Scroll to element error: {e}")
+            return {
                 "success": False,
-                "error": f"Scroll error: {str(e)}",
-                "direction": direction,
-                "amount": amount,
+                "error": f"Scroll to element error: {str(e)}",
+                "uuid": element_uuid,
             }
-            return error_data
 
     def get_page_content(self) -> Dict[str, Any]:
         """

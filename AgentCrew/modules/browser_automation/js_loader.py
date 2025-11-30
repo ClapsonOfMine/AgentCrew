@@ -430,19 +430,13 @@ class JavaScriptLoader:
         """
         return js_code + "\n" + wrapper
 
-    def get_scroll_page_js(
-        self, direction: str, distance: int, xpath: str = "", element_uuid: str = ""
-    ) -> str:
-        js_code = self.load_js_file("scroll_page.js")
+    def get_scroll_to_element_js(self, xpath: str) -> str:
+        js_code = self.load_js_file("scroll_to_element.js")
         escaped_xpath = xpath.replace("`", "\\`").replace("\\", "\\\\")
-        escaped_uuid = element_uuid.replace("`", "\\`").replace("\\", "\\\\")
         wrapper = f"""
         (() => {{
-            const direction = '{direction}';
-            const distance = {distance};
             const xpath = `{escaped_xpath}`;
-            const elementUuid = `{escaped_uuid}`;
-            return scrollPage(direction, distance, xpath, elementUuid);
+            return scrollToElement(xpath);
         }})();
         """
         return js_code + "\n" + wrapper

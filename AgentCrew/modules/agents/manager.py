@@ -32,6 +32,8 @@ class AgentManager:
         """
 
         if config_uri.startswith("@hub/"):
+            import os
+
             hub_host = os.environ.get("AGENTCREW_HUB_HOST", "https://agentplace.cloud")
             config_uri = hub_host.rstrip("/") + "/" + config_uri[5:]
 

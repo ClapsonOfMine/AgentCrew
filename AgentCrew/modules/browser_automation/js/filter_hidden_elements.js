@@ -1,8 +1,59 @@
 function filterHiddenElements() {
   try {
-    function isElementHidden(element) {
-      if (element.nodeType !== Node.ELEMENT_NODE) {
+    function isElementVisible(element) {
+      if (!element || element.nodeType !== 1) {
         return false;
+      }
+
+      if (element.disabled) {
+        return false;
+      }
+
+      if (!element.checkVisibility()) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function getXPath(element) {
+      if (!element || element.nodeType !== 1) {
+        return null;
+      }
+
+      if (element === document.documentElement) {
+        return "/html[1]";
+      }
+
+      const parts = [];
+      let current = element;
+
+      while (current && current.nodeType === 1) {
+        if (current === document.documentElement) {
+          parts.unshift("/html[1]");
+          break;
+        }
+
+        let index = 1;
+        let sibling = current.previousElementSibling;
+        while (sibling) {
+          if (sibling.tagName === current.tagName) {
+            index++;
+          }
+          sibling = sibling.previousElementSibling;
+        }
+
+        const tagName = current.tagName.toLowerCase();
+        parts.unshift(`${tagName}[${index}]`);
+        current = current.parentElement;
+      }
+
+      return parts.join("/");
+    }
+
+    function traverseAndMarkHidden(element, hiddenXPaths) {
+      if (!element || element.nodeType !== 1) {
+        return;
       }
 
       const tagName = element.tagName.toLowerCase();
@@ -11,83 +62,52 @@ function filterHiddenElements() {
         tagName === "style" ||
         tagName === "noscript"
       ) {
-        return true;
-      }
-
-      const computedStyle = window.getComputedStyle(element);
-
-      if (
-        computedStyle.display === "none" ||
-        computedStyle.visibility === "hidden" ||
-        computedStyle.opacity === "0"
-      ) {
-        return true;
-      }
-
-      const ariaHidden = element.getAttribute("aria-hidden");
-      if (ariaHidden === "true") {
-        return true;
-      }
-
-      return false;
-    }
-
-    function removeHiddenElementsFromNode(node) {
-      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
+        const xpath = getXPath(element);
+        if (xpath) {
+          hiddenXPaths.push(xpath);
+        }
         return;
       }
 
-      const children = Array.from(node.children);
+      if (!isElementVisible(element)) {
+        const xpath = getXPath(element);
+        if (xpath) {
+          hiddenXPaths.push(xpath);
+        }
+        return;
+      }
 
+      const children = Array.from(element.children);
       for (const child of children) {
-        const originalElement = document.querySelector(
-          `[ag-data-temp-id="${child.getAttribute("ag-data-temp-id")}"]`,
-        );
-
-        if (!originalElement) {
-          child.remove();
-          continue;
-        }
-
-        if (isElementHidden(originalElement)) {
-          child.remove();
-        } else {
-          removeHiddenElementsFromNode(child);
-        }
+        traverseAndMarkHidden(child, hiddenXPaths);
       }
     }
 
-    function addTempIds(node, prefix = "") {
-      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
-        return;
-      }
-
-      const children = Array.from(node.children);
-      children.forEach((child, index) => {
-        const tempId = `${prefix}${index}`;
-        child.setAttribute("ag-data-temp-id", tempId);
-        addTempIds(child, `${tempId}-`);
-      });
-    }
-
-    function removeTempIds(node) {
-      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
-        return;
-      }
-
-      node.removeAttribute("ag-data-temp-id");
-      Array.from(node.children).forEach((child) => removeTempIds(child));
-    }
-
-    addTempIds(document.documentElement);
     const documentClone = document.documentElement.cloneNode(true);
+    const cloneDoc = document.implementation.createHTMLDocument("");
+    cloneDoc.replaceChild(documentClone, cloneDoc.documentElement);
 
-    removeHiddenElementsFromNode(documentClone);
+    const hiddenXPaths = [];
+    traverseAndMarkHidden(document.documentElement, hiddenXPaths);
 
-    removeTempIds(document.documentElement);
-    removeTempIds(documentClone);
+    for (const xpath of hiddenXPaths) {
+      const result = cloneDoc.evaluate(
+        xpath,
+        cloneDoc,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null,
+      );
+      const cloneElement = result.singleNodeValue;
+      if (cloneElement) {
+        cloneElement.setAttribute("data-hidden", "true");
+      }
+    }
 
-    const filteredHTML = documentClone.outerHTML;
+    const hiddenElements = cloneDoc.querySelectorAll("[data-hidden='true']");
+    hiddenElements.forEach((el) => el.remove());
+
+    const filteredHTML = cloneDoc.documentElement.outerHTML;
 
     return {
       success: true,
