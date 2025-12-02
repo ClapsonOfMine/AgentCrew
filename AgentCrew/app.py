@@ -43,6 +43,41 @@ PROVIDER_LIST = [
 ]
 
 
+def common_options(func):
+    import functools
+
+    @click.option(
+        "--provider",
+        type=click.Choice(PROVIDER_LIST),
+        default=None,
+        help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
+    )
+    @click.option(
+        "--agent-config",
+        default=None,
+        help="Path/URL to the agent configuration file.",
+    )
+    @click.option(
+        "--mcp-config", default=None, help="Path to the mcp servers configuration file."
+    )
+    @click.option(
+        "--memory-llm",
+        type=click.Choice(
+            ["claude", "groq", "openai", "google", "deepinfra", "github_copilot"]
+        ),
+        default=None,
+        help="LLM Model use for analyzing and processing memory",
+    )
+    @click.option(
+        "--memory-path", default=None, help="Path to the memory database location"
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class AgentCrewApplication:
     """
     Centralized application class for AgentCrew.

@@ -4,6 +4,7 @@ import sys
 import requests
 import subprocess
 import platform
+from .app import common_options
 
 
 PROVIDER_LIST = [
@@ -46,38 +47,6 @@ def cli():
             level=log_level,
             format=formatter,
         )
-
-
-def common_options(func):
-    import functools
-
-    @click.option(
-        "--provider",
-        type=click.Choice(PROVIDER_LIST),
-        default=None,
-        help="LLM provider to use (claude, groq, openai, google, github_copilot, or deepinfra)",
-    )
-    @click.option(
-        "--agent-config",
-        default=None,
-        help="Path/URL to the agent configuration file.",
-    )
-    @click.option(
-        "--mcp-config", default=None, help="Path to the mcp servers configuration file."
-    )
-    @click.option(
-        "--memory-llm",
-        type=click.Choice(
-            ["claude", "groq", "openai", "google", "deepinfra", "github_copilot"]
-        ),
-        default=None,
-        help="LLM Model use for analyzing and processing memory",
-    )
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 def cli_prod():
@@ -251,10 +220,15 @@ def run_update_command():
     default=False,
     help="Enable voice input/output (if supported by the agent)",
 )
-def chat(provider, agent_config, mcp_config, memory_llm, console, with_voice):
+def chat(
+    provider, agent_config, mcp_config, memory_llm, memory_path, console, with_voice
+):
     """Start an interactive chat session with LLM"""
     check_and_update()
     from AgentCrew.app import AgentCrewApplication
+
+    if memory_path:
+        os.environ["MEMORYDB_PATH"] = memory_path
 
     app = AgentCrewApplication()
 
@@ -276,14 +250,18 @@ def a2a_server(
     port,
     base_url,
     provider,
-    model_id,
     agent_config,
-    api_key,
     mcp_config,
     memory_llm,
+    memory_path,
+    model_id,
+    api_key,
 ):
     """Start an A2A server exposing all SwissKnife agents"""
     from AgentCrew.app import AgentCrewApplication
+
+    if memory_path:
+        os.environ["MEMORYDB_PATH"] = memory_path
 
     app = AgentCrewApplication()
     app.run_server(
@@ -325,12 +303,16 @@ def job(
     agent_config,
     mcp_config,
     memory_llm,
+    memory_path,
     output_schema,
     task,
     files,
 ):
     """Run a single job/task with an agent"""
     from AgentCrew.app import AgentCrewApplication
+
+    if memory_path:
+        os.environ["MEMORYDB_PATH"] = memory_path
 
     try:
         app = AgentCrewApplication()

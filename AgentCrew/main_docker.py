@@ -96,9 +96,12 @@ def get_current_version():
 
 @cli.command()
 @common_options
-def chat(provider, agent_config, mcp_config, memory_llm):
+def chat(provider, agent_config, mcp_config, memory_llm, memory_path):
     """Start an interactive chat session with LLM"""
     from AgentCrew.app import AgentCrewApplication
+
+    if memory_path:
+        os.environ["MEMORYDB_PATH"] = memory_path
 
     app = AgentCrewApplication()
     app.run_console(provider, agent_config, mcp_config, memory_llm)
@@ -116,14 +119,18 @@ def a2a_server(
     port,
     base_url,
     provider,
-    model_id,
     agent_config,
-    api_key,
     mcp_config,
     memory_llm,
+    memory_path,
+    model_id,
+    api_key,
 ):
     """Start an A2A server exposing all SwissKnife agents"""
     from AgentCrew.app import AgentCrewApplication
+
+    if memory_path:
+        os.environ["MEMORYDB_PATH"] = memory_path
 
     app = AgentCrewApplication()
     app.run_server(
@@ -165,12 +172,16 @@ def job(
     agent_config,
     mcp_config,
     memory_llm,
+    memory_path,
     output_schema,
     task,
     files,
 ):
     """Run a single job/task with an agent"""
     from AgentCrew.app import AgentCrewApplication
+
+    if memory_path:
+        os.environ["MEMORYDB_PATH"] = memory_path
 
     try:
         app = AgentCrewApplication()
