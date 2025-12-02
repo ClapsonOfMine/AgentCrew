@@ -170,10 +170,6 @@ def extract_clickable_elements(chrome_interface, uuid_mapping: Dict[str, str]) -
             text = element.get("text", "").strip()
             element_type = element.get("type", "").strip()
 
-            # Skip empty text entries
-            if not text:
-                continue
-
             # Generate UUID and store mapping
             element_uuid = str(uuid.uuid4())[:8]  # Use first 8 characters for brevity
             uuid_mapping[element_uuid] = xpath
