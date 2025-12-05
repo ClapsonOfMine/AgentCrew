@@ -225,7 +225,6 @@ class OpenAIResponseService(BaseLLMService):
             "input": input_data,
             "stream": True,
             "instructions": self.system_prompt or None,
-            "temperature": self.temperature,
         }
 
         forced_sample_params = ModelRegistry.get_model_sample_params(full_model_id)
