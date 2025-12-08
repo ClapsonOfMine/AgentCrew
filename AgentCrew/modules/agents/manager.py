@@ -1,4 +1,4 @@
-import toml
+import tomllib as toml
 import json
 from typing import Dict, Any, Optional, List
 
@@ -61,7 +61,7 @@ class AgentManager:
 
         try:
             if config_path.endswith(".toml"):
-                with open(config_path, "r", encoding="utf-8") as file:
+                with open(config_path, "rb") as file:
                     config = toml.load(file)
             elif config_path.endswith(".json"):
                 with open(config_path, "r", encoding="utf-8") as file:
@@ -72,7 +72,7 @@ class AgentManager:
                 )
         except FileNotFoundError:
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        except (toml.TomlDecodeError, json.JSONDecodeError):
+        except (toml.TOMLDecodeError, json.JSONDecodeError):
             raise ValueError("Invalid configuration file format.")
 
         # Filter enabled agents (default to True if enabled field is missing)

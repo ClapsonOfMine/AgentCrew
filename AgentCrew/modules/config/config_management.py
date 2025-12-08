@@ -1,6 +1,7 @@
 import os
 import json
-import toml
+import tomllib as toml
+from tomli_w import dump as toml_dump
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from loguru import logger
@@ -62,7 +63,8 @@ class ConfigManagement:
                     self.config_data = json.load(f)
                 self.file_format = "json"
             elif file_extension == ".toml":
-                self.config_data = toml.load(self.config_path)
+                with open(self.config_path, "rb") as f:
+                    self.config_data = toml.load(f)
                 self.file_format = "toml"
             else:
                 raise ValueError(f"Unsupported file format: {file_extension}")
@@ -96,8 +98,8 @@ class ConfigManagement:
                 with open(self.config_path, "w", encoding="utf-8") as f:
                     json.dump(self.config_data, f, indent=2)
             elif self.file_format == "toml":
-                with open(self.config_path, "w", encoding="utf-8") as f:
-                    toml.dump(self.config_data, f)
+                with open(self.config_path, "wb") as f:
+                    toml_dump(self.config_data, f, multiline_strings=True)
             else:
                 raise ValueError(f"Unsupported file format: {self.file_format}")
         except Exception as e:
@@ -347,8 +349,8 @@ class ConfigManagement:
             os.makedirs(os.path.dirname(agents_config_path), exist_ok=True)
 
             # Create new config file
-            with open(agents_config_path, "w", encoding="utf-8") as f:
-                toml.dump(config_data, f)
+            with open(agents_config_path, "wb") as f:
+                toml_dump(config_data, f, multiline_strings=True)
 
     def reload_agents_from_config(self):
         from AgentCrew.modules.agents import RemoteAgent, LocalAgent, AgentManager
@@ -708,10 +710,11 @@ class ConfigManagement:
                 os.makedirs(output_dir, exist_ok=True)
 
             # Write to file
-            with open(output_file, "w", encoding="utf-8") as f:
-                if file_format == "toml":
-                    toml.dump(export_config, f)
-                else:  # json
+            if file_format == "toml":
+                with open(output_file, "wb") as f:
+                    toml_dump(export_config, f, multiline_strings=True)
+            else:  # json
+                with open(output_file, "w", encoding="utf-8") as f:
                     json.dump(export_config, f, indent=2, ensure_ascii=False)
 
             result["success"] = True

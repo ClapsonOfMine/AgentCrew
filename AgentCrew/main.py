@@ -4,7 +4,7 @@ import sys
 import requests
 import subprocess
 import platform
-from .app import common_options
+from AgentCrew.app import common_options
 
 
 PROVIDER_LIST = [
