@@ -562,7 +562,9 @@ You must analyze then execute it with your available tools and give answer witho
                 }
             )
 
-        adaptive_text = []
+        adaptive_text = [
+            "<Global_Behavior id='default'>When you encounter task that you have no data in the context and you don't know the anwser, say I don't know and ask user for helping you find the solution</Global_Behavior>"
+        ]
         adaptive_behaviors = self.services["context_persistent"].get_adaptive_behaviors(
             self.name
         )
@@ -713,19 +715,20 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
             elif msg.get("role") == "tool":
                 tool_name = msg.get("tool_name", "")
 
-                # Remove denied tools after agent correct it
-                if msg.get("is_rejected", False):
-                    has_last_user_message = next(
-                        (True for _ in final_messages[i:] if msg.get("role") == "user"),
-                        False,
-                    )
-                    if has_last_user_message:
-                        tool_id = msg.get("tool_call_id", "")
-                        last_assistant_msg = final_messages[i - 1]
-                        for tool_call in last_assistant_msg.get("tool_calls", []):
-                            if tool_call.get("id", "") == tool_id:
-                                tool_call["arguments"] = {}
-                                break
+                # TODO: this will be failed if agent call tool in parallel
+                # # Remove denied tools after agent correct it
+                # if msg.get("is_rejected", False):
+                #     has_last_user_message = next(
+                #         (True for _ in final_messages[i:] if msg.get("role") == "user"),
+                #         False,
+                #     )
+                #     if has_last_user_message:
+                #         tool_id = msg.get("tool_call_id", "")
+                #         last_assistant_msg = final_messages[i - 1]
+                #         for tool_call in last_assistant_msg.get("tool_calls", []):
+                #             if tool_call.get("id", "") == tool_id:
+                #                 tool_call["arguments"] = {}
+                #                 break
 
                 if tool_name in shrink_excluded:
                     continue

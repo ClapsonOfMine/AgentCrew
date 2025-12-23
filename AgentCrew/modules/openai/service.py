@@ -191,7 +191,7 @@ class OpenAIService(BaseLLMService):
         full_model_id = f"{self._provider_name}/{self.model}"
         stream_params = {
             "model": self.model,
-            "messages": messages,
+            "messages": self._convert_internal_format(messages),
             "parallel_tool_calls": False,
             "stream_options": {"include_usage": True},
             "max_tokens": 20000,
@@ -221,9 +221,9 @@ class OpenAIService(BaseLLMService):
 
         # Add system message if provided
         if self.system_prompt:
-            stream_params["messages"] = self._convert_internal_format(
-                [{"role": "system", "content": self.system_prompt}] + messages
-            )
+            stream_params["messages"] = [
+                {"role": "system", "content": self.system_prompt}
+            ] + messages
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(

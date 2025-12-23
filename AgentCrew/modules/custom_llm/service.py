@@ -116,7 +116,7 @@ class CustomLLMService(OpenAIService):
 
         stream_params = {
             "model": self.model,
-            "messages": messages,
+            "messages": self._convert_internal_format(messages),
             # "max_tokens": 16000,
         }
         stream_params["temperature"] = self.temperature
@@ -148,9 +148,9 @@ class CustomLLMService(OpenAIService):
                 stream_params["extra_body"]["min_p"] = forced_sample_params.min_p
         # Add system message if provided
         if self.system_prompt:
-            stream_params["messages"] = self._convert_internal_format(
-                [{"role": "system", "content": self.system_prompt}] + messages
-            )
+            stream_params["messages"] = [
+                {"role": "system", "content": self.system_prompt}
+            ] + stream_params["messages"]
 
         # Add tools if available
         if self.tools and "tool_use" in ModelRegistry.get_model_capabilities(
