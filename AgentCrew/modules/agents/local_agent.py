@@ -562,9 +562,7 @@ You must analyze then execute it with your available tools and give answer witho
                 }
             )
 
-        adaptive_text = [
-            "<Global_Behavior id='default'>When you encounter task that you have no data in the context and you don't know the anwser, say I don't know and ask user for helping you find the solution</Global_Behavior>"
-        ]
+        adaptive_text = []
         adaptive_behaviors = self.services["context_persistent"].get_adaptive_behaviors(
             self.name
         )
@@ -586,13 +584,19 @@ You must analyze then execute it with your available tools and give answer witho
                     for key, value in local_adaptive_behaviors.items()
                 ]
             )
+        adaptive_text.extend(
+            [
+                "<Global_Behavior id='default'>When encountering tasks that you have no data in the context and you don't know the anwser, say I don't know and ask user for helping you find the solution.</Global_Behavior>",
+                "<Global_Behavior id='transfer'>When first working on a task, consider whether any other agent is more suitable, if yes, transfer to that agent.</Global_Behavior>",
+            ]
+        )
         if len(adaptive_text) > 0:
             adaptive_messages["content"].append(
                 {
                     "type": "text",
-                    "text": f"""<MANDATORY>APPLY list of <Adaptive_Behaviors> before responding. 
-Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, update your responses with behaviors immediately—they override default instruction.
-<Project_Behavior> has higher priority than <Global_Behavior>.</MANDATORY>
+                    "text": f"""Learn behaviors in the <Adaptive_Behaviors> tags before responding. 
+If `when` condition in <Global_Behavior> or <Project_Behavior> matches, update your responses with behaviors immediately—they override default instruction.
+<Project_Behavior> has higher priority than <Global_Behavior>.
 <Adaptive_Behaviors>
 {"  \n".join(adaptive_text)}
 </Adaptive_Behaviors>""",
@@ -620,22 +624,22 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
             .find("<Transfer_Tool>")
             != 0
         ):
-            if (
-                self.services.get("agent_manager")
-                and self.services["agent_manager"].enforce_transfer
-            ):
-                adaptive_messages["content"].insert(
-                    0,
-                    {
-                        "type": "text",
-                        "text": """Before processing my request:
-    - Break my request into sub-tasks when applicable.
-    - For each sub-task, evaluate other agents capabilities.
-    - Transfer sub-task to other agent if they are more suitable. 
-    - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
-    - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
-                    },
-                )
+            #         if (
+            #             self.services.get("agent_manager")
+            #             and self.services["agent_manager"].enforce_transfer
+            #         ):
+            #             adaptive_messages["content"].insert(
+            #                 0,
+            #                 {
+            #                     "type": "text",
+            #                     "text": """Before processing my request:
+            # - Break my request into sub-tasks when applicable.
+            # - For each sub-task, evaluate other agents capabilities.
+            # - Transfer sub-task to other agent if they are more suitable.
+            # - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
+            # - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
+            #                 },
+            #             )
             if not self.is_remoting_mode and self.services.get("memory"):
                 memory_headers = self.services["memory"].list_memory_headers(
                     agent_name=self.name
@@ -644,7 +648,7 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": f"Here are conversations that we have discussed from oldest to latest:\n - {'\n - '.join(memory_headers)}",
+                            "text": f"Below is our conversation history from oldest to latest:\n - {'\n - '.join(memory_headers)}",
                         }
                     )
         if len(adaptive_messages["content"]) > 0:
@@ -667,7 +671,7 @@ Check if `when` condition in <Global_Behavior> or <Project_Behavior> matches, up
                     "content": [
                         {
                             "type": "text",
-                            "text": f"""<Transfer_Reminder>Make sure to transfer after the task is completed: {agent_manager.defered_transfer}</Transfer_Reminder>""",
+                            "text": f"""<Transfer_Reminder>Make sure to transfer the task result after the task is completed to {agent_manager.defered_transfer}</Transfer_Reminder>""",
                         }
                     ],
                 },
