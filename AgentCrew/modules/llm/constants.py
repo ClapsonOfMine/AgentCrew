@@ -409,6 +409,17 @@ _GITHUB_COPILOT_MODELS = [
         output_token_price_1m=0.0,
     ),
     Model(
+        id="gemini-3-flash-preview",
+        provider="github_copilot",
+        name="Gemini 3 Flash Preview",
+        description="",
+        capabilities=["tool_use", "vision", "stream"],
+        default=False,
+        input_token_price_1m=0.0,
+        force_sample_params=SampleParam(temperature=1.0),
+        output_token_price_1m=0.0,
+    ),
+    Model(
         id="gpt-4.1",
         provider="github_copilot",
         name="GPT 4.1",
