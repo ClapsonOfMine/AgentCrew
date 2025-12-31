@@ -147,8 +147,9 @@ class ConversationConsolidator:
                 prefix = "USER: "
             elif role == "assistant":
                 prefix = f"{agent_name.upper()}: "
-            elif role == "tool":
-                prefix = f"TOOL ({msg.get('name', 'unknown')}): "
+            # Skip the tool data for saving tokens in summary
+            # elif role == "tool":
+            #     prefix = f"TOOL ({msg.get('name', 'unknown')}): "
             elif role == "consolidated":
                 # If we're summarizing a section that already has a consolidated message,
                 # include it directly to preserve that context
