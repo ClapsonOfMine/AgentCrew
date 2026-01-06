@@ -587,15 +587,15 @@ You must analyze then execute it with your available tools and give answer witho
         adaptive_text.extend(
             [
                 "<Global_Behavior id='default'>When encountering tasks that you have no data in the context and you don't know the anwser, say I don't know and ask user for helping you find the solution.</Global_Behavior>",
-                "<Global_Behavior id='transfer'>When first working on a task, consider whether any other agent is more suitable, if yes, transfer to that agent.</Global_Behavior>",
+                "<Global_Behavior id='transfer'>When working on my request, consider whether if any other agents is more suitable, if yes, transfer to that agent.</Global_Behavior>",
             ]
         )
         if len(adaptive_text) > 0:
             adaptive_messages["content"].append(
                 {
                     "type": "text",
-                    "text": f"""Learn behaviors in the <Adaptive_Behaviors> tags before responding. 
-If `when` condition in <Global_Behavior> or <Project_Behavior> matches, update your responses with behaviors immediately—they override default instruction.
+                    "text": f"""Go through all behaviors in the <Adaptive_Behaviors> tags before generating responses. 
+Whenever condition `when` in <Global_Behavior> or <Project_Behavior> matches, tailor your responses with behaviors immediately—they override default instruction.
 <Project_Behavior> has higher priority than <Global_Behavior>.
 <Adaptive_Behaviors>
 {"  \n".join(adaptive_text)}
@@ -648,10 +648,11 @@ If `when` condition in <Global_Behavior> or <Project_Behavior> matches, update y
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": f"Below is our conversation history from oldest to latest:\n - {'\n - '.join(memory_headers)}",
+                            "text": f"Check the conversation histories if it related to my request:\n - {'\n - '.join(memory_headers)}",
                         }
                     )
         if len(adaptive_messages["content"]) > 0:
+            print(adaptive_messages)
             final_messages.insert(last_user_index, adaptive_messages)
 
         agent_manager = self.services.get("agent_manager", None)
