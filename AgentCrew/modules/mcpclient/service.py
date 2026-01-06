@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from mcp import ClientSession, StdioServerParameters
 from mcp.types import ImageContent, TextContent
 from mcp.client.stdio import stdio_client
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 from mcp.client.sse import sse_client
 from AgentCrew.modules.agents import LocalAgent, AgentManager
 from AgentCrew.modules.tools.registry import ToolRegistry
@@ -79,13 +79,17 @@ class MCPService:
                         sse_read_timeout=60 * 60 * 24,
                     )
                 else:
-                    session_context = streamablehttp_client(
+                    from httpx import AsyncClient, Timeout
+
+                    session_context = streamable_http_client(
                         server_config.url,
-                        headers=headers,
-                        auth=oauth_resolver.get_oauth_client_provider(
-                            server_config.url, token_storage
+                        http_client=AsyncClient(
+                            headers=headers,
+                            auth=oauth_resolver.get_oauth_client_provider(
+                                server_config.url, token_storage
+                            ),
+                            timeout=Timeout(60, read=60 * 60 * 24),
                         ),
-                        sse_read_timeout=60 * 60 * 24,
                     )
 
                 async with session_context as stream_context:

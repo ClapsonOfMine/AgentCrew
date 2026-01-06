@@ -3,19 +3,17 @@ name = "agentcrew-ai"
 version = "0.8.9"
 requires-python = ">=3.12"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 description = "Multi-Agents Interactive Chat Tool"
-authors = [
-    {name = "Quy Truong", email = "quy.truong@saigontechnology.com"},
-]
+authors = [{ name = "Quy Truong", email = "quy.truong@saigontechnology.com" }]
 readme = "README.md"
 
 dependencies = [
@@ -32,7 +30,7 @@ dependencies = [
   "chromadb>=1.0.0",
   "openai>=1.65.2",
   "tree-sitter>=0.23.2",
-  "mcp>=1.3.0",
+  "mcp>=1.24.0",
   "google-genai>=1.7.0",
   "toml>=0.10.2",
   "markdown>=3.7",
@@ -67,12 +65,7 @@ nvidia = [
 ]
 
 [tool.uv]
-conflicts = [
-  [
-    { extra = "cpu" },
-    { extra = "nvidia" },
-  ],
-]
+conflicts = [[{ extra = "cpu" }, { extra = "nvidia" }]]
 
 [tool.uv.sources]
 torch = [
@@ -118,8 +111,4 @@ include-package-data = true
 where = ["./"]
 
 [dependency-groups]
-dev = [
-    "pygments>=2.19.1",
-    "pyinstaller>=6.13.0",
-    "langfuse>=3.0.1",
-]
+dev = ["pygments>=2.19.1", "pyinstaller>=6.13.0", "langfuse>=3.0.1"]
