@@ -652,7 +652,6 @@ Whenever condition `when` in <Global_Behavior> or <Project_Behavior> matches, ta
                         }
                     )
         if len(adaptive_messages["content"]) > 0:
-            print(adaptive_messages)
             final_messages.insert(last_user_index, adaptive_messages)
 
         agent_manager = self.services.get("agent_manager", None)

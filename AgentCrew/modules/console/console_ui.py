@@ -120,6 +120,7 @@ class ConsoleUI(Observer):
             self.tool_display.display_tool_use(data)  # data is the tool use object
         elif event == "tool_result":
             pass
+            self.ui_effects.start_loading_animation()  # Stop loading on first chunk
             # self.tool_display.display_tool_result(data)  # data is dict with tool_use and tool_result
         elif event == "tool_error":
             self.tool_display.display_tool_error(

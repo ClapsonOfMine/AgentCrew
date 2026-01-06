@@ -63,7 +63,7 @@ class UIEffects:
             "", console=self.console, auto_refresh=True, refresh_per_second=10
         ) as live:
             while not stop_event.is_set():
-                live.update(f"{fun_word} {next(self.spinner)}")
+                live.update(f" {fun_word} {next(self.spinner)}")
                 time.sleep(0.1)  # Control animation speed
             live.update("")  # Clear the live display when done
             live.stop()  # Stop the live display
@@ -114,8 +114,8 @@ class UIEffects:
 
         self.live = Live(
             live_panel,
+            refresh_per_second=10,
             console=self.console,
-            auto_refresh=False,
             vertical_overflow="crop",
         )
         self.live.start()
