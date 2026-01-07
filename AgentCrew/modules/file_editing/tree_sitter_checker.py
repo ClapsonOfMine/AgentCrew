@@ -53,7 +53,7 @@ class TreeSitterChecker:
         ".cxx": "cpp",
         ".h": "c",
         ".hpp": "cpp",
-        ".cs": "csharp",
+        # ".cs": "csharp",
         ".go": "go",
         ".rs": "rust",
         ".rb": "ruby",
@@ -140,7 +140,7 @@ class TreeSitterChecker:
 
         def visit_node(node):
             """Recursively visit tree nodes to find errors."""
-            if node.type == "ERROR":
+            if node.is_error:
                 line = node.start_point[0] + 1  # tree-sitter uses 0-indexed lines
                 column = node.start_point[1]
 
