@@ -114,7 +114,7 @@ class UIEffects:
 
         self.live = Live(
             live_panel,
-            refresh_per_second=10,
+            auto_refresh=False,
             console=self.console,
             vertical_overflow="crop",
         )
@@ -168,7 +168,7 @@ class UIEffects:
                 style=RICH_STYLE_GRAY if is_thinking else RICH_STYLE_GREEN_BOLD,
             )
             subtitle = Text(
-                f"{next(self.spinner)}(Use Ctrl+U/Ctrl+D to scroll)",
+                "(Use Ctrl+U/Ctrl+D to scroll)",
                 style=RICH_STYLE_GRAY,
             )
             live_panel = Panel(
