@@ -27,16 +27,22 @@ mcp_log_io = FileLogIO("mcpclient_agentcrew")
 class MCPService:
     """Service for interacting with Model Context Protocol (MCP) servers."""
 
-    def __init__(self):
-        """Initialize the MCP service."""
+    def __init__(self, ping_interval: int = 30):
+        """Initialize the MCP service.
+
+        Args:
+            ping_interval: Interval in seconds between keep-alive pings (default: 30)
+        """
         self.sessions: Dict[str, ClientSession] = {}
         self.connected_servers: Dict[str, bool] = {}
         self.tools_cache: Dict[str, Dict[str, Tool]] = {}
         self.loop = asyncio.new_event_loop()
         self._server_connection_tasks: Dict[str, asyncio.Task] = {}
         self._server_shutdown_events: Dict[str, asyncio.Event] = {}
+        self._server_keepalive_tasks: Dict[str, asyncio.Task] = {}
         self.server_prompts: Dict[str, List[Prompt]] = {}
         self.tokens_storage_cache: Dict[str, FileTokenStorage] = {}
+        self.ping_interval = ping_interval
 
     async def _manage_single_connection(
         self, server_config: MCPServerConfig, agent_name: Optional[str] = None
@@ -126,9 +132,29 @@ class MCPService:
                             self.server_prompts[server_name] = prompts.prompts
 
                         logger.info(
-                            f"MCPService: {server_name} setup complete. Waiting for shutdown signal."
+                            f"MCPService: {server_name} setup complete. Starting keep-alive task."
+                        )
+
+                        keepalive_task = asyncio.create_task(
+                            self._keepalive_worker(combined_server_id, shutdown_event)
+                        )
+                        self._server_keepalive_tasks[combined_server_id] = (
+                            keepalive_task
+                        )
+
+                        logger.info(
+                            f"MCPService: {server_name} keep-alive task started. Waiting for shutdown signal."
                         )
                         await shutdown_event.wait()
+
+                        if combined_server_id in self._server_keepalive_tasks:
+                            keepalive_task.cancel()
+                            try:
+                                await keepalive_task
+                            except asyncio.CancelledError:
+                                logger.info(
+                                    f"MCPService: Keep-alive task for {server_name} cancelled."
+                                )
             else:
                 # Original stdio client logic
                 server_params = StdioServerParameters(
@@ -187,9 +213,29 @@ class MCPService:
                             self.server_prompts[server_name] = prompts.prompts
 
                         logger.info(
-                            f"MCPService: {server_name} setup complete. Waiting for shutdown signal."
+                            f"MCPService: {server_name} setup complete. Starting keep-alive task."
+                        )
+
+                        keepalive_task = asyncio.create_task(
+                            self._keepalive_worker(combined_server_id, shutdown_event)
+                        )
+                        self._server_keepalive_tasks[combined_server_id] = (
+                            keepalive_task
+                        )
+
+                        logger.info(
+                            f"MCPService: {server_name} keep-alive task started. Waiting for shutdown signal."
                         )
                         await shutdown_event.wait()
+
+                        if combined_server_id in self._server_keepalive_tasks:
+                            keepalive_task.cancel()
+                            try:
+                                await keepalive_task
+                            except asyncio.CancelledError:
+                                logger.info(
+                                    f"MCPService: Keep-alive task for {server_name} cancelled."
+                                )
 
         except asyncio.CancelledError:
             logger.info(f"MCPService: Connection task for {server_name} was cancelled.")
@@ -204,11 +250,57 @@ class MCPService:
                     agent.mcps_loading.remove(combined_server_id)
         finally:
             logger.info(f"MCPService: Cleaning up connection for {server_name}.")
-            self.sessions.pop(server_name, None)
-            self.connected_servers.pop(server_name, False)
-            self.tools_cache.pop(server_name, None)
-            self._server_shutdown_events.pop(server_name, None)
+            self.sessions.pop(combined_server_id, None)
+            self.connected_servers.pop(combined_server_id, False)
+            self.tools_cache.pop(combined_server_id, None)
+            self._server_shutdown_events.pop(combined_server_id, None)
+            self._server_keepalive_tasks.pop(combined_server_id, None)
             logger.info(f"MCPService: Cleanup for {server_name} complete.")
+
+    async def _keepalive_worker(self, server_id: str, shutdown_event: asyncio.Event):
+        """
+        Periodically send ping requests to keep the session alive and refresh tokens.
+
+        Args:
+            server_id: ID of the server to send pings to
+            shutdown_event: Event that signals when to stop the keep-alive loop
+        """
+        logger.info(f"MCPService: Keep-alive worker started for {server_id}")
+
+        try:
+            while not shutdown_event.is_set():
+                try:
+                    await asyncio.wait_for(
+                        shutdown_event.wait(), timeout=self.ping_interval
+                    )
+                    break
+                except asyncio.TimeoutError:
+                    if server_id in self.sessions and self.connected_servers.get(
+                        server_id
+                    ):
+                        try:
+                            session = self.sessions[server_id]
+                            await session.send_ping()
+                            logger.debug(f"MCPService: Sent ping to {server_id}")
+                        except Exception as e:
+                            logger.warning(
+                                f"MCPService: Failed to send ping to {server_id}: {e}"
+                            )
+                            self.connected_servers[server_id] = False
+                    else:
+                        logger.warning(
+                            f"MCPService: Session for {server_id} not available, stopping keep-alive"
+                        )
+                        break
+        except asyncio.CancelledError:
+            logger.info(f"MCPService: Keep-alive worker for {server_id} cancelled")
+            raise
+        except Exception as e:
+            logger.exception(
+                f"MCPService: Error in keep-alive worker for {server_id}: {e}"
+            )
+        finally:
+            logger.info(f"MCPService: Keep-alive worker for {server_id} stopped")
 
     def _get_server_id_format(
         self, server_name: str, agent_name: Optional[str] = None
