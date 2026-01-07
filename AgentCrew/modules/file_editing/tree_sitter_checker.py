@@ -146,7 +146,7 @@ class TreeSitterChecker:
 
                 error_text = content[node.start_byte : node.end_byte]
                 error_preview = (
-                    error_text[:50] + "..." if len(error_text) > 50 else error_text
+                    error_text[:100] + "..." if len(error_text) > 100 else error_text
                 )
 
                 errors.append(
