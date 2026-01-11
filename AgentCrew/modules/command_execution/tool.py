@@ -24,7 +24,7 @@ def get_run_command_tool_definition(provider="claude") -> Dict[str, Any]:
         # cmds = "ls, cat, ps, python, pip, node, npm, git, docker, curl, grep, find"
         ex = "ls -la, python script.py, git status, ps aux"
 
-    desc = f"Execute commands via {shell}. Returns command_id if timeout."
+    desc = f"Execute commands via {shell} in background. Returns command_id if timeout."
 
     args = {
         "command": {"type": "string", "description": f"Command. Ex: {ex}"},
