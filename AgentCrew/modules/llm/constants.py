@@ -303,8 +303,8 @@ _DEEPINFRA_MODELS = [
     Model(
         id="Qwen/Qwen3-Next-80B-A3B-Instruct",
         provider="deepinfra",
-        name="Qwen 3 Coder",
-        description="Qwen3-Coder-480B-A35B-Instruct is the Qwen3's most agentic code model",
+        name="Qwen 3 Next",
+        description="Qwen3-Next",
         capabilities=["tool_use", "stream", "structured_output"],
         force_sample_params=SampleParam(
             temperature=0.7, top_p=0.8, top_k=20, min_p=0.0
@@ -356,6 +356,16 @@ _DEEPINFRA_MODELS = [
         output_token_price_1m=1.0,
     ),
     Model(
+        id="deepseek-ai/DeepSeek-V3.2",
+        provider="deepinfra",
+        name="DeepSeek V3.2",
+        description="DeepSeek-V3.2 is a large language model designed to harmonize high computational efficiency with strong reasoning and agentic tool-use performance",
+        capabilities=["tool_use", "stream", "structured_output"],
+        max_context_token=160_000,
+        input_token_price_1m=0.26,
+        output_token_price_1m=0.39,
+    ),
+    Model(
         id="deepseek-ai/DeepSeek-R1-0528",
         provider="deepinfra",
         name="DeepSeek R1 0528",
@@ -374,6 +384,17 @@ _DEEPINFRA_MODELS = [
         force_sample_params=SampleParam(temperature=0.6),
         input_token_price_1m=0.5,
         output_token_price_1m=2.0,
+    ),
+    Model(
+        id="MiniMaxAI/MiniMax-M2",
+        provider="deepinfra",
+        name="Kimi K2 Instruct",
+        description="MiniMax-M2 is a Mini model built for Max coding & agentic workflows with just 10 billion activated parameters",
+        capabilities=["tool_use", "stream", "structured_output"],
+        force_sample_params=SampleParam(temperature=0.6),
+        max_context_token=262_000,
+        input_token_price_1m=0.254,
+        output_token_price_1m=1.02,
     ),
 ]
 _GITHUB_COPILOT_MODELS = [
