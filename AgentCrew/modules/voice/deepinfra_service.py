@@ -43,7 +43,7 @@ class DeepInfraVoiceService(BaseVoiceService):
         self.stt_model = "openai/whisper-large-v3-turbo"
 
         # TTS settings - DeepInfra now supports TTS via OpenAI-compatible Speech API
-        self.tts_model = "canopylabs/orpheus-3b-0.1-ft"  # DeepInfra TTS model
+        self.tts_model = "ResembleAI/chatterbox-turbo"  # DeepInfra TTS model
         self.default_voice = "tara"  # Default voice for DeepInfra TTS
 
         # TTS streaming thread management
