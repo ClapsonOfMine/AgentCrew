@@ -22,12 +22,12 @@ def get_code_analysis_tool_definition(provider="claude") -> Dict[str, Any]:
     Returns:
         Dict containing the tool definition
     """
-    description = "Analyzes the structure of source code files within a repository, creating a structural map. This identifies key code elements, enabling code understanding and project organization insights. Explain what insights you are hoping to gain from analyzing the repository before using this tool."
+    description = "Reads the structure of source code files within a repository, creating a structural map. This identifies key code elements, enabling code understanding and project organization insights."
 
     tool_arguments = {
         "path": {
             "type": "string",
-            "description": "The root directory to analyze. Use './' to analyze all source files in the current directory, or specify a subdirectory (e.g., 'src') to analyze files within that directory. Choose the path that will provide the most relevant information for the task at hand.",
+            "description": "The root directory to read_repo. Use './' to read all source files in the current directory, or specify a subdirectory (e.g., 'src') to read files within that directory. Choose the path that will provide the most relevant information for the task at hand.",
         },
         "exclude_patterns": {
             "type": "array",
@@ -39,7 +39,7 @@ def get_code_analysis_tool_definition(provider="claude") -> Dict[str, Any]:
 
     if provider == "claude":
         return {
-            "name": "analyze_repo",
+            "name": "read_repo",
             "description": description,
             "input_schema": {
                 "type": "object",
@@ -51,7 +51,7 @@ def get_code_analysis_tool_definition(provider="claude") -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "analyze_repo",
+                "name": "read_repo",
                 "description": description,
                 "parameters": {
                     "type": "object",
@@ -108,7 +108,7 @@ def get_file_content_tool_definition(provider="claude"):
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Reads the content of a file, or a specific lines within that file (function or class body). Use this to examine the logic of specific functions, the structure of classes, or the overall content of a file."
+    tool_description = "Gets the content of a file, or a specific lines within that file (function or class body). Use this to examine the logic of specific functions, the structure of classes, or the overall content of a file."
 
     tool_arguments = {
         "file_path": {
@@ -128,7 +128,7 @@ def get_file_content_tool_definition(provider="claude"):
 
     if provider == "claude":
         return {
-            "name": "read_file",
+            "name": "get_file",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -140,7 +140,7 @@ def get_file_content_tool_definition(provider="claude"):
         return {
             "type": "function",
             "function": {
-                "name": "read_file",
+                "name": "get_file",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",

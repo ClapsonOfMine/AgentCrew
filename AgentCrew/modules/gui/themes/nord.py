@@ -1274,8 +1274,8 @@ QFrame {
         "adapt": "🧠",
         "retrieve_memory": "💭",
         "forget_memory_topic": "🗑️",
-        "analyze_repo": "📂",
-        "read_file": "📄",
+        "read_repo": "📂",
+        "get_file": "📄",
         "default": "🔧",  # Default icon for unspecified tools
     }
 
