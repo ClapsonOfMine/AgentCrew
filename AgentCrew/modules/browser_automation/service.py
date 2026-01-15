@@ -137,6 +137,39 @@ class BrowserAutomationService:
                 "profile": profile,
             }
 
+    def refresh(self) -> Dict[str, Any]:
+        """
+        Refresh the current page.
+
+        Returns:
+            Dict containing refresh result
+        """
+        try:
+            self._ensure_chrome_running()
+            if self.chrome_interface is None:
+                raise RuntimeError("Chrome interface is not initialized")
+
+            self.chrome_interface.Page.reload()
+
+            import time
+
+            time.sleep(0.5)
+
+            current_url = JavaScriptExecutor.get_current_url(self.chrome_interface)
+
+            return {
+                "success": True,
+                "message": "Successfully refreshed the page",
+                "current_url": current_url,
+            }
+
+        except Exception as e:
+            logger.error(f"Refresh error: {e}")
+            return {
+                "success": False,
+                "error": f"Refresh error: {str(e)}",
+            }
+
     def click_element(self, element_uuid: str) -> Dict[str, Any]:
         """
         Click an element using UUID via Chrome DevTools Protocol.

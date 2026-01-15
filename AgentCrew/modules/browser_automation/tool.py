@@ -484,57 +484,71 @@ def get_browser_capture_screenshot_tool_handler(
     return handle_browser_capture_screenshot
 
 
+def get_browser_refresh_tool_definition(provider="claude") -> Dict[str, Any]:
+    """Get tool definition for browser page refresh."""
+    tool_description = (
+        "Refresh/reload the current browser page. Equivalent to pressing F5 or Ctrl+R."
+    )
+    tool_arguments = {}
+    tool_required = []
+
+    if provider == "claude":
+        return {
+            "name": "refresh_browser_content",
+            "description": tool_description,
+            "input_schema": {
+                "type": "object",
+                "properties": tool_arguments,
+                "required": tool_required,
+            },
+        }
+    else:
+        return {
+            "type": "function",
+            "function": {
+                "name": "refresh_browser_content",
+                "description": tool_description,
+                "parameters": {
+                    "type": "object",
+                    "properties": tool_arguments,
+                    "required": tool_required,
+                },
+            },
+        }
+
+
+def get_browser_refresh_tool_handler(
+    browser_service: BrowserAutomationService,
+) -> Callable:
+    """Get the handler function for the browser refresh tool."""
+
+    def handle_browser_refresh(**params) -> str:
+        result = browser_service.refresh()
+
+        if result.get("success", False):
+            return f"{result.get('message', 'Page refreshed')}. Current URL: {result.get('current_url', 'Unknown')}"
+        else:
+            raise RuntimeError(
+                f"Refresh failed: {result.get('error', 'Unknown error')}"
+            )
+
+    return handle_browser_refresh
+
+
 def get_browser_send_key_tool_definition(provider="claude") -> Dict[str, Any]:
     """Get tool definition for browser key event send."""
-    tool_description = "Send keyboard events like arrow keys, function keys, page navigation keys, etc. useful when combine with input tool."
+    tool_description = """Send keyboard events to the browser. Supports:
+- Single characters: 'a', 'b', '1', '2', etc.
+- Special keys: 'enter', 'escape', 'tab', 'backspace', 'delete', 'space'
+- Arrow keys: 'up', 'down', 'left', 'right'
+- Navigation: 'home', 'end', 'pageup', 'pagedown', 'insert'
+- Function keys: 'f1' through 'f12'
+- Numpad: 'numpad0' through 'numpad9'
+- With modifiers: use 'a' with ['ctrl'] for Ctrl+A, 'c' with ['ctrl'] for Ctrl+C"""
     tool_arguments = {
         "key": {
             "type": "string",
-            "enum": [
-                "up",
-                "down",
-                "left",
-                "right",
-                "home",
-                "end",
-                "pageup",
-                "pagedown",
-                "enter",
-                "escape",
-                "tab",
-                "backspace",
-                "delete",
-                "space",
-                "f1",
-                "f2",
-                "f3",
-                "f4",
-                "f5",
-                "f6",
-                "f7",
-                "f8",
-                "f9",
-                "f10",
-                "f11",
-                "f12",
-                "numpad0",
-                "numpad1",
-                "numpad2",
-                "numpad3",
-                "numpad4",
-                "numpad5",
-                "numpad6",
-                "numpad7",
-                "numpad8",
-                "numpad9",
-                "volumeup",
-                "volumedown",
-                "volumemute",
-                "capslock",
-                "numlock",
-                "scrolllock",
-            ],
-            "description": "Key to send.",
+            "description": "Key to send. Can be a single character (a-z, 0-9, symbols) or special key name (enter, escape, tab, f1-f12, up, down, left, right, etc.).",
         },
         "modifiers": {
             "type": "array",
@@ -542,7 +556,7 @@ def get_browser_send_key_tool_definition(provider="claude") -> Dict[str, Any]:
                 "type": "string",
                 "enum": ["ctrl", "alt", "shift", "meta"],
             },
-            "description": "Optional modifier keys: 'ctrl', 'alt', 'shift', 'meta'. Example: 'ctrl,shift' for Ctrl+Shift+Key.",
+            "description": "Optional modifier keys: 'ctrl', 'alt', 'shift', 'meta'. Example: ['ctrl', 'shift'] for Ctrl+Shift+Key.",
             "default": [],
         },
     }
@@ -676,6 +690,12 @@ def register(service_instance=None, agent=None):
     register_tool(
         get_browser_send_key_tool_definition,
         get_browser_send_key_tool_handler,
+        service_instance,
+        agent,
+    )
+    register_tool(
+        get_browser_refresh_tool_definition,
+        get_browser_refresh_tool_handler,
         service_instance,
         agent,
     )
