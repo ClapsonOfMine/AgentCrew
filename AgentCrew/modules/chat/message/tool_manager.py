@@ -137,9 +137,9 @@ class ToolManager:
             if action == "deny":
                 reason = confirmation.get("reason", "")
                 reason_message = (
-                    f"Here is the reason: {reason}. Adjust your actions bases on user's reason. Adapt behavior if it's recurring."
+                    f"Here is the reason: {reason}. Adjust your actions bases on user's reason. Learn new behavior if possible."
                     if reason
-                    else "Immediately STOP any tasks or any tool calls and WAIT for user reason and adjustment, adapt new behavior if needed. "
+                    else "Immediately STOP any tasks or any tool calls and WAIT for user reason and adjustment, learn new behavior if possible."
                 )
                 tool_result = (
                     f"Tool: {tool_id} call has been rejected by user, {reason_message}"

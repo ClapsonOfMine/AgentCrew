@@ -199,7 +199,7 @@ def get_memory_retrieve_tool_handler(memory_service: BaseMemoryService) -> Calla
     return handle_memory_retrieve
 
 
-def get_adapt_tool_definition(provider="claude") -> Dict[str, Any]:
+def get_learn_behavior_tool_definition(provider="claude") -> Dict[str, Any]:
     """Optimized adaptive behavior tool definition."""
 
     tool_description = """Stores behavioral patterns to personalize future interactions based on user preferences and successful approaches.
@@ -213,9 +213,14 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
             "type": "string",
             "description": "Unique identifier using format 'category_context' (e.g., 'communication_style_technical', 'task_execution_code_review'). Use existing ID to update behavior.",
         },
-        "behavior": {
+        "condition": {
             "type": "string",
-            "description": "Behavior pattern in 'when [condition], [action] [objective]' format. Example: 'when user asks about debugging, provide step-by-step troubleshooting with code examples'.",
+            "description": "The triggering condition for the behavior. Example: 'user asks about debugging', 'working with python project', 'user mentions deadlines'.",
+        },
+        "action_steps": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of action steps to execute when the condition is met. Each step should be a clear, actionable instruction. Example: ['provide step-by-step troubleshooting', 'include code examples', 'explain the root cause'].",
         },
         "scope": {
             "type": "string",
@@ -224,11 +229,11 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
         },
     }
 
-    tool_required = ["id", "behavior"]
+    tool_required = ["id", "condition", "action_steps"]
 
     if provider == "claude":
         return {
-            "name": "adapt_behavior",
+            "name": "learn_behavior",
             "description": tool_description,
             "input_schema": {
                 "type": "object",
@@ -240,7 +245,7 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
         return {
             "type": "function",
             "function": {
-                "name": "adapt_behavior",
+                "name": "learn_behavior",
                 "description": tool_description,
                 "parameters": {
                     "type": "object",
@@ -251,24 +256,43 @@ All behaviors must follow 'when..., [action]...' format for automatic activation
         }
 
 
-def get_adapt_tool_handler(persistence_service: Any) -> Callable:
+def get_learn_behavior_tool_handler(persistence_service: Any) -> Callable:
     """Optimized adaptive behavior handler with concise feedback."""
 
-    def handle_adapt(**params) -> str:
+    def handle_learn_behavior(**params) -> str:
         behavior_id = params.get("id", "").strip()
-        behavior = params.get("behavior", "").strip()
+        condition = params.get("condition", "").strip()
+        action_steps = params.get("action_steps", [])
         scope = params.get("scope", "global").strip().lower()
 
         if not behavior_id:
             return "Behavior ID required (e.g., 'communication_style_technical')."
 
-        if not behavior:
-            return "Behavior description required in 'when...do...' format."
+        if not condition:
+            return "Condition required (e.g., 'user asks about debugging')."
 
-        # Validate format
-        behavior_lower = behavior.lower()
-        if not behavior_lower.startswith("when "):
-            return "Use format: 'when [condition], [action]'"
+        if (
+            not action_steps
+            or not isinstance(action_steps, list)
+            or len(action_steps) == 0
+        ):
+            return "Action steps required as a non-empty list of strings."
+
+        action_steps = [
+            step.strip()
+            for step in action_steps
+            if isinstance(step, str) and step.strip()
+        ]
+        if len(action_steps) == 0:
+            return "At least one valid action step is required."
+
+        if len(action_steps) == 1:
+            behavior = f"when {condition}, do {action_steps[0]}"
+        else:
+            steps_joined = "; ".join(
+                f"{i + 1}. {step}" for i, step in enumerate(action_steps)
+            )
+            behavior = f"when {condition}, do run following steps: {steps_joined}"
 
         current_agent = AgentManager.get_instance().get_current_agent()
         agent_name = current_agent.name if current_agent else "default"
@@ -287,7 +311,7 @@ def get_adapt_tool_handler(persistence_service: Any) -> Callable:
         except Exception as e:
             return f"Storage failed: {str(e)}"
 
-    return handle_adapt
+    return handle_learn_behavior
 
 
 def adaptive_instruction_prompt():
@@ -296,21 +320,26 @@ def adaptive_instruction_prompt():
   <Purpose>
     Learn and apply personalized interaction patterns to improve user experience over time.
   </Purpose>
-  <Adapt_Behavior_Triggers>
+  <Learn_Behavior_Triggers>
     - User expresses preferences for communication style
     - Positive feedback on specific approaches
     - Repeated requests indicating preferred workflows
     - Successful problem-solving patterns
-    - Specific "when...do..." instructions from the user
+    - Specific "when.[condition].do.[actions]." instructions from the user
     - Use `project` scope for behaviors relevant only to current project
-  </Adapt_Behavior_Triggers>
+  </Learn_Behavior_Triggers>
   <Behavior_Format>
-    All behaviors must follow: "when [specific condition] do [specific action]"
+    Use the learn_behavior tool with:
+    - condition: The triggering condition (e.g., "user asks about debugging")
+    - action_steps: Array of action steps to execute when condition is met
     
     Examples:
-    - "when user asks about code, do provide complete examples with explanations"
-    - "when user mentions deadlines, do prioritize speed over detailed explanations"
-    - "when user corrects information, do acknowledge and thank them for the correction"
+    - condition: "user asks about code"
+      action_steps: ["provide complete examples", "include explanations"]
+    - condition: "user mentions deadlines"
+      action_steps: ["prioritize speed over detailed explanations", "focus on essential information"]
+    - condition: "working with python project"
+      action_steps: ["use uv as package manager", "follow PEP 8 style guidelines"]
   </Behavior_Format>
   <ID_Conventions>
     Use structured IDs: category_context
@@ -346,8 +375,8 @@ def register(
     # Register adaptive behavior tool if persistence service is available
     if persistence_service is not None:
         register_tool(
-            get_adapt_tool_definition,
-            get_adapt_tool_handler,
+            get_learn_behavior_tool_definition,
+            get_learn_behavior_tool_handler,
             persistence_service,
             agent,
         )
