@@ -624,22 +624,22 @@ Whenever condition `when` in <Global_Behavior> or <Project_Behavior> matches, ta
             .find("<Transfer_Tool>")
             != 0
         ):
-            #         if (
-            #             self.services.get("agent_manager")
-            #             and self.services["agent_manager"].enforce_transfer
-            #         ):
-            #             adaptive_messages["content"].insert(
-            #                 0,
-            #                 {
-            #                     "type": "text",
-            #                     "text": """Before processing my request:
-            # - Break my request into sub-tasks when applicable.
-            # - For each sub-task, evaluate other agents capabilities.
-            # - Transfer sub-task to other agent if they are more suitable.
-            # - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
-            # - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
-            #                 },
-            #             )
+            if (
+                self.services.get("agent_manager")
+                and self.services["agent_manager"].enforce_transfer
+            ):
+                adaptive_messages["content"].insert(
+                    0,
+                    {
+                        "type": "text",
+                        "text": """Before processing my request:
+            - Break my request into actionable sub-tasks when applicable.
+            - For each sub-task, evaluate your tools and plan tool strategy for acquiring the context you need for the main task.
+            - Action subsequent steps base on your plan.
+            - Keep the evaluating quick and concise using xml format within <agent_evaluation> tags.
+            - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
+                    },
+                )
             if not self.is_remoting_mode and self.services.get("memory"):
                 memory_headers = self.services["memory"].list_memory_headers(
                     agent_name=self.name
@@ -648,7 +648,7 @@ Whenever condition `when` in <Global_Behavior> or <Project_Behavior> matches, ta
                     adaptive_messages["content"].append(
                         {
                             "type": "text",
-                            "text": f"Check the conversation histories if it related to my request:\n - {'\n - '.join(memory_headers)}",
+                            "text": f"Belows are other discussions that we have done:\n - {'\n - '.join(memory_headers)}",
                         }
                     )
         if len(adaptive_messages["content"]) > 0:
