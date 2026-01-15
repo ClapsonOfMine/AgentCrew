@@ -426,8 +426,13 @@ class ChromaMemoryService(BaseMemoryService):
         if list_memory and list_memory["metadatas"]:
             for metadata in list_memory["metadatas"]:
                 if metadata.get("header", None):
-                    headers.append(metadata.get("header"))
-        return headers
+                    timestamp = float(metadata.get("date", 0))  # type: ignore
+                    headers.append(
+                        f"{metadata.get('header')} ({datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M')})"
+                        if timestamp > 0
+                        else metadata.get("header")
+                    )
+        return list(reversed(headers))[:20]
 
     def retrieve_memory(
         self,
