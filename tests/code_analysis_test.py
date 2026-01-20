@@ -1,21 +1,32 @@
+import os
+import requests
+
 from AgentCrew.modules.code_analysis import CodeAnalysisService
+
+
+def count_tokens(content: str, model: str = "claude-opus-4-5-20251101") -> dict:
+    url = "https://api.anthropic.com/v1/messages/count_tokens"
+    headers = {
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01",
+        "X-Api-Key": os.environ.get("ANTHROPIC_API_KEY"),
+    }
+    payload = {
+        "messages": [{"content": content, "role": "user"}],
+        "model": model,
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
 
 
 if __name__ == "__main__":
     analyze = CodeAnalysisService()
     result = analyze.analyze_code_structure(
         "./",
-        exclude_patterns=[
-            "**/public/**",
-            "**/test/**",
-            "**/tests/**",
-            "**/assets/**",
-            "**/__pycache__/**",
-            "**/.pytest_cache/**",
-            "**/node_modules/**",
-            "**/*.pyc",
-            "**/*.pyo",
-            "**/*.pyd",
-        ],
+        exclude_patterns=["*.js"],
     )
     print(result)
+
+    token_count = count_tokens(result)
+    print(f"\nToken count: {token_count}")

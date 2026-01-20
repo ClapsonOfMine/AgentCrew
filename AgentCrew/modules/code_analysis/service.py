@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 from tree_sitter_language_pack import get_parser
 from tree_sitter import Parser
 
+MAX_ITEMS_OUT = 15
+
 
 class CodeAnalysisService:
     """Service for analyzing code structure using tree-sitter."""
@@ -991,7 +993,9 @@ class CodeAnalysisService:
 
             node_type = node.get("type", "")
             node_name = node.get("name", "")
-            node_lines = f"(L:{node.get('start_line', '')}-{node.get('end_line', '')})"
+            node_lines = (
+                f" //Lines:{node.get('start_line', '')}-{node.get('end_line', '')}"
+            )
 
             # Handle decorated functions - extract the actual function definition
             if node_type == "decorated_definition" and "children" in node:
@@ -1085,8 +1089,8 @@ class CodeAnalysisService:
                 else:
                     node_info = node_name
 
-            if len(node_info) > 500:
-                node_info = node_info[:497] + "(REDACTED due to long content)..."
+            if len(node_info) > 300:
+                node_info = node_info[:297] + "... (REDACTED due to long content)"
 
             lines.append(f"{prefix}{branch}{node_info}")
 
@@ -1162,6 +1166,11 @@ class CodeAnalysisService:
                 child_lines = format_node(child, prefix, is_last_child)
                 if child_lines:  # Only add child lines if there are any
                     lines.extend(child_lines)
+                if i >= MAX_ITEMS_OUT:
+                    lines.append(
+                        f"...({len(significant_children) - MAX_ITEMS_OUT} more items)"
+                    )
+                    break
 
             return lines
 
@@ -1238,6 +1247,11 @@ class CodeAnalysisService:
                     node_lines = format_node(node, "", is_last)
                     if node_lines:  # Only add node lines if there are any
                         output_lines.extend(node_lines)
+                    if i >= MAX_ITEMS_OUT:
+                        output_lines.append(
+                            f"...({len(significant_nodes) - MAX_ITEMS_OUT} more items)"
+                        )
+                        break
                     # else:
                     #     output_lines.append(
                     #         self.get_file_content(result["path"]).get("file")
