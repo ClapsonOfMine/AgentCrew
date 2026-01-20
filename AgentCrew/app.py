@@ -265,7 +265,8 @@ class AgentCrewApplication:
             search_service = None
 
         try:
-            code_analysis_service = CodeAnalysisService()
+            code_analysis_llm = llm_manager.initialize_standalone_service(provider)
+            code_analysis_service = CodeAnalysisService(llm_service=code_analysis_llm)
         except Exception as e:
             click.echo(f"⚠️ Code analysis tool not available: {str(e)}")
             code_analysis_service = None

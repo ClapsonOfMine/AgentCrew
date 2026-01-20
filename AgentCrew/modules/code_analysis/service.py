@@ -1,11 +1,18 @@
 import os
 import fnmatch
 import subprocess
-from typing import Any, Dict, List, Optional
+import json
+import asyncio
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
 from tree_sitter_language_pack import get_parser
 from tree_sitter import Parser
 
-MAX_ITEMS_OUT = 15
+if TYPE_CHECKING:
+    from AgentCrew.modules.llm.base import BaseLLMService
+
+MAX_ITEMS_OUT = 20
+MAX_FILES_TO_ANALYZE = 400
 
 
 class CodeAnalysisService:
@@ -43,8 +50,27 @@ class CodeAnalysisService:
         # Add more languages as needed
     }
 
-    def __init__(self):
-        """Initialize the code analysis service with tree-sitter parsers."""
+    def __init__(self, llm_service: Optional["BaseLLMService"] = None):
+        """Initialize the code analysis service with tree-sitter parsers.
+
+        Args:
+            llm_service: Optional LLM service for intelligent file selection when
+                        analyzing large repositories (>500 files).
+        """
+        self.llm_service = llm_service
+        if self.llm_service:
+            if self.llm_service.provider_name == "google":
+                self.llm_service.model = "gemini-2.5-flash-lite"
+            elif self.llm_service.provider_name == "claude":
+                self.llm_service.model = "claude-3-5-haiku-latest"
+            elif self.llm_service.provider_name == "openai":
+                self.llm_service.model = "gpt-4.1-nano"
+            elif self.llm_service.provider_name == "groq":
+                self.llm_service.model = "llama-3.3-70b-versatile"
+            elif self.llm_service.provider_name == "deepinfra":
+                self.llm_service.model = "google/gemma-3-27b-it"
+            elif self.llm_service.provider_name == "github_copilot":
+                self.llm_service.model = "gpt-5-mini"
         try:
             self._parser_cache = {
                 "python": get_parser("python"),
@@ -898,6 +924,73 @@ class CodeAnalysisService:
 
         return count
 
+    def _select_files_with_llm(
+        self, files: List[str], max_files: int = MAX_FILES_TO_ANALYZE
+    ) -> List[str]:
+        """Use LLM to intelligently select which files to analyze from a large repository.
+
+        Args:
+            files: List of relative file paths to select from
+            max_files: Maximum number of files to select
+
+        Returns:
+            List of selected file paths that should be analyzed
+        """
+        if not self.llm_service:
+            return files[:max_files]
+
+        prompt = f"""You are analyzing a code repository with {len(files)} files. 
+The analysis system can only process {max_files} files at a time.
+
+Please select the {max_files} most important files to analyze based on these criteria:
+1. Core application logic files (main entry points, core modules)
+2. Business logic and domain models
+3. API endpoints and controllers
+4. Service/utility classes
+5. Configuration files that define app structure
+6. Test files are lower priority unless they reveal architecture
+7. Generated files, lock files, and vendor files should be excluded
+
+Here is the complete list of files in the repository:
+{chr(10).join(files)}
+
+Return your selection as a JSON array of file paths. Only return the JSON array, nothing else.
+Select exactly {max_files} files from the list above.
+
+Example response format:
+["src/main.py", "src/app.py", "src/models/user.py"]"""
+
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        try:
+            response = loop.run_until_complete(
+                self.llm_service.process_message(prompt, temperature=0)
+            )
+
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            if response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
+            selected_files = json.loads(response)
+
+            if isinstance(selected_files, list):
+                valid_files = [f for f in selected_files if f in files]
+                if len(valid_files) >= max_files * 0.5:
+                    return valid_files[:max_files]
+        except Exception:
+            pass
+
+        return files[:max_files]
+
     def analyze_code_structure(
         self, path: str, exclude_patterns: List[str] = []
     ) -> Dict[str, Any] | str:
@@ -911,11 +1004,9 @@ class CodeAnalysisService:
             Dictionary containing analysis results for each file or formatted string
         """
         try:
-            # Verify the path exists
             if not os.path.exists(path):
                 return {"error": f"Path does not exist: {path}"}
 
-            # Run git ls-files to get all tracked files
             try:
                 result = subprocess.run(
                     ["git", "ls-files"],
@@ -930,21 +1021,32 @@ class CodeAnalysisService:
                     "error": f"Failed to run git ls-files on {path}. Make sure it's a git repository."
                 }
 
-            # Filter for supported file types
-            supported_files = []
+            supported_files_rel = []
             for file_path in files:
                 excluded = False
-                if file_path.strip():  # Skip empty lines
-                    # Check against glob exclude patterns
+                if file_path.strip():
                     for pattern in exclude_patterns:
                         if fnmatch.fnmatch(file_path, pattern):
                             excluded = True
                             break
                     ext = os.path.splitext(file_path)[1].lower()
                     if ext in self.LANGUAGE_MAP and not excluded:
-                        supported_files.append(os.path.join(path, file_path))
+                        supported_files_rel.append(file_path)
 
-            # Analyze each file
+            non_analyzed_files = []
+            files_to_analyze = supported_files_rel
+
+            if len(supported_files_rel) > MAX_FILES_TO_ANALYZE:
+                selected_files = self._select_files_with_llm(
+                    supported_files_rel, MAX_FILES_TO_ANALYZE
+                )
+                non_analyzed_files = [
+                    f for f in supported_files_rel if f not in selected_files
+                ]
+                files_to_analyze = selected_files
+
+            supported_files = [os.path.join(path, f) for f in files_to_analyze]
+
             analysis_results = []
             errors = []
             for file_path in supported_files:
@@ -953,7 +1055,6 @@ class CodeAnalysisService:
                     language = self._detect_language(file_path)
 
                     if language == "config":
-                        # Skip problematic file
                         if os.path.basename(file_path) == "package-lock.json":
                             continue
                         result = {"type": "config", "name": os.path.basename(file_path)}
@@ -961,7 +1062,6 @@ class CodeAnalysisService:
                         result = self._analyze_file(file_path)
 
                     if result and isinstance(result, dict) and "error" not in result:
-                        # Successfully analyzed file
                         analysis_results.append(
                             {
                                 "path": rel_path,
@@ -977,7 +1077,11 @@ class CodeAnalysisService:
             if not analysis_results:
                 return "Analysis completed but no valid results. This may due to excluded patterns is not correct"
             return self._format_analysis_results(
-                analysis_results, supported_files, errors
+                analysis_results,
+                supported_files,
+                errors,
+                non_analyzed_files,
+                len(supported_files_rel),
             )
 
         except Exception as e:
@@ -1318,10 +1422,19 @@ class CodeAnalysisService:
         analysis_results: List[Dict[str, Any]],
         analyzed_files: List[str],
         errors: List[Dict[str, str]],
+        non_analyzed_files: List[str] = [],
+        total_supported_files: int = 0,
     ) -> str:
-        """Format the analysis results into a clear text format."""
+        """Format the analysis results into a clear text format.
 
-        # Count statistics
+        Args:
+            analysis_results: List of analysis results for each file
+            analyzed_files: List of files that were analyzed
+            errors: List of errors encountered during analysis
+            non_analyzed_files: List of files that were skipped due to file limit
+            total_supported_files: Total number of supported files in the repository
+        """
+
         total_files = len(analyzed_files)
         classes = sum(
             self._count_nodes(f["structure"], self.class_types)
@@ -1336,28 +1449,44 @@ class CodeAnalysisService:
             for f in analysis_results
         )
         error_count = len(errors)
+        non_analyzed_count = len(non_analyzed_files)
 
-        # Build output sections
         sections = []
 
-        # Add statistics section
         sections.append("\n===ANALYSIS STATISTICS===\n")
         sections.append(f"Total files analyzed: {total_files}")
+        if non_analyzed_count > 0:
+            sections.append(
+                f"Total files skipped (repository too large): {non_analyzed_count}"
+            )
+            sections.append(
+                f"Total supported files in repository: {total_supported_files}"
+            )
         sections.append(f"Total errors: {error_count}")
         sections.append(f"Total classes found: {classes}")
         sections.append(f"Total functions found: {functions}")
         sections.append(f"Total decorated functions: {decorated_functions}")
 
-        # Add errors section if any
         if errors:
             sections.append("\n===ERRORS===")
             for error in errors:
                 error_first_line = error["error"].split("\n")[0]
                 sections.append(f"{error['path']}: {error_first_line}")
 
-        # Add repository map
         sections.append("\n===REPOSITORY STRUCTURE===")
         sections.append(self._generate_text_map(analysis_results))
 
-        # Join all sections with newlines
+        if non_analyzed_files:
+            sections.append("\n===NON-ANALYZED FILES (repository too large)===")
+            sections.append(
+                f"The following {non_analyzed_count} files were not analyzed due to the {MAX_FILES_TO_ANALYZE} file limit:"
+            )
+            max_non_analyzed_to_show = int(MAX_FILES_TO_ANALYZE / 2)
+            for file_path in sorted(non_analyzed_files[:max_non_analyzed_to_show]):
+                sections.append(f"  {file_path}")
+            if len(non_analyzed_files) > max_non_analyzed_to_show:
+                sections.append(
+                    f"  ...and {len(non_analyzed_files) - max_non_analyzed_to_show} more files."
+                )
+
         return "\n".join(sections)

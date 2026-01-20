@@ -2,6 +2,7 @@ import os
 import requests
 
 from AgentCrew.modules.code_analysis import CodeAnalysisService
+from AgentCrew.modules.llm.service_manager import ServiceManager
 
 
 def count_tokens(content: str, model: str = "claude-opus-4-5-20251101") -> dict:
@@ -21,6 +22,8 @@ def count_tokens(content: str, model: str = "claude-opus-4-5-20251101") -> dict:
 
 
 if __name__ == "__main__":
+    llm_manager = ServiceManager.get_instance()
+    code_analysis_llm = llm_manager.initialize_standalone_service("github_copilot")
     analyze = CodeAnalysisService()
     result = analyze.analyze_code_structure(
         "./",
