@@ -24,7 +24,7 @@ def count_tokens(content: str, model: str = "claude-opus-4-5-20251101") -> dict:
 if __name__ == "__main__":
     llm_manager = ServiceManager.get_instance()
     code_analysis_llm = llm_manager.initialize_standalone_service("github_copilot")
-    analyze = CodeAnalysisService()
+    analyze = CodeAnalysisService(code_analysis_llm)
     result = analyze.analyze_code_structure(
         "./",
         exclude_patterns=["*.js"],

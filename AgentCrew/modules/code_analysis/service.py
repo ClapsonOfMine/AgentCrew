@@ -4,6 +4,7 @@ import subprocess
 import json
 import asyncio
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from loguru import logger
 
 from tree_sitter_language_pack import get_parser
 from tree_sitter import Parser
@@ -191,26 +192,39 @@ class CodeAnalysisService:
         if not self.llm_service:
             return files[:max_files]
 
-        prompt = f"""You are analyzing a code repository with {len(files)} files. 
+        prompt = f"""You are analyzing a code repository with {len(files)} files.
 The analysis system can only process {max_files} files at a time.
 
-Please select the {max_files} most important files to analyze based on these criteria:
-1. Core application logic files (main entry points, core modules)
-2. Business logic and domain models
+Generate glob patterns to EXCLUDE less important files. The goal is to keep around {max_files} most important files after exclusion.
+
+Files to EXCLUDE (generate patterns for these):
+1. Test files
+2. Generated/build files
+3. Vendor/dependency files
+4. Documentation files (e.g., **/docs/**, **/*.md)
+5. Configuration duplicates and environment files
+6. Migration files
+7. Static assets (images, fonts, etc.)
+8. Example/sample files
+
+Files to KEEP (NEVER exclude):
+1. Core application logic (main entry points, core modules)
+2. Business features logic and domain models
 3. API endpoints and controllers
 4. Service/utility classes
-5. Configuration files that define app structure
-6. Test files are lower priority unless they reveal architecture
-7. Generated files, lock files, and vendor files should be excluded
+5. Key configuration files that define app structure
 
-Here is the complete list of files in the repository:
+Here is the complete list of files:
 {chr(10).join(files)}
 
-Return your selection as a JSON array of file paths. Only return the JSON array, nothing else.
-Select exactly {max_files} files from the list above.
+Current file count: {len(files)}
+Target file count: ~{max_files}
+Files to exclude: ~{max(0, len(files) - max_files)}
+
+Return ONLY a JSON array of glob patterns to exclude. Be strategic - use broad patterns when possible.
 
 Example response format:
-["src/main.py", "src/app.py", "src/models/user.py"]"""
+["**/tests/**", "**/test_*", "**/*.test.*", "**/docs/**", "**/migrations/**", "**/__pycache__/**"]"""
 
         try:
             loop = asyncio.get_event_loop()
@@ -232,14 +246,26 @@ Example response format:
                 response = response[:-3]
             response = response.strip()
 
-            selected_files = json.loads(response)
+            exclude_patterns = json.loads(response)
 
-            if isinstance(selected_files, list):
-                valid_files = [f for f in selected_files if f in files]
-                if len(valid_files) >= max_files * 0.5:
-                    return valid_files[:max_files]
-        except Exception:
-            pass
+            if isinstance(exclude_patterns, list):
+                filtered_files = []
+                for file_path in files:
+                    excluded = False
+                    for pattern in exclude_patterns:
+                        if fnmatch.fnmatch(file_path, pattern):
+                            excluded = True
+                            break
+                    if not excluded:
+                        filtered_files.append(file_path)
+
+                logger.info(
+                    f"LLM exclusion patterns reduced files from {len(files)} to {len(filtered_files)}"
+                )
+
+                return filtered_files[:max_files]
+        except Exception as e:
+            logger.warning(f"Cannot extract exclusion patterns from LLM response: {e}")
 
         return files[:max_files]
 
