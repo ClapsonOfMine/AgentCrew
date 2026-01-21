@@ -8,17 +8,18 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from tree_sitter_language_pack import get_parser
 from tree_sitter import Parser
 
+from .parsers import get_parser_for_language, BaseLanguageParser
+
 if TYPE_CHECKING:
     from AgentCrew.modules.llm.base import BaseLLMService
 
 MAX_ITEMS_OUT = 20
-MAX_FILES_TO_ANALYZE = 400
+MAX_FILES_TO_ANALYZE = 600
 
 
 class CodeAnalysisService:
     """Service for analyzing code structure using tree-sitter."""
 
-    # Map of file extensions to language names
     LANGUAGE_MAP = {
         ".py": "python",
         ".js": "javascript",
@@ -47,7 +48,6 @@ class CodeAnalysisService:
         ".toml": "config",
         ".yaml": "config",
         ".yml": "config",
-        # Add more languages as needed
     }
 
     def __init__(self, llm_service: Optional["BaseLLMService"] = None):
@@ -72,7 +72,7 @@ class CodeAnalysisService:
             elif self.llm_service.provider_name == "github_copilot":
                 self.llm_service.model = "gpt-5-mini"
         try:
-            self._parser_cache = {
+            self._tree_sitter_parser_cache = {
                 "python": get_parser("python"),
                 "javascript": get_parser("javascript"),
                 "typescript": get_parser("typescript"),
@@ -85,7 +85,8 @@ class CodeAnalysisService:
                 "c-sharp": get_parser("csharp"),
                 "kotlin": get_parser("kotlin"),
             }
-            # Define node types for different categories
+            self._language_parser_cache: Dict[str, BaseLanguageParser] = {}
+
             self.class_types = {
                 "class_definition",
                 "class_declaration",
@@ -93,7 +94,7 @@ class CodeAnalysisService:
                 "struct_specifier",
                 "struct_item",
                 "interface_declaration",
-                "object_declaration",  # Kotlin object declarations
+                "object_declaration",
             }
 
             self.function_types = {
@@ -106,7 +107,7 @@ class CodeAnalysisService:
                 "fn_item",
                 "method",
                 "singleton_method",
-                "primary_constructor",  # Kotlin primary constructors
+                "primary_constructor",
             }
         except Exception as e:
             raise RuntimeError(f"Failed to initialize languages: {e}")
@@ -116,15 +117,17 @@ class CodeAnalysisService:
         ext = os.path.splitext(file_path)[1].lower()
         return self.LANGUAGE_MAP.get(ext, "unknown")
 
-    def _get_language_parser(self, language: str) -> Parser:
+    def _get_tree_sitter_parser(self, language: str) -> Parser:
         """Get the appropriate tree-sitter parser for a language."""
-        if language not in self._parser_cache:
+        if language not in self._tree_sitter_parser_cache:
             raise ValueError(f"Unsupported language: {language}")
-        return self._parser_cache[language]
+        return self._tree_sitter_parser_cache[language]
 
-    def _extract_node_text(self, node, source_code: bytes) -> str:
-        """Extract text from a node."""
-        return source_code[node.start_byte : node.end_byte].decode("utf-8")
+    def _get_language_parser(self, language: str) -> BaseLanguageParser:
+        """Get the appropriate language parser for processing nodes."""
+        if language not in self._language_parser_cache:
+            self._language_parser_cache[language] = get_parser_for_language(language)
+        return self._language_parser_cache[language]
 
     def _analyze_file(self, file_path: str) -> Optional[Dict[str, Any]]:
         """Analyze a single file using tree-sitter."""
@@ -138,772 +141,22 @@ class CodeAnalysisService:
                     "error": f"Unsupported file type: {os.path.splitext(file_path)[1]}"
                 }
 
-            parser = self._get_language_parser(language)
-            if isinstance(parser, dict) and "error" in parser:
-                return parser
+            tree_sitter_parser = self._get_tree_sitter_parser(language)
+            if isinstance(tree_sitter_parser, dict) and "error" in tree_sitter_parser:
+                return tree_sitter_parser
 
-            tree = parser.parse(source_code)
+            tree = tree_sitter_parser.parse(source_code)
             root_node = tree.root_node
 
-            # Check if we got a valid root node
             if not root_node:
                 return {"error": "Failed to parse file - no root node"}
+
+            language_parser = self._get_language_parser(language)
 
             def process_node(node) -> Optional[Dict[str, Any]]:
                 if not node:
                     return None
-
-                result = {
-                    "type": node.type,
-                    "start_line": node.start_point[0] + 1,
-                    "end_line": node.end_point[0] + 1,
-                }
-
-                # Process child nodes based on language-specific patterns
-                if language == "python":
-                    if node.type in ["class_definition", "function_definition"]:
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                            elif child.type == "parameters":
-                                params = []
-                                for param in child.children:
-                                    if (
-                                        "parameter" in param.type
-                                        or param.type == "identifier"
-                                    ):
-                                        params.append(
-                                            self._extract_node_text(param, source_code)
-                                        )
-                                if params:
-                                    result["parameters"] = params
-                    elif node.type == "assignment":
-                        # Handle global variable assignments
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["type"] = "variable_declaration"
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                            # Break after first identifier to avoid capturing right-hand side
-                            break
-                elif language == "javascript" or language == "typescript":
-                    if (
-                        node.type
-                        in [
-                            "class_declaration",
-                            "method_definition",
-                            "class",
-                            "method_declaration",
-                            "function_declaration",
-                            "interface_declaration",
-                            "export_statement",  # Handle exported items
-                            "arrow_function",  # Add support for arrow functions
-                            "lexical_declaration",  # Add support for const/let declarations with arrow functions
-                        ]
-                    ):
-                        # Handle export statements by looking at their children
-                        if node.type == "export_statement":
-                            # Process the declaration that's being exported
-                            for child in node.children:
-                                if child.type in [
-                                    "class_declaration",
-                                    "function_declaration",
-                                    "interface_declaration",
-                                    "variable_statement",
-                                    "lexical_declaration",
-                                    "method_definition",
-                                ]:
-                                    # Recursively process the exported declaration
-                                    exported_result = process_node(child)
-
-                                    if exported_result:
-                                        # Mark as exported
-                                        exported_result["exported"] = True
-                                        # Return the exported item's result
-                                        return exported_result
-
-                        # Handle arrow functions - extract name from parent variable declarator
-                        elif node.type == "arrow_function":
-                            parent = node.parent
-                            if parent and parent.type == "variable_declarator":
-                                for sibling in parent.children:
-                                    if sibling.type == "identifier":
-                                        result["type"] = "arrow_function"
-                                        result["name"] = self._extract_node_text(
-                                            sibling, source_code
-                                        )
-
-                            # Process arrow function parameters
-                            for child in node.children:
-                                if child.type == "formal_parameters":
-                                    params = []
-                                    for param in child.children:
-                                        if param.type in [
-                                            "required_parameter",
-                                            "optional_parameter",
-                                            "identifier",
-                                        ]:
-                                            param_text = self._extract_node_text(
-                                                param, source_code
-                                            )
-                                            params.append(param_text)
-
-                                    if params:
-                                        result["parameters"] = params
-
-                        # Handle lexical declarations with arrow functions (const/let)
-                        elif node.type == "lexical_declaration":
-                            for child in node.children:
-                                if child.type == "variable_declarator":
-                                    # Find the identifier (name)
-                                    var_name = None
-                                    has_arrow_function = False
-                                    for declarator_child in child.children:
-                                        if declarator_child.type == "identifier":
-                                            var_name = self._extract_node_text(
-                                                declarator_child, source_code
-                                            )
-                                        elif declarator_child.type == "arrow_function":
-                                            has_arrow_function = True
-
-                                    if var_name and has_arrow_function:
-                                        result["type"] = "arrow_function"
-                                        result["name"] = var_name
-                                        # Recursively process the arrow function to get parameters
-                                        for declarator_child in child.children:
-                                            if (
-                                                declarator_child.type
-                                                == "arrow_function"
-                                            ):
-                                                arrow_result = process_node(
-                                                    declarator_child
-                                                )
-                                                if (
-                                                    arrow_result
-                                                    and "parameters" in arrow_result
-                                                ):
-                                                    result["parameters"] = arrow_result[
-                                                        "parameters"
-                                                    ]
-                                    else:
-                                        result["type"] = "variable_declaration"
-                                        result["name"] = var_name
-                                        result["first_line"] = (
-                                            self._extract_node_text(node, source_code)
-                                            .split("\n")[0]
-                                            .strip("{")
-                                        )
-
-                        # Handle regular declarations
-                        elif node.type in [
-                            "class",
-                            "class_declaration",
-                            "function_declaration",
-                            "method_declaration",
-                            "interface_declaration",
-                            "method_definition",
-                        ]:
-                            for child in node.children:
-                                if (
-                                    child.type == "identifier"
-                                    or child.type == "type_identifier"
-                                    or child.type == "property_identifier"
-                                ):
-                                    result["name"] = self._extract_node_text(
-                                        child, source_code
-                                    )
-                                # Process function parameters for function declarations
-                                elif (
-                                    child.type == "formal_parameters"
-                                    and node.type
-                                    in [
-                                        "function_declaration",
-                                        "method_declaration",
-                                        "method_definition",
-                                    ]
-                                ):
-                                    params = []
-                                    for param in child.children:
-                                        if param.type in [
-                                            "required_parameter",
-                                            "optional_parameter",
-                                            "identifier",
-                                        ]:
-                                            param_name = None
-                                            param_type = None
-
-                                            # For simple identifiers
-                                            if param.type == "identifier":
-                                                param_name = self._extract_node_text(
-                                                    param, source_code
-                                                )
-                                                params.append(param_name)
-                                                continue
-
-                                            # For parameters with type annotations
-                                            for param_child in param.children:
-                                                if (
-                                                    param_child.type == "identifier"
-                                                    or param_child.type
-                                                    == "object_pattern"
-                                                ):
-                                                    param_name = (
-                                                        self._extract_node_text(
-                                                            param_child, source_code
-                                                        )
-                                                    )
-                                                elif (
-                                                    param_child.type
-                                                    == "type_annotation"
-                                                ):
-                                                    # Extract the type from type annotation
-                                                    for (
-                                                        type_child
-                                                    ) in param_child.children:
-                                                        if (
-                                                            type_child.type != ":"
-                                                        ):  # Skip the colon
-                                                            param_type = (
-                                                                self._extract_node_text(
-                                                                    type_child,
-                                                                    source_code,
-                                                                )
-                                                            )
-
-                                            if param_name:
-                                                if param_type:
-                                                    params.append(
-                                                        f"{param_name}: {param_type}"
-                                                    )
-                                                else:
-                                                    params.append(param_name)
-
-                                    if params:
-                                        result["parameters"] = params
-
-                    elif node.type in [
-                        "variable_statement",
-                        "property_declaration",
-                        "variable_declaration",
-                    ]:
-                        # Handle variable declarations and property declarations
-                        for child in node.children:
-                            if child.type == "variable_declaration_list":
-                                for declarator in child.children:
-                                    if declarator.type == "variable_declarator":
-                                        var_name = None
-                                        has_arrow_function = False
-
-                                        for declarator_child in declarator.children:
-                                            if declarator_child.type == "identifier":
-                                                var_name = self._extract_node_text(
-                                                    declarator_child, source_code
-                                                )
-                                            elif (
-                                                declarator_child.type
-                                                == "arrow_function"
-                                            ):
-                                                has_arrow_function = True
-
-                                        if var_name:
-                                            if has_arrow_function:
-                                                result["type"] = "arrow_function"
-                                                result["name"] = var_name
-                                                # Find parameters
-                                                for (
-                                                    declarator_child
-                                                ) in declarator.children:
-                                                    if (
-                                                        declarator_child.type
-                                                        == "arrow_function"
-                                                    ):
-                                                        arrow_result = process_node(
-                                                            declarator_child
-                                                        )
-                                                        if (
-                                                            arrow_result
-                                                            and "parameters"
-                                                            in arrow_result
-                                                        ):
-                                                            result["parameters"] = (
-                                                                arrow_result[
-                                                                    "parameters"
-                                                                ]
-                                                            )
-                                            else:
-                                                result["type"] = "variable_declaration"
-                                                result["name"] = var_name
-
-                                            return result
-                            elif child.type == "identifier":
-                                result["type"] = "variable_declaration"
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-
-                elif language == "java":
-                    if node.type in ["class_declaration", "interface_declaration"]:
-                        # Handle class and interface declarations
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                            elif child.type in ["class_body", "interface_body"]:
-                                result["children"] = [
-                                    process_node(c) for c in child.children
-                                ]
-
-                    elif node.type == "method_declaration":
-                        # Handle method declarations
-                        method_name = None
-                        parameters = []
-                        return_type = None
-
-                        for child in node.children:
-                            if child.type == "identifier":
-                                method_name = self._extract_node_text(
-                                    child, source_code
-                                )
-                                result["name"] = method_name
-                            elif child.type == "formal_parameters":
-                                for param in child.children:
-                                    if param.type == "parameter":
-                                        param_name = self._extract_node_text(
-                                            param.child_by_field_name("name"),
-                                            source_code,
-                                        )
-                                        param_type = self._extract_node_text(
-                                            param.child_by_field_name("type"),
-                                            source_code,
-                                        )
-                                        parameters.append(f"{param_type} {param_name}")
-                                result["parameters"] = parameters
-                            elif child.type == "type":
-                                return_type = self._extract_node_text(
-                                    child, source_code
-                                )
-                                result["return_type"] = return_type
-
-                    elif node.type == "field_declaration":
-                        # Handle field declarations
-                        for child in node.children:
-                            if child.type == "variable_declarator":
-                                var_name = self._extract_node_text(
-                                    child.child_by_field_name("name"), source_code
-                                )
-                                var_type = self._extract_node_text(
-                                    child.child_by_field_name("type"), source_code
-                                )
-                                result["name"] = var_name
-                                result["variable_type"] = var_type
-                                result["type"] = "field_declaration"
-
-                    elif node.type == "annotation":
-                        # Handle annotations
-                        annotation_name = self._extract_node_text(node, source_code)
-                        result["name"] = annotation_name
-                        result["type"] = "annotation"
-
-                    elif node.type == "lambda_expression":
-                        # Handle lambda expressions
-                        result["type"] = "lambda_expression"
-                        # Additional processing for lambda parameters and body can be added here
-
-                    # Recursively process children for nested classes or other constructs
-                    children = [process_node(child) for child in node.children]
-                    if children:
-                        result["children"] = children
-
-                    return result
-
-                elif language == "cpp":
-                    if node.type in [
-                        "class_specifier",
-                        "function_definition",
-                        "struct_specifier",
-                    ]:
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                        return result
-                    elif node.type in ["declaration", "variable_declaration"]:
-                        # Handle C++ global variables and declarations
-                        for child in node.children:
-                            if (
-                                child.type == "init_declarator"
-                                or child.type == "declarator"
-                            ):
-                                for subchild in child.children:
-                                    if subchild.type == "identifier":
-                                        result["type"] = "variable_declaration"
-                                        result["name"] = self._extract_node_text(
-                                            subchild, source_code
-                                        )
-                                        return result
-                        return result
-
-                elif language == "ruby":
-                    if node.type in ["class", "method", "singleton_method", "module"]:
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                        return result
-                    elif node.type == "assignment" or node.type == "global_variable":
-                        # Handle Ruby global variables and assignments
-                        for child in node.children:
-                            if (
-                                child.type == "identifier"
-                                or child.type == "global_variable"
-                            ):
-                                result["type"] = "variable_declaration"
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                        return result
-
-                elif language == "go":
-                    if node.type in [
-                        "type_declaration",
-                        "function_declaration",
-                        "method_declaration",
-                        "interface_declaration",
-                    ]:
-                        for child in node.children:
-                            if (
-                                child.type == "identifier"
-                                or child.type == "field_identifier"
-                            ):
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                result["first_line"] = (
-                                    self._extract_node_text(node, source_code)
-                                    .split("\n")[0]
-                                    .strip("{")
-                                )
-                                return result
-                        return result
-                    elif (
-                        node.type == "var_declaration"
-                        or node.type == "const_declaration"
-                    ):
-                        # Handle Go variable and constant declarations
-                        for child in node.children:
-                            if child.type == "var_spec" or child.type == "const_spec":
-                                for subchild in child.children:
-                                    if subchild.type == "identifier":
-                                        result["type"] = "variable_declaration"
-                                        result["name"] = self._extract_node_text(
-                                            subchild, source_code
-                                        )
-                                        return result
-                        return result
-
-                elif language == "rust":
-                    if node.type in [
-                        "struct_item",
-                        "impl_item",
-                        "fn_item",
-                        "trait_item",
-                    ]:
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                        return result
-                    elif node.type in ["static_item", "const_item", "let_declaration"]:
-                        # Handle Rust static items, constants, and let declarations
-                        for child in node.children:
-                            if child.type == "identifier":
-                                result["type"] = "variable_declaration"
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                            elif child.type == "pattern" and child.children:
-                                result["name"] = self._extract_node_text(
-                                    child.children[0], source_code
-                                )
-                        return result
-
-                elif language == "php":
-                    if node.type in [
-                        "class_declaration",
-                        "method_declaration",
-                        "function_definition",
-                        "interface_declaration",
-                        "trait_declaration",
-                    ]:
-                        for child in node.children:
-                            if child.type == "name":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                        return result
-                    elif (
-                        node.type == "property_declaration"
-                        or node.type == "const_declaration"
-                    ):
-                        # Handle PHP class properties and constants
-                        for child in node.children:
-                            if (
-                                child.type == "property_element"
-                                or child.type == "const_element"
-                            ):
-                                for subchild in child.children:
-                                    if (
-                                        subchild.type == "variable_name"
-                                        or subchild.type == "name"
-                                    ):
-                                        result["type"] = "variable_declaration"
-                                        result["name"] = self._extract_node_text(
-                                            subchild, source_code
-                                        )
-                        return result
-
-                elif language == "c-sharp":
-                    if node.type == "class_declaration":
-                        # Create a more comprehensive class result
-                        class_name = None
-                        base_class_name = None
-
-                        # Extract class name and base class name
-                        for child in node.children:
-                            if child.type == "identifier":
-                                class_name = self._extract_node_text(child, source_code)
-                                result["name"] = class_name
-                            elif child.type == "base_list":
-                                # Extract base class if present
-                                if (
-                                    len(child.children) > 1
-                                ):  # Check if there's a base class
-                                    base_class_name = self._extract_node_text(
-                                        child.children[1], source_code
-                                    )
-                                    result["base_class"] = base_class_name
-
-                        # DO NOT return early here to ensure methods are processed
-
-                    elif node.type == "method_declaration":
-                        method_name = None
-                        parameters = []
-                        access_modifiers = []
-
-                        for child in node.children:
-                            if child.type == "identifier":
-                                method_name = self._extract_node_text(
-                                    child, source_code
-                                )
-                                result["name"] = method_name
-                            elif child.type == "parameter_list":
-                                # Extract parameter information
-                                for param in child.children:
-                                    if param.type == "parameter":
-                                        param_type = ""
-                                        param_name = None
-
-                                        # Get type and name fields from parameter
-                                        type_node = param.child_by_field_name("type")
-                                        name_node = param.child_by_field_name("name")
-
-                                        if type_node:
-                                            param_type = self._extract_node_text(
-                                                type_node, source_code
-                                            )
-                                        if name_node:
-                                            param_name = self._extract_node_text(
-                                                name_node, source_code
-                                            )
-
-                                        if param_name:
-                                            parameters.append(
-                                                param_type + " " + param_name
-                                            )
-
-                                # Add parameters to result
-                                if parameters:
-                                    result["parameters"] = parameters
-                            elif child.type == "modifier":
-                                # Capture access modifiers
-                                modifier = self._extract_node_text(child, source_code)
-                                access_modifiers.append(modifier)
-
-                        # Add access modifiers to result
-                        if access_modifiers:
-                            result["modifiers"] = access_modifiers
-
-                        # DO NOT return early here
-
-                    elif node.type in ["property_declaration", "field_declaration"]:
-                        # Improved handling for properties and fields
-                        property_name = None
-                        property_type = None
-
-                        for child in node.children:
-                            if child.type == "variable_declaration":
-                                for subchild in child.children:
-                                    if subchild.type == "identifier":
-                                        result["type"] = "variable_declaration"
-                                        result["name"] = self._extract_node_text(
-                                            subchild, source_code
-                                        )
-                                    # Look for the type of the variable
-                                    elif subchild.type == "predefined_type" or (
-                                        subchild.type == "identifier"
-                                        and subchild != child
-                                    ):
-                                        result["variable_type"] = (
-                                            self._extract_node_text(
-                                                subchild, source_code
-                                            )
-                                        )
-                            # Check for property name directly in property_declaration
-                            elif child.type == "identifier":
-                                property_name = self._extract_node_text(
-                                    child, source_code
-                                )
-                                result["name"] = property_name
-                                result["type"] = "property_declaration"
-                            # Check for property type
-                            elif child.type == "predefined_type" or (
-                                child.type == "identifier" and child != property_name
-                            ):
-                                if (
-                                    not property_name
-                                    or self._extract_node_text(child, source_code)
-                                    != property_name
-                                ):
-                                    property_type = self._extract_node_text(
-                                        child, source_code
-                                    )
-                                    result["property_type"] = property_type
-
-                elif language == "kotlin":
-                    if node.type in ["class_declaration", "function_declaration"]:
-                        for child in node.children:
-                            if child.type == "simple_identifier":
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                        return result
-                    elif node.type in ["property_declaration", "variable_declaration"]:
-                        # Handle Kotlin properties and variables
-                        for child in node.children:
-                            if child.type == "simple_identifier":
-                                result["type"] = "variable_declaration"
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                return result
-                            break  # Only capture the first identifier
-                        return result
-                else:
-                    if node.type in [
-                        "type_declaration",
-                        "function_declaration",
-                        "method_declaration",
-                        "interface_declaration",
-                    ]:
-                        for child in node.children:
-                            if (
-                                child.type == "identifier"
-                                or child.type == "field_identifier"
-                            ):
-                                result["name"] = self._extract_node_text(
-                                    child, source_code
-                                )
-                                result["first_line"] = (
-                                    self._extract_node_text(node, source_code)
-                                    .split("\n")[0]
-                                    .strip("{")
-                                )
-                                return result
-                        return result
-                    elif (
-                        node.type == "var_declaration"
-                        or node.type == "const_declaration"
-                    ):
-                        # Handle Go variable and constant declarations
-                        for child in node.children:
-                            if child.type == "var_spec" or child.type == "const_spec":
-                                for subchild in child.children:
-                                    if subchild.type == "identifier":
-                                        result["type"] = "variable_declaration"
-                                        result["name"] = self._extract_node_text(
-                                            subchild, source_code
-                                        )
-                                        return result
-                        return result
-
-                # Recursively process children
-                children = []
-                # if file_path.endswith("models/wishlist.js"):
-                #     print(f"{file_path} {language}")
-                #     print(
-                #         f"{node.type} ({self._extract_node_text(node, source_code) if node.type == 'identifier' else ''})"
-                #     )
-                #     print(self._extract_node_text(node, source_code))
-                #     print("=============")
-                for child in node.children:
-                    child_result = process_node(child)
-                    if child_result and (
-                        child_result.get("type")
-                        in [
-                            "class_definition",
-                            "function_definition",
-                            "class_declaration",
-                            "method_definition",
-                            "function_declaration",
-                            "interface_declaration",
-                            "method_declaration",
-                            "constructor_declaration",
-                            "class_specifier",
-                            "struct_specifier",
-                            "class",
-                            "method",
-                            "singleton_method",
-                            "module",
-                            "type_declaration",
-                            "method_declaration",
-                            "interface_declaration",
-                            "struct_item",
-                            "impl_item",
-                            "fn_item",
-                            "trait_item",
-                            "trait_declaration",
-                            "property_declaration",
-                            "object_definition",
-                            "trait_definition",
-                            "def_definition",
-                            "function_definition",
-                            "class_definition",
-                            "variable_declaration",
-                            "arrow_function",
-                        ]
-                        or "children" in child_result
-                    ):
-                        children.append(child_result)
-
-                if children:
-                    result["children"] = children
-                return result
+                return language_parser.process_node(node, source_code, process_node)
 
             return process_node(root_node)
 
@@ -914,11 +167,9 @@ class CodeAnalysisService:
         """Recursively count nodes of specific types in the tree structure."""
         count = 0
 
-        # Count current node if it matches
         if structure.get("type") in node_types:
             count += 1
 
-        # Recursively count in children
         for child in structure.get("children", []):
             count += self._count_nodes(child, node_types)
 
@@ -1101,7 +352,6 @@ Example response format:
                 f" //Lines:{node.get('start_line', '')}-{node.get('end_line', '')}"
             )
 
-            # Handle decorated functions - extract the actual function definition
             if node_type == "decorated_definition" and "children" in node:
                 for child in node.get("children", []):
                     if child.get("type") in {
@@ -1111,7 +361,6 @@ Example response format:
                     }:
                         return format_node(child, prefix, is_last)
 
-            # Handle class body, block nodes, and wrapper functions
             if not node_name and node_type in {
                 "class_body",
                 "block",
@@ -1125,8 +374,7 @@ Example response format:
             elif not node_name:
                 return lines
 
-            branch = "└── " if is_last else "├── "
-            # Format node information based on type
+            branch = "  "
             if node_type in {
                 "class_definition",
                 "class_declaration",
@@ -1159,7 +407,6 @@ Example response format:
                 "arrow_function",
                 "lexical_declaration",
             }:
-                # Handle parameters
                 if "first_line" in node:
                     node_info = node["first_line"] + node_lines
                 else:
@@ -1168,7 +415,6 @@ Example response format:
                     if "parameters" in node and node["parameters"]:
                         params = node["parameters"]
                     elif "children" in node:
-                        # Try to extract parameters from children for languages that structure them differently
                         for child in node["children"]:
                             if child.get("type") in {
                                 "parameter_list",
@@ -1198,11 +444,10 @@ Example response format:
 
             lines.append(f"{prefix}{branch}{node_info}")
 
-            # Process children
             if "children" in node:
-                new_prefix = prefix + ("    " if is_last else "│   ")
+                new_prefix = prefix + "  "
                 child_lines = process_children(node["children"], new_prefix, is_last)
-                if child_lines:  # Only add child lines if there are any
+                if child_lines:
                     lines.extend(child_lines)
 
             return lines
@@ -1223,7 +468,6 @@ Example response format:
                     "call_expression",
                     "lexical_declaration",
                     "decorated_definition",
-                    # Class-related nodes
                     "class_definition",
                     "class_declaration",
                     "class_specifier",
@@ -1235,8 +479,7 @@ Example response format:
                     "trait_declaration",
                     "module",
                     "type_declaration",
-                    "impl_item",  # Rust implementations
-                    # Method-related nodes
+                    "impl_item",
                     "function_definition",
                     "function_declaration",
                     "method_definition",
@@ -1251,13 +494,11 @@ Example response format:
                     "public_method_definition",
                     "private_method_definition",
                     "protected_method_definition",
-                    # Container nodes that might have methods
                     "class_body",
                     "block",
                     "declaration_list",
                     "body",
-                    "impl_block",  # Rust implementation blocks
-                    # Property and field nodes
+                    "impl_block",
                     "property_declaration",
                     "field_declaration",
                     "variable_declaration",
@@ -1268,24 +509,21 @@ Example response format:
             for i, child in enumerate(significant_children):
                 is_last_child = i == len(significant_children) - 1
                 child_lines = format_node(child, prefix, is_last_child)
-                if child_lines:  # Only add child lines if there are any
+                if child_lines:
                     lines.extend(child_lines)
                 if i >= MAX_ITEMS_OUT:
                     lines.append(
-                        f"...({len(significant_children) - MAX_ITEMS_OUT} more items)"
+                        f"{prefix}  ...({len(significant_children) - MAX_ITEMS_OUT} more items)"
                     )
                     break
 
             return lines
 
-        # Process each file
         output_lines = []
 
-        # Sort analysis results by path
         sorted_results = sorted(analysis_results, key=lambda x: x["path"])
 
         for result in sorted_results:
-            # Skip files with no significant structure
             if not result.get("structure") or not result.get("structure", {}).get(
                 "children"
             ):
@@ -1295,9 +533,7 @@ Example response format:
                     )
                     continue
 
-            # Add file header
             output_lines.append(f"\n{result['path']}")
-            # Format the structure
             structure = result["structure"]
             if "children" in structure:
                 significant_nodes = [
@@ -1309,7 +545,6 @@ Example response format:
                         "lexical_declaration",
                         "call_expression",
                         "decorated_definition",
-                        # Class-related nodes
                         "class_definition",
                         "class_declaration",
                         "class_specifier",
@@ -1321,8 +556,7 @@ Example response format:
                         "trait_declaration",
                         "module",
                         "type_declaration",
-                        "impl_item",  # Rust implementations
-                        # Method-related nodes
+                        "impl_item",
                         "function_definition",
                         "function_declaration",
                         "method_definition",
@@ -1337,7 +571,6 @@ Example response format:
                         "public_method_definition",
                         "private_method_definition",
                         "protected_method_definition",
-                        # Property and field nodes
                         "property_declaration",
                         "field_declaration",
                         "variable_declaration",
@@ -1349,19 +582,14 @@ Example response format:
                 for i, node in enumerate(significant_nodes):
                     is_last = i == len(significant_nodes) - 1
                     node_lines = format_node(node, "", is_last)
-                    if node_lines:  # Only add node lines if there are any
+                    if node_lines:
                         output_lines.extend(node_lines)
                     if i >= MAX_ITEMS_OUT:
                         output_lines.append(
                             f"...({len(significant_nodes) - MAX_ITEMS_OUT} more items)"
                         )
                         break
-                    # else:
-                    #     output_lines.append(
-                    #         self.get_file_content(result["path"]).get("file")
-                    #     )
-                    #
-        # Return the formatted text
+
         return (
             "\n".join(output_lines)
             if output_lines
@@ -1385,15 +613,12 @@ Example response format:
         Returns:
             Dictionary with file content (key: "file", value: file content string)
         """
-        # Read the whole file
         with open(file_path, "rb") as file:
             content = file.read()
 
         decoded_content = content.decode("utf-8")
 
-        # If line range is specified, extract those lines
         if start_line is not None and end_line is not None:
-            # Validate line range
             if start_line < 1:
                 raise ValueError("start_line must be >= 1")
             if end_line < start_line:
@@ -1402,7 +627,6 @@ Example response format:
             lines = decoded_content.split("\n")
             total_lines = len(lines)
 
-            # Validate bounds
             if start_line > total_lines:
                 raise ValueError(
                     f"start_line {start_line} exceeds file length ({total_lines} lines)"
@@ -1410,11 +634,9 @@ Example response format:
             if end_line > total_lines:
                 end_line = total_lines
 
-            # Extract the line range (convert to 0-indexed)
             selected_lines = lines[start_line - 1 : end_line]
             return {"file": "\n".join(selected_lines)}
 
-        # Return the whole file
         return {"file": decoded_content}
 
     def _format_analysis_results(
