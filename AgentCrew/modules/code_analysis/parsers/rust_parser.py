@@ -27,16 +27,7 @@ class RustParser(BaseLanguageParser):
             return result
 
         elif node.type in ["static_item", "const_item", "let_declaration"]:
-            for child in node.children:
-                if child.type == "identifier":
-                    result["type"] = "variable_declaration"
-                    result["name"] = self.extract_node_text(child, source_code)
-                    return result
-                elif child.type == "pattern" and child.children:
-                    result["name"] = self.extract_node_text(
-                        child.children[0], source_code
-                    )
-            return result
+            return self._handle_variable_declaration(node, source_code, result)
 
         children = []
         for child in node.children:
@@ -46,5 +37,29 @@ class RustParser(BaseLanguageParser):
 
         if children:
             result["children"] = children
+
+        return result
+
+    def _handle_variable_declaration(
+        self, node, source_code: bytes, result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        var_name = None
+        var_type = None
+
+        for child in node.children:
+            if child.type == "identifier" and var_name is None:
+                var_name = self.extract_node_text(child, source_code)
+            elif child.type == "pattern":
+                if child.children:
+                    var_name = self.extract_node_text(child.children[0], source_code)
+            elif child.type in ["type_identifier", "generic_type", "reference_type", "pointer_type", "array_type", "primitive_type"]:
+                var_type = self.extract_node_text(child, source_code)
+
+        if var_name:
+            result["type"] = "variable_declaration"
+            if var_type:
+                result["name"] = f"{var_name}: {var_type}"
+            else:
+                result["name"] = var_name
 
         return result

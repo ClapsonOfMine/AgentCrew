@@ -25,8 +25,11 @@ class CSharpParser(BaseLanguageParser):
         elif node.type == "method_declaration":
             self._handle_method_declaration(node, source_code, result)
 
-        elif node.type in ["property_declaration", "field_declaration"]:
-            self._handle_property_or_field(node, source_code, result)
+        elif node.type == "property_declaration":
+            self._handle_property_declaration(node, source_code, result)
+
+        elif node.type == "field_declaration":
+            self._handle_field_declaration(node, source_code, result)
 
         children = []
         for child in node.children:
@@ -88,34 +91,60 @@ class CSharpParser(BaseLanguageParser):
         if access_modifiers:
             result["modifiers"] = access_modifiers
 
-    def _handle_property_or_field(
+    def _handle_property_declaration(
         self, node, source_code: bytes, result: Dict[str, Any]
     ) -> None:
         property_name = None
         property_type = None
+        modifiers = []
 
         for child in node.children:
-            if child.type == "variable_declaration":
-                for subchild in child.children:
-                    if subchild.type == "identifier":
-                        result["type"] = "variable_declaration"
-                        result["name"] = self.extract_node_text(subchild, source_code)
-                    elif subchild.type == "predefined_type" or (
-                        subchild.type == "identifier" and subchild != child
-                    ):
-                        result["variable_type"] = self.extract_node_text(
-                            subchild, source_code
-                        )
+            if child.type == "modifier":
+                modifiers.append(self.extract_node_text(child, source_code))
+            elif child.type in ["predefined_type", "nullable_type", "generic_name", "array_type"]:
+                property_type = self.extract_node_text(child, source_code)
             elif child.type == "identifier":
-                property_name = self.extract_node_text(child, source_code)
-                result["name"] = property_name
-                result["type"] = "property_declaration"
-            elif child.type == "predefined_type" or (
-                child.type == "identifier" and child != property_name
-            ):
-                if (
-                    not property_name
-                    or self.extract_node_text(child, source_code) != property_name
-                ):
+                if property_type is None:
                     property_type = self.extract_node_text(child, source_code)
-                    result["property_type"] = property_type
+                else:
+                    property_name = self.extract_node_text(child, source_code)
+
+        if property_name:
+            result["type"] = "property_declaration"
+            if property_type:
+                result["name"] = f"{property_type} {property_name}"
+            else:
+                result["name"] = property_name
+            if modifiers:
+                result["modifiers"] = modifiers
+
+    def _handle_field_declaration(
+        self, node, source_code: bytes, result: Dict[str, Any]
+    ) -> None:
+        field_name = None
+        field_type = None
+        modifiers = []
+
+        for child in node.children:
+            if child.type == "modifier":
+                modifiers.append(self.extract_node_text(child, source_code))
+            elif child.type == "variable_declaration":
+                for subchild in child.children:
+                    if subchild.type in ["predefined_type", "nullable_type", "generic_name", "array_type"]:
+                        field_type = self.extract_node_text(subchild, source_code)
+                    elif subchild.type == "identifier" and field_type is None:
+                        field_type = self.extract_node_text(subchild, source_code)
+                    elif subchild.type == "variable_declarator":
+                        for var_child in subchild.children:
+                            if var_child.type == "identifier":
+                                field_name = self.extract_node_text(var_child, source_code)
+                                break
+
+        if field_name:
+            result["type"] = "field_declaration"
+            if field_type:
+                result["name"] = f"{field_type} {field_name}"
+            else:
+                result["name"] = field_name
+            if modifiers:
+                result["modifiers"] = modifiers

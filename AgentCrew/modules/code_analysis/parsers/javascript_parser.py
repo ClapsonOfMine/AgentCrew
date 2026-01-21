@@ -45,11 +45,10 @@ class JavaScriptParser(BaseLanguageParser):
             else:
                 self._handle_regular_declaration(node, source_code, result)
 
-        elif node.type in [
-            "variable_statement",
-            "property_declaration",
-            "variable_declaration",
-        ]:
+        elif node.type in ["property_declaration", "public_field_definition"]:
+            return self._handle_property_declaration(node, source_code, result)
+
+        elif node.type in ["variable_statement", "variable_declaration"]:
             return self._handle_variable_statement(
                 node, source_code, result, process_children_callback
             )
@@ -189,6 +188,29 @@ class JavaScriptParser(BaseLanguageParser):
                 result["type"] = "variable_declaration"
                 result["name"] = self.extract_node_text(child, source_code)
                 return result
+
+        return result
+
+    def _handle_property_declaration(
+        self, node, source_code: bytes, result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        prop_name = None
+        prop_type = None
+        
+        for child in node.children:
+            if child.type in ["property_identifier", "identifier"]:
+                prop_name = self.extract_node_text(child, source_code)
+            elif child.type == "type_annotation":
+                for type_child in child.children:
+                    if type_child.type != ":":
+                        prop_type = self.extract_node_text(type_child, source_code)
+
+        if prop_name:
+            result["type"] = "property_declaration"
+            if prop_type:
+                result["name"] = f"{prop_name}: {prop_type}"
+            else:
+                result["name"] = prop_name
 
         return result
 

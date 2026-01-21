@@ -77,14 +77,20 @@ class JavaParser(BaseLanguageParser):
     def _handle_field_declaration(
         self, node, source_code: bytes, result: Dict[str, Any]
     ) -> None:
+        field_type = None
+        field_name = None
+
         for child in node.children:
-            if child.type == "variable_declarator":
-                var_name = self.extract_node_text(
-                    child.child_by_field_name("name"), source_code
-                )
-                var_type = self.extract_node_text(
-                    child.child_by_field_name("type"), source_code
-                )
-                result["name"] = var_name
-                result["variable_type"] = var_type
-                result["type"] = "field_declaration"
+            if child.type in ["type_identifier", "generic_type", "array_type", "integral_type", "floating_point_type", "boolean_type"]:
+                field_type = self.extract_node_text(child, source_code)
+            elif child.type == "variable_declarator":
+                name_node = child.child_by_field_name("name")
+                if name_node:
+                    field_name = self.extract_node_text(name_node, source_code)
+
+        if field_name:
+            result["type"] = "field_declaration"
+            if field_type:
+                result["name"] = f"{field_type} {field_name}"
+            else:
+                result["name"] = field_name

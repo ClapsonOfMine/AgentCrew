@@ -13,8 +13,8 @@ from .parsers import get_parser_for_language, BaseLanguageParser
 if TYPE_CHECKING:
     from AgentCrew.modules.llm.base import BaseLLMService
 
-MAX_ITEMS_OUT = 20
-MAX_FILES_TO_ANALYZE = 600
+MAX_ITEMS_OUT = 25
+MAX_FILES_TO_ANALYZE = 500
 
 
 class CodeAnalysisService:
@@ -92,6 +92,7 @@ class CodeAnalysisService:
                 "class_declaration",
                 "class_specifier",
                 "struct_specifier",
+                "struct_declaration",
                 "struct_item",
                 "interface_declaration",
                 "object_declaration",
@@ -349,7 +350,7 @@ Example response format:
             node_type = node.get("type", "")
             node_name = node.get("name", "")
             node_lines = (
-                f" //Lines:{node.get('start_line', '')}-{node.get('end_line', '')}"
+                f" //L: {node.get('start_line', '')}-{node.get('end_line', '')}"
             )
 
             if node_type == "decorated_definition" and "children" in node:
@@ -382,6 +383,7 @@ Example response format:
                 "class",
                 "interface_declaration",
                 "struct_specifier",
+                "struct_declaration",
                 "struct_item",
                 "trait_item",
                 "trait_declaration",
@@ -474,6 +476,7 @@ Example response format:
                     "class",
                     "interface_declaration",
                     "struct_specifier",
+                    "struct_declaration",
                     "struct_item",
                     "trait_item",
                     "trait_declaration",
@@ -551,6 +554,7 @@ Example response format:
                         "class",
                         "interface_declaration",
                         "struct_specifier",
+                        "struct_declaration",
                         "struct_item",
                         "trait_item",
                         "trait_declaration",
