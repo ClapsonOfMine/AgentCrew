@@ -604,6 +604,21 @@ Whenever condition on `when` clause in a **Behavior** matches, tailor your respo
             )
         return adaptive_messages
 
+    def _get_directory_structure(self) -> str:
+        try:
+            cwd = os.getcwd()
+            entries = []
+            for entry in sorted(os.listdir(cwd)):
+                full_path = os.path.join(cwd, entry)
+                if os.path.isdir(full_path):
+                    entries.append(f"{entry}/")
+                else:
+                    entries.append(entry)
+            return "\n".join(entries) if entries else ""
+        except Exception as e:
+            logger.warning(f"Failed to get directory structure: {e}")
+            return ""
+
     def _enhance_agent_context_messages(self, final_messages: List[Dict[str, Any]]):
         last_user_index = next(
             (
@@ -651,6 +666,16 @@ Whenever condition on `when` clause in a **Behavior** matches, tailor your respo
             - Skip agent evaluation if user request is when...,[action]... related to adaptive behaviors call `adapt` tool instead.""",
                     },
                 )
+        if last_user_index == 0:
+            dir_structure = self._get_directory_structure()
+            if dir_structure:
+                adaptive_messages["content"].append(
+                    {
+                        "type": "text",
+                        "text": f"Cwd structure:\n{dir_structure}",
+                    }
+                )
+
         if len(adaptive_messages["content"]) > 0:
             final_messages.insert(last_user_index, adaptive_messages)
 
