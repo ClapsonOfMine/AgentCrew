@@ -14,8 +14,8 @@ from .parsers import get_parser_for_language, BaseLanguageParser
 if TYPE_CHECKING:
     from AgentCrew.modules.llm.base import BaseLLMService
 
-MAX_ITEMS_OUT = 25
-MAX_FILES_TO_ANALYZE = 500
+MAX_ITEMS_OUT = 40
+MAX_FILES_TO_ANALYZE = 600
 
 
 class CodeAnalysisService:
@@ -366,7 +366,7 @@ Example response format:
             return {"error": f"Error analyzing directory: {str(e)}"}
 
     def _generate_text_map(self, analysis_results: List[Dict[str, Any]]) -> str:
-        """Generate a compact text representation of the code structure analysis."""
+        """Generate a hierarchical text representation of the code structure analysis."""
 
         def format_node(
             node: Dict[str, Any], prefix: str = "", is_last: bool = True
@@ -548,77 +548,112 @@ Example response format:
 
             return lines
 
-        output_lines = []
+        def get_file_code_content(
+            result: Dict[str, Any], file_indent: str
+        ) -> List[str]:
+            """Generate code structure content for a single file."""
+            lines = []
+            structure = result.get("structure")
+            if not structure:
+                return lines
+
+            if not structure.get("children"):
+                if structure.get("type"):
+                    return [f"{file_indent}  {structure['type']}"]
+                return lines
+
+            significant_nodes = [
+                child
+                for child in structure["children"]
+                if child.get("type")
+                in {
+                    "arrow_function",
+                    "lexical_declaration",
+                    "call_expression",
+                    "decorated_definition",
+                    "class_definition",
+                    "class_declaration",
+                    "class_specifier",
+                    "class",
+                    "interface_declaration",
+                    "struct_specifier",
+                    "struct_declaration",
+                    "struct_item",
+                    "trait_item",
+                    "trait_declaration",
+                    "module",
+                    "type_declaration",
+                    "impl_item",
+                    "function_definition",
+                    "function_declaration",
+                    "method_definition",
+                    "method_declaration",
+                    "fn_item",
+                    "method",
+                    "singleton_method",
+                    "constructor_declaration",
+                    "member_function_definition",
+                    "constructor",
+                    "destructor",
+                    "public_method_definition",
+                    "private_method_definition",
+                    "protected_method_definition",
+                    "property_declaration",
+                    "field_declaration",
+                    "variable_declaration",
+                    "const_declaration",
+                    "namespace_declaration",
+                }
+            ]
+
+            for i, node in enumerate(significant_nodes):
+                is_last = i == len(significant_nodes) - 1
+                node_lines = format_node(node, file_indent, is_last)
+                if node_lines:
+                    lines.extend(node_lines)
+                if i >= MAX_ITEMS_OUT:
+                    lines.append(
+                        f"{file_indent}  ...({len(significant_nodes) - MAX_ITEMS_OUT} more items)"
+                    )
+                    break
+            return lines
 
         sorted_results = sorted(analysis_results, key=lambda x: x["path"])
 
+        results_by_path = {result["path"]: result for result in sorted_results}
+
+        tree: Dict[str, Any] = {}
         for result in sorted_results:
-            if not result.get("structure") or not result.get("structure", {}).get(
-                "children"
-            ):
-                if not result.get("structure"):
-                    output_lines.append(
-                        f"\n{result['path']}: {result['structure']['type']}"
-                    )
-                    continue
+            path = result["path"].replace("\\", "/")
+            parts = path.split("/")
+            current = tree
+            for i, part in enumerate(parts):
+                if i == len(parts) - 1:
+                    current[part] = {"__is_file__": True, "__path__": result["path"]}
+                else:
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
 
-            output_lines.append(f"\n{result['path']}")
-            structure = result["structure"]
-            if "children" in structure:
-                significant_nodes = [
-                    child
-                    for child in structure["children"]
-                    if child.get("type")
-                    in {
-                        "arrow_function",
-                        "lexical_declaration",
-                        "call_expression",
-                        "decorated_definition",
-                        "class_definition",
-                        "class_declaration",
-                        "class_specifier",
-                        "class",
-                        "interface_declaration",
-                        "struct_specifier",
-                        "struct_declaration",
-                        "struct_item",
-                        "trait_item",
-                        "trait_declaration",
-                        "module",
-                        "type_declaration",
-                        "impl_item",
-                        "function_definition",
-                        "function_declaration",
-                        "method_definition",
-                        "method_declaration",
-                        "fn_item",
-                        "method",
-                        "singleton_method",
-                        "constructor_declaration",
-                        "member_function_definition",
-                        "constructor",
-                        "destructor",
-                        "public_method_definition",
-                        "private_method_definition",
-                        "protected_method_definition",
-                        "property_declaration",
-                        "field_declaration",
-                        "variable_declaration",
-                        "const_declaration",
-                        "namespace_declaration",
-                    }
-                ]
+        output_lines = []
 
-                for i, node in enumerate(significant_nodes):
-                    is_last = i == len(significant_nodes) - 1
-                    node_lines = format_node(node, "", is_last)
-                    if node_lines:
-                        output_lines.extend(node_lines)
-                    if i >= MAX_ITEMS_OUT:
-                        output_lines.append(
-                            f"...({len(significant_nodes) - MAX_ITEMS_OUT} more items)"
+        def format_tree(node: Dict[str, Any], indent: str = "") -> None:
+            items = sorted(node.keys())
+            for name in items:
+                child = node[name]
+                if isinstance(child, dict) and child.get("__is_file__"):
+                    output_lines.append(f"{indent}{name}")
+                    file_path = child["__path__"]
+                    if file_path in results_by_path:
+                        file_content = get_file_code_content(
+                            results_by_path[file_path], indent
                         )
-                        break
+                        output_lines.extend(file_content)
+                elif isinstance(child, dict):
+                    output_lines.append(f"{indent}{name}/")
+                    format_tree(child, indent + "  ")
+
+        format_tree(tree)
 
         return (
             "\n".join(output_lines)
@@ -668,6 +703,50 @@ Example response format:
             return {"file": "\n".join(selected_lines)}
 
         return {"file": decoded_content}
+
+    def _build_file_tree(self, file_paths: List[str]) -> Dict[str, Any]:
+        """Build a hierarchical tree structure from flat file paths.
+
+        Args:
+            file_paths: List of relative file paths
+
+        Returns:
+            Nested dictionary representing the file tree
+        """
+        tree: Dict[str, Any] = {}
+        for path in sorted(file_paths):
+            parts = path.replace("\\", "/").split("/")
+            current = tree
+            for i, part in enumerate(parts):
+                if i == len(parts) - 1:
+                    current[part] = None
+                else:
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
+        return tree
+
+    def _format_file_tree(self, tree: Dict[str, Any], indent: str = "") -> List[str]:
+        """Format a file tree dictionary into indented lines.
+
+        Args:
+            tree: Nested dictionary representing file tree
+            indent: Current indentation string
+
+        Returns:
+            List of formatted lines
+        """
+        lines = []
+        items = sorted(tree.keys())
+        for name in items:
+            subtree = tree[name]
+            if subtree is None:
+                lines.append(f"{indent}{name}")
+            else:
+                lines.append(f"{indent}{name}/")
+                child_lines = self._format_file_tree(subtree, indent + "  ")
+                lines.extend(child_lines)
+        return lines
 
     def _format_analysis_results(
         self,
@@ -734,11 +813,14 @@ Example response format:
                 f"The following {non_analyzed_count} files were not analyzed due to the {MAX_FILES_TO_ANALYZE} file limit:"
             )
             max_non_analyzed_to_show = int(MAX_FILES_TO_ANALYZE / 2)
-            for file_path in sorted(non_analyzed_files[:max_non_analyzed_to_show]):
-                sections.append(f"  {file_path}")
+            non_analyzed_tree = self._build_file_tree(
+                sorted(non_analyzed_files)[:max_non_analyzed_to_show]
+            )
+            non_analyzed_tree_lines = self._format_file_tree(non_analyzed_tree)
+            sections.extend(non_analyzed_tree_lines)
             if len(non_analyzed_files) > max_non_analyzed_to_show:
                 sections.append(
-                    f"  ...and {len(non_analyzed_files) - max_non_analyzed_to_show} more files."
+                    f"...and {len(non_analyzed_files) - max_non_analyzed_to_show} more files."
                 )
 
         return "\n".join(sections)
