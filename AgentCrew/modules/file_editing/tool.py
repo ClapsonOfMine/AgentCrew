@@ -4,7 +4,7 @@ File editing tool definitions and handlers for AgentCrew.
 Provides file_write_or_edit tool for intelligent file editing with search/replace blocks.
 """
 
-from typing import Dict, Any, Callable, Optional, List, Union
+from typing import Dict, Any, Callable, Optional, List
 from .service import FileEditingService
 
 
@@ -27,7 +27,9 @@ def convert_blocks_array_to_string(blocks: List[Dict[str, str]]) -> str:
     for block in blocks:
         search_text = block.get("search", "")
         replace_text = block.get("replace", "")
-        block_str = f"<<<<<<< SEARCH\n{search_text}\n=======\n{replace_text}\n>>>>>>> REPLACE"
+        block_str = (
+            f"<<<<<<< SEARCH\n{search_text}\n=======\n{replace_text}\n>>>>>>> REPLACE"
+        )
         result_parts.append(block_str)
 
     return "\n".join(result_parts)
@@ -85,7 +87,7 @@ Auto syntax check (30+ langs) with rollback on error
                     },
                 },
             ],
-            "description": "Full content string OR array of search/replace blocks (≤50%). For blocks, use array format: [{\"search\": \"exact content to find\", \"replace\": \"replacement content\"}]",
+            "description": 'Full content string OR array of search/replace blocks (≤50%). For blocks, use array format: [{"search": "exact content to find", "replace": "replacement content"}]',
         },
     }
 

@@ -52,7 +52,14 @@ class RustParser(BaseLanguageParser):
             elif child.type == "pattern":
                 if child.children:
                     var_name = self.extract_node_text(child.children[0], source_code)
-            elif child.type in ["type_identifier", "generic_type", "reference_type", "pointer_type", "array_type", "primitive_type"]:
+            elif child.type in [
+                "type_identifier",
+                "generic_type",
+                "reference_type",
+                "pointer_type",
+                "array_type",
+                "primitive_type",
+            ]:
                 var_type = self.extract_node_text(child, source_code)
 
         if var_name:

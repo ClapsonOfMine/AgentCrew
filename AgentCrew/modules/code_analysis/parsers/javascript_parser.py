@@ -83,7 +83,11 @@ class JavaScriptParser(BaseLanguageParser):
         return None
 
     def _handle_arrow_function(
-        self, node, source_code: bytes, result: Dict[str, Any], process_children_callback
+        self,
+        node,
+        source_code: bytes,
+        result: Dict[str, Any],
+        process_children_callback,
     ) -> Dict[str, Any]:
         parent = node.parent
         if parent and parent.type == "variable_declarator":
@@ -101,7 +105,11 @@ class JavaScriptParser(BaseLanguageParser):
         return result
 
     def _handle_lexical_declaration(
-        self, node, source_code: bytes, result: Dict[str, Any], process_children_callback
+        self,
+        node,
+        source_code: bytes,
+        result: Dict[str, Any],
+        process_children_callback,
     ) -> Dict[str, Any]:
         for child in node.children:
             if child.type == "variable_declarator":
@@ -139,17 +147,21 @@ class JavaScriptParser(BaseLanguageParser):
         for child in node.children:
             if child.type in ["identifier", "type_identifier", "property_identifier"]:
                 result["name"] = self.extract_node_text(child, source_code)
-            elif (
-                child.type == "formal_parameters"
-                and node.type
-                in ["function_declaration", "method_declaration", "method_definition"]
-            ):
+            elif child.type == "formal_parameters" and node.type in [
+                "function_declaration",
+                "method_declaration",
+                "method_definition",
+            ]:
                 params = self._extract_parameters_with_types(child, source_code)
                 if params:
                     result["parameters"] = params
 
     def _handle_variable_statement(
-        self, node, source_code: bytes, result: Dict[str, Any], process_children_callback
+        self,
+        node,
+        source_code: bytes,
+        result: Dict[str, Any],
+        process_children_callback,
     ) -> Dict[str, Any]:
         for child in node.children:
             if child.type == "variable_declaration_list":
@@ -175,7 +187,10 @@ class JavaScriptParser(BaseLanguageParser):
                                         arrow_result = process_children_callback(
                                             declarator_child
                                         )
-                                        if arrow_result and "parameters" in arrow_result:
+                                        if (
+                                            arrow_result
+                                            and "parameters" in arrow_result
+                                        ):
                                             result["parameters"] = arrow_result[
                                                 "parameters"
                                             ]
@@ -196,7 +211,7 @@ class JavaScriptParser(BaseLanguageParser):
     ) -> Dict[str, Any]:
         prop_name = None
         prop_type = None
-        
+
         for child in node.children:
             if child.type in ["property_identifier", "identifier"]:
                 prop_name = self.extract_node_text(child, source_code)

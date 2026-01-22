@@ -109,9 +109,7 @@ class ToolDisplayHandlers:
             )
         )
 
-    def _display_write_or_edit_file_use(
-        self, tool_use: Dict, file_path: str, blocks
-    ):
+    def _display_write_or_edit_file_use(self, tool_use: Dict, file_path: str, blocks):
         """Display write_or_edit_file tool with split diff view."""
         tool_icon = self.get_tool_icon(tool_use["name"])
 

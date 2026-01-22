@@ -19,7 +19,11 @@ class PhpParser(BaseLanguageParser):
     ) -> Optional[Dict[str, Any]]:
         result = self._create_base_result(node)
 
-        if node.type in ["class_declaration", "interface_declaration", "trait_declaration"]:
+        if node.type in [
+            "class_declaration",
+            "interface_declaration",
+            "trait_declaration",
+        ]:
             for child in node.children:
                 if child.type == "name":
                     result["name"] = self.extract_node_text(child, source_code)
@@ -64,7 +68,12 @@ class PhpParser(BaseLanguageParser):
         prop_type = None
 
         for child in node.children:
-            if child.type in ["primitive_type", "named_type", "optional_type", "union_type"]:
+            if child.type in [
+                "primitive_type",
+                "named_type",
+                "optional_type",
+                "union_type",
+            ]:
                 prop_type = self.extract_node_text(child, source_code)
             elif child.type == "property_element":
                 for subchild in child.children:

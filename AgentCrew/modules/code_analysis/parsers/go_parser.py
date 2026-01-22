@@ -20,14 +20,18 @@ class GoParser(BaseLanguageParser):
         result = self._create_base_result(node)
 
         if node.type == "type_declaration":
-            return self._handle_type_declaration(node, source_code, result, process_children_callback)
+            return self._handle_type_declaration(
+                node, source_code, result, process_children_callback
+            )
 
         elif node.type in ["function_declaration", "method_declaration"]:
             for child in node.children:
                 if child.type in ["identifier", "field_identifier"]:
                     result["name"] = self.extract_node_text(child, source_code)
                     result["first_line"] = (
-                        self.extract_node_text(node, source_code).split("\n")[0].strip("{")
+                        self.extract_node_text(node, source_code)
+                        .split("\n")[0]
+                        .strip("{")
                     )
                     return result
             return result
@@ -57,7 +61,11 @@ class GoParser(BaseLanguageParser):
         return result
 
     def _handle_type_declaration(
-        self, node, source_code: bytes, result: Dict[str, Any], process_children_callback
+        self,
+        node,
+        source_code: bytes,
+        result: Dict[str, Any],
+        process_children_callback,
     ) -> Dict[str, Any]:
         for child in node.children:
             if child.type == "type_spec":
@@ -72,7 +80,9 @@ class GoParser(BaseLanguageParser):
                                 children = []
                                 for field in struct_child.children:
                                     field_result = process_children_callback(field)
-                                    if field_result and self._is_significant_node(field_result):
+                                    if field_result and self._is_significant_node(
+                                        field_result
+                                    ):
                                         children.append(field_result)
                                 if children:
                                     result["children"] = children
@@ -92,7 +102,15 @@ class GoParser(BaseLanguageParser):
                 for subchild in child.children:
                     if subchild.type == "identifier" and var_name is None:
                         var_name = self.extract_node_text(subchild, source_code)
-                    elif subchild.type in ["type_identifier", "pointer_type", "array_type", "slice_type", "map_type", "channel_type", "qualified_type"]:
+                    elif subchild.type in [
+                        "type_identifier",
+                        "pointer_type",
+                        "array_type",
+                        "slice_type",
+                        "map_type",
+                        "channel_type",
+                        "qualified_type",
+                    ]:
                         var_type = self.extract_node_text(subchild, source_code)
 
         if var_name:
@@ -113,7 +131,17 @@ class GoParser(BaseLanguageParser):
         for child in node.children:
             if child.type == "field_identifier":
                 field_name = self.extract_node_text(child, source_code)
-            elif child.type in ["type_identifier", "pointer_type", "array_type", "slice_type", "map_type", "channel_type", "qualified_type", "struct_type", "interface_type"]:
+            elif child.type in [
+                "type_identifier",
+                "pointer_type",
+                "array_type",
+                "slice_type",
+                "map_type",
+                "channel_type",
+                "qualified_type",
+                "struct_type",
+                "interface_type",
+            ]:
                 field_type = self.extract_node_text(child, source_code)
 
         if field_name:

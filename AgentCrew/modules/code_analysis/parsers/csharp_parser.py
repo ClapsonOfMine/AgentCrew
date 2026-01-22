@@ -101,7 +101,12 @@ class CSharpParser(BaseLanguageParser):
         for child in node.children:
             if child.type == "modifier":
                 modifiers.append(self.extract_node_text(child, source_code))
-            elif child.type in ["predefined_type", "nullable_type", "generic_name", "array_type"]:
+            elif child.type in [
+                "predefined_type",
+                "nullable_type",
+                "generic_name",
+                "array_type",
+            ]:
                 property_type = self.extract_node_text(child, source_code)
             elif child.type == "identifier":
                 if property_type is None:
@@ -130,14 +135,21 @@ class CSharpParser(BaseLanguageParser):
                 modifiers.append(self.extract_node_text(child, source_code))
             elif child.type == "variable_declaration":
                 for subchild in child.children:
-                    if subchild.type in ["predefined_type", "nullable_type", "generic_name", "array_type"]:
+                    if subchild.type in [
+                        "predefined_type",
+                        "nullable_type",
+                        "generic_name",
+                        "array_type",
+                    ]:
                         field_type = self.extract_node_text(subchild, source_code)
                     elif subchild.type == "identifier" and field_type is None:
                         field_type = self.extract_node_text(subchild, source_code)
                     elif subchild.type == "variable_declarator":
                         for var_child in subchild.children:
                             if var_child.type == "identifier":
-                                field_name = self.extract_node_text(var_child, source_code)
+                                field_name = self.extract_node_text(
+                                    var_child, source_code
+                                )
                                 break
 
         if field_name:

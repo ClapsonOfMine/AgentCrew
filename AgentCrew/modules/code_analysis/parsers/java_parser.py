@@ -81,7 +81,14 @@ class JavaParser(BaseLanguageParser):
         field_name = None
 
         for child in node.children:
-            if child.type in ["type_identifier", "generic_type", "array_type", "integral_type", "floating_point_type", "boolean_type"]:
+            if child.type in [
+                "type_identifier",
+                "generic_type",
+                "array_type",
+                "integral_type",
+                "floating_point_type",
+                "boolean_type",
+            ]:
                 field_type = self.extract_node_text(child, source_code)
             elif child.type == "variable_declarator":
                 name_node = child.child_by_field_name("name")

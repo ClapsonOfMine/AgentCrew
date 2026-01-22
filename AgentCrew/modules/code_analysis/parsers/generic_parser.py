@@ -32,7 +32,9 @@ class GenericParser(BaseLanguageParser):
                 if child.type in ["identifier", "field_identifier"]:
                     result["name"] = self.extract_node_text(child, source_code)
                     result["first_line"] = (
-                        self.extract_node_text(node, source_code).split("\n")[0].strip("{")
+                        self.extract_node_text(node, source_code)
+                        .split("\n")[0]
+                        .strip("{")
                     )
                     return result
             return result

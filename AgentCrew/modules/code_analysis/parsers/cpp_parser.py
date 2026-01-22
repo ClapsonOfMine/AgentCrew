@@ -41,7 +41,9 @@ class CppParser(BaseLanguageParser):
                 elif child.type == "function_declarator":
                     for subchild in child.children:
                         if subchild.type in ["identifier", "field_identifier"]:
-                            result["name"] = self.extract_node_text(subchild, source_code)
+                            result["name"] = self.extract_node_text(
+                                subchild, source_code
+                            )
                             return result
             return result
 
@@ -69,7 +71,12 @@ class CppParser(BaseLanguageParser):
         field_type = None
 
         for child in node.children:
-            if child.type in ["primitive_type", "type_identifier", "qualified_identifier", "template_type"]:
+            if child.type in [
+                "primitive_type",
+                "type_identifier",
+                "qualified_identifier",
+                "template_type",
+            ]:
                 field_type = self.extract_node_text(child, source_code)
             elif child.type == "field_identifier":
                 field_name = self.extract_node_text(child, source_code)
@@ -90,7 +97,12 @@ class CppParser(BaseLanguageParser):
         var_type = None
 
         for child in node.children:
-            if child.type in ["primitive_type", "type_identifier", "qualified_identifier", "template_type"]:
+            if child.type in [
+                "primitive_type",
+                "type_identifier",
+                "qualified_identifier",
+                "template_type",
+            ]:
                 var_type = self.extract_node_text(child, source_code)
             elif child.type in ["init_declarator", "declarator"]:
                 for subchild in child.children:
@@ -100,7 +112,9 @@ class CppParser(BaseLanguageParser):
                     elif subchild.type == "pointer_declarator":
                         for ptr_child in subchild.children:
                             if ptr_child.type == "identifier":
-                                var_name = self.extract_node_text(ptr_child, source_code)
+                                var_name = self.extract_node_text(
+                                    ptr_child, source_code
+                                )
                                 break
 
         if var_name:

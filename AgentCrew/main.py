@@ -86,7 +86,7 @@ def check_and_update():
         current_version = get_current_version()
 
         click.echo(f"Current version: {current_version}\nChecking for updates...")
-        latest_version = get_latest_github_version()
+        latest_version, release_notes = get_latest_release_info()
 
         if not current_version or not latest_version:
             click.echo("⚠️ Could not determine version information", err=True)
@@ -98,8 +98,20 @@ def check_and_update():
             system = platform.system().lower()
 
             if system == "linux" or system == "darwin":
+                click.echo("\n" + "=" * 60)
+                click.echo("🔄 New version available!")
+                click.echo("=" * 60)
+
+                if release_notes:
+                    click.echo("\n📝 Release Notes:")
+                    click.echo("-" * 40)
+                    click.echo(release_notes)
+                    click.echo("-" * 40 + "\n")
+                else:
+                    click.echo("\n⚠️ Could not fetch release notes.")
+
                 if click.confirm(
-                    "🔄 New version available! Do you want to update now?",
+                    "\nDo you want to update now?",
                     default=False,
                 ):
                     click.echo("🔄 Starting update...")
@@ -109,7 +121,18 @@ def check_and_update():
                     click.echo("⏭️ Skipping update. Starting application...")
             else:
                 command = "uv tool install --python=3.12 --reinstall agentcrew-ai[cpu]@latest --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match"
-                click.echo(f"🔄 New version available!\nRun {command} to update.")
+
+                click.echo("\n" + "=" * 60)
+                click.echo("🔄 New version available!")
+                click.echo("=" * 60)
+
+                if release_notes:
+                    click.echo("\n📝 Release Notes:")
+                    click.echo("-" * 40)
+                    click.echo(release_notes)
+                    click.echo("-" * 40 + "\n")
+
+                click.echo(f"Run the following command to update:\n\n{command}")
         else:
             click.echo("✅ You are running the latest version")
 
@@ -155,6 +178,35 @@ def get_latest_github_version():
         return None
     except Exception:
         return None
+
+
+def get_latest_release_info():
+    """Get the latest release information including version and release notes from GitHub
+
+    Returns:
+        tuple: (version, release_notes) where both can be None if not found.
+    """
+    try:
+        api_url = (
+            "https://api.github.com/repos/saigontechnology/AgentCrew/releases/latest"
+        )
+        response = requests.get(api_url, timeout=10)
+
+        if response.status_code == 200:
+            release_data = response.json()
+            tag_name = release_data.get("tag_name", "").lstrip("v")
+            name = release_data.get("name", "")
+            body = release_data.get("body", "")
+
+            release_notes = None
+            if body:
+                release_notes = f"## {name or tag_name}\n\n{body}"
+
+            return tag_name, release_notes
+
+        return None, None
+    except Exception:
+        return None, None
 
 
 def version_is_older(current: str, latest: str) -> bool:

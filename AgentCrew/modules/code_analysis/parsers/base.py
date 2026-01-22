@@ -90,6 +90,4 @@ class BaseLanguageParser(ABC):
             "variable_declaration",
             "arrow_function",
         }
-        return (
-            result.get("type") in significant_types or "children" in result
-        )
+        return result.get("type") in significant_types or "children" in result
