@@ -53,7 +53,7 @@ def get_memory_forget_tool_handler(memory_service: BaseMemoryService) -> Callabl
     """Optimized memory forgetting handler with concise feedback."""
 
     def handle_memory_forget(**params) -> str:
-        ids = params.get("ids", "").strip()
+        ids = params.get("ids", [])
 
         # Use provided agent_name or fallback to current agent
         current_agent = AgentManager.get_instance().get_current_agent()
