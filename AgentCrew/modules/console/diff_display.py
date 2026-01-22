@@ -4,6 +4,7 @@ Provides split view diff display with syntax highlighting.
 """
 
 import difflib
+from typing import List, Dict
 from rich.text import Text
 from rich.table import Table
 from rich.box import SIMPLE_HEAD
@@ -16,67 +17,37 @@ class DiffDisplay:
     """Helper class for creating split diff views."""
 
     @staticmethod
-    def has_search_replace_blocks(text: str) -> bool:
-        """Check if text contains search/replace blocks."""
-        return (
-            "<<<<<<< SEARCH" in text and "=======" in text and ">>>>>>> REPLACE" in text
+    def has_search_replace_blocks(blocks: List[Dict]) -> bool:
+        """Check if input is a valid list of search/replace blocks."""
+        if not isinstance(blocks, list):
+            return False
+        return len(blocks) > 0 and all(
+            isinstance(b, dict) and "search" in b and "replace" in b for b in blocks
         )
 
     @staticmethod
-    def parse_search_replace_blocks(blocks_text: str) -> list:
+    def parse_search_replace_blocks(blocks: List[Dict]) -> List[Dict]:
         """
-        Parse search/replace blocks from text.
+        Parse search/replace blocks from list format.
 
         Args:
-            blocks_text: Text containing search/replace blocks
+            blocks: List of dicts with 'search' and 'replace' keys
 
         Returns:
             List of dicts with 'index', 'search', and 'replace' keys
         """
-        blocks = []
-        lines = blocks_text.split("\n")
-        i = 0
-        block_index = 0
+        if not isinstance(blocks, list):
+            return []
 
-        while i < len(lines):
-            if lines[i].strip() == "<<<<<<< SEARCH":
-                search_lines = []
-                i += 1
-
-                while i < len(lines) and lines[i].strip() != "=======":
-                    search_lines.append(lines[i])
-                    i += 1
-
-                if i >= len(lines):
-                    break
-
-                i += 1
-                replace_lines = []
-
-                while (
-                    i < len(lines)
-                    and lines[i].strip() != ">>>>>>> REPLACE"
-                    and lines[i].strip() != "======="
-                ):
-                    replace_lines.append(lines[i])
-                    i += 1
-
-                if i >= len(lines):
-                    break
-
-                blocks.append(
-                    {
-                        "index": block_index,
-                        "search": "\n".join(search_lines),
-                        "replace": "\n".join(replace_lines),
-                    }
-                )
-                block_index += 1
-                i += 1
-            else:
-                i += 1
-
-        return blocks
+        return [
+            {
+                "index": i,
+                "search": block.get("search", ""),
+                "replace": block.get("replace", ""),
+            }
+            for i, block in enumerate(blocks)
+            if isinstance(block, dict)
+        ]
 
     @staticmethod
     def create_split_diff_table(

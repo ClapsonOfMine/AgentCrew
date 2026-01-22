@@ -302,7 +302,6 @@ class ToolEventHandler:
         tool_input = tool_use.get("input", {})
         file_path = tool_input.get("file_path", "")
         text_or_blocks = tool_input.get("text_or_search_replace_blocks", "")
-        percentage = tool_input.get("percentage_to_change", 0)
 
         has_diff = DiffWidget.has_search_replace_blocks(text_or_blocks)
 
@@ -321,7 +320,6 @@ class ToolEventHandler:
         layout.addWidget(header_label)
 
         info_label = QLabel(
-            f"Change percentage: {percentage}% | "
             f"Mode: {'Search/Replace Blocks' if has_diff else 'Full Content'}"
         )
         info_label.setStyleSheet(

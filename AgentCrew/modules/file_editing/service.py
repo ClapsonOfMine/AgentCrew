@@ -41,21 +41,21 @@ class FileEditingService:
     def write_or_edit_file(
         self,
         file_path: str,
-        percentage_to_change: float,
         text_or_search_replace_blocks: str,
+        is_search_replace: bool = False,
         agent_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Main entry point for file editing.
 
         Decision logic:
-        - percentage > 50: Full file write
-        - percentage <= 50: Search/replace blocks
+        - is_search_replace=False: Full file write
+        - is_search_replace=True: Search/replace blocks
 
         Args:
             file_path: Path to file (absolute or relative, ~ supported)
-            percentage_to_change: Percentage of lines changing (0-100)
             text_or_search_replace_blocks: Full content or search/replace blocks
+            is_search_replace: True for search/replace mode, False for full content
             agent_name: Optional agent name for permission checks
 
         Returns:
@@ -94,12 +94,12 @@ class FileEditingService:
                 }
 
         try:
-            if percentage_to_change > 50:
-                result = self._write_full_file(file_path, text_or_search_replace_blocks)
-            else:
+            if is_search_replace:
                 result = self._apply_search_replace(
                     file_path, text_or_search_replace_blocks
                 )
+            else:
+                result = self._write_full_file(file_path, text_or_search_replace_blocks)
 
             if result["status"] != "success":
                 return result
@@ -166,7 +166,7 @@ class FileEditingService:
             return {
                 "status": "error",
                 "error": f"File not found: {file_path}",
-                "suggestion": "Use percentage_to_change > 50 to create new files",
+                "suggestion": "Use full content mode (string) to create new files",
             }
 
         try:

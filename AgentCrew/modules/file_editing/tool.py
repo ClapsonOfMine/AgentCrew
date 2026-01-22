@@ -4,8 +4,33 @@ File editing tool definitions and handlers for AgentCrew.
 Provides file_write_or_edit tool for intelligent file editing with search/replace blocks.
 """
 
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, List, Union
 from .service import FileEditingService
+
+
+def convert_blocks_array_to_string(blocks: List[Dict[str, str]]) -> str:
+    """
+    Convert array of search/replace objects to string format.
+
+    Args:
+        blocks: List of dicts with 'search' and 'replace' keys
+
+    Returns:
+        String in the format:
+        <<<<<<< SEARCH
+        [search content]
+        =======
+        [replace content]
+        >>>>>>> REPLACE
+    """
+    result_parts = []
+    for block in blocks:
+        search_text = block.get("search", "")
+        replace_text = block.get("replace", "")
+        block_str = f"<<<<<<< SEARCH\n{search_text}\n=======\n{replace_text}\n>>>>>>> REPLACE"
+        result_parts.append(block_str)
+
+    return "\n".join(result_parts)
 
 
 def get_file_write_or_edit_tool_definition(provider="claude") -> Dict[str, Any]:
@@ -20,14 +45,7 @@ def get_file_write_or_edit_tool_definition(provider="claude") -> Dict[str, Any]:
     """
     tool_description = """Write/edit files via search/replace blocks or full content.
 
-LOGIC: percentage_to_change >50 = full content | ≤50 = search/replace
-
-SEARCH/REPLACE BLOCK FORMAT:
-<<<<<<< SEARCH
-[exact content to find]
-=======
-[replacement content]
->>>>>>> REPLACE
+LOGIC: string = full content | array = search/replace
 
 RULES:
 1. SEARCH must match exactly (character-perfect)
@@ -46,19 +64,33 @@ Auto syntax check (30+ langs) with rollback on error
             "type": "string",
             "description": "Path (absolute/relative). Use ~ for home. Ex: './src/main.py'",
         },
-        "percentage_to_change": {
-            "type": "number",
-            "description": "% lines changing (0-100). >50=full, ≤50=blocks",
-        },
         "text_or_search_replace_blocks": {
-            "type": "string",
-            "description": "Full content (>50%) OR search/replace blocks (≤50%)",
+            "anyOf": [
+                {"type": "string"},
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "search": {
+                                "type": "string",
+                                "description": "Exact content to find (character-perfect match required)",
+                            },
+                            "replace": {
+                                "type": "string",
+                                "description": "Replacement content (empty string to delete)",
+                            },
+                        },
+                        "required": ["search", "replace"],
+                    },
+                },
+            ],
+            "description": "Full content string OR array of search/replace blocks (≤50%). For blocks, use array format: [{\"search\": \"exact content to find\", \"replace\": \"replacement content\"}]",
         },
     }
 
     tool_required = [
         "file_path",
-        "percentage_to_change",
         "text_or_search_replace_blocks",
     ]
 
@@ -72,7 +104,7 @@ Auto syntax check (30+ langs) with rollback on error
                 "required": tool_required,
             },
         }
-    else:  # provider in ["openai", "google", "groq"] or other OpenAI-compatible
+    else:
         return {
             "type": "function",
             "function": {
@@ -105,27 +137,30 @@ def get_file_write_or_edit_tool_handler(
         Tool execution handler.
 
         Args:
-            **params: Tool parameters (file_path, percentage_to_change, text_or_search_replace_blocks)
+            **params: Tool parameters (file_path, text_or_search_replace_blocks)
 
         Returns:
             Success or error message
         """
         file_path = params.get("file_path")
-        percentage_to_change = params.get("percentage_to_change")
         text_or_search_replace_blocks = params.get("text_or_search_replace_blocks")
 
         if not file_path:
             raise ValueError("Error: No file path provided.")
 
-        if percentage_to_change is None:
-            raise ValueError("Error: No percentage_to_change provided.")
-
-        if not text_or_search_replace_blocks:
+        if text_or_search_replace_blocks is None:
             raise ValueError("Error: No content or search/replace blocks provided.")
+
+        is_search_replace = isinstance(text_or_search_replace_blocks, list)
+
+        if is_search_replace:
+            text_or_search_replace_blocks = convert_blocks_array_to_string(
+                text_or_search_replace_blocks
+            )
 
         result = file_editing_service.write_or_edit_file(
             file_path=file_path,
-            percentage_to_change=float(percentage_to_change),
+            is_search_replace=is_search_replace,
             text_or_search_replace_blocks=text_or_search_replace_blocks,
         )
 

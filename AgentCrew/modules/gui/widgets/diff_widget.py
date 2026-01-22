@@ -17,10 +17,6 @@ from PySide6.QtCore import Qt
 class DiffWidget(QWidget):
     """Widget to display split diff view for file changes."""
 
-    SEARCH_DELIMITER = "<<<<<<< SEARCH"
-    MIDDLE_DELIMITER = "======="
-    REPLACE_DELIMITER = ">>>>>>> REPLACE"
-
     def __init__(self, parent=None, style_provider=None):
         super().__init__(parent)
         self._style_provider = style_provider
@@ -62,71 +58,44 @@ class DiffWidget(QWidget):
         self.main_layout.setSpacing(8)
 
     @staticmethod
-    def has_search_replace_blocks(text: str) -> bool:
-        """Check if text contains search/replace blocks."""
-        return (
-            "<<<<<<< SEARCH" in text and "=======" in text and ">>>>>>> REPLACE" in text
+    def has_search_replace_blocks(blocks: List[Dict]) -> bool:
+        """Check if input is a valid list of search/replace blocks."""
+        if not isinstance(blocks, list):
+            return False
+        return len(blocks) > 0 and all(
+            isinstance(b, dict) and "search" in b and "replace" in b for b in blocks
         )
 
     @staticmethod
-    def parse_search_replace_blocks(blocks_text: str) -> List[Dict]:
+    def parse_search_replace_blocks(blocks: List[Dict]) -> List[Dict]:
         """
-        Parse search/replace blocks from text.
+        Parse search/replace blocks from list format.
+
+        Args:
+            blocks: List of dicts with 'search' and 'replace' keys
 
         Returns:
             List of dicts with 'index', 'search', and 'replace' keys
         """
-        blocks = []
-        lines = blocks_text.split("\n")
-        i = 0
-        block_index = 0
+        if not isinstance(blocks, list):
+            return []
 
-        while i < len(lines):
-            if lines[i].strip() == "<<<<<<< SEARCH":
-                search_lines = []
-                i += 1
+        return [
+            {
+                "index": i,
+                "search": block.get("search", ""),
+                "replace": block.get("replace", ""),
+            }
+            for i, block in enumerate(blocks)
+            if isinstance(block, dict)
+        ]
 
-                while i < len(lines) and lines[i].strip() != "=======":
-                    search_lines.append(lines[i])
-                    i += 1
-
-                if i >= len(lines):
-                    break
-
-                i += 1
-                replace_lines = []
-
-                while (
-                    i < len(lines)
-                    and lines[i].strip() != ">>>>>>> REPLACE"
-                    and lines[i].strip() != "======="
-                ):
-                    replace_lines.append(lines[i])
-                    i += 1
-
-                if i >= len(lines):
-                    break
-
-                blocks.append(
-                    {
-                        "index": block_index,
-                        "search": "\n".join(search_lines),
-                        "replace": "\n".join(replace_lines),
-                    }
-                )
-                block_index += 1
-                i += 1
-            else:
-                i += 1
-
-        return blocks
-
-    def set_diff_content(self, blocks_text: str, file_path: str = ""):
+    def set_diff_content(self, blocks: List[Dict], file_path: str = ""):
         """
         Set the diff content to display.
 
         Args:
-            blocks_text: Text containing search/replace blocks
+            blocks: List of search/replace block dicts
             file_path: Optional file path to display in header
         """
         self._clear_layout()
@@ -139,7 +108,7 @@ class DiffWidget(QWidget):
             )
             self.main_layout.addWidget(header)
 
-        blocks = self.parse_search_replace_blocks(blocks_text)
+        blocks = self.parse_search_replace_blocks(blocks)
 
         if not blocks:
             no_blocks_label = QLabel("No valid search/replace blocks found")
@@ -378,12 +347,12 @@ class CompactDiffWidget(QWidget):
         self.main_layout.setContentsMargins(4, 4, 4, 4)
         self.main_layout.setSpacing(4)
 
-    def set_diff_content(self, blocks_text: str, file_path: str = ""):
+    def set_diff_content(self, blocks: List[Dict], file_path: str = ""):
         """Set the diff content to display in compact form."""
         self._clear_layout()
         colors = self._colors
 
-        blocks = DiffWidget.parse_search_replace_blocks(blocks_text)
+        blocks = DiffWidget.parse_search_replace_blocks(blocks)
 
         if not blocks:
             return
@@ -428,7 +397,7 @@ class CompactDiffWidget(QWidget):
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(1)
 
-        if len(DiffWidget.parse_search_replace_blocks(original + modified)) > 1:
+        if block_num > 1:
             block_header = QLabel(f"Block {block_num}")
             block_header.setStyleSheet(
                 f"font-size: 10px; color: {colors['line_number_text']}; padding: 0 0 2px 0;"

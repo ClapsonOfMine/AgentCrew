@@ -125,7 +125,7 @@ class ConfirmationHandler:
 
         self.input_handler._start_input_thread()
 
-    def _display_write_or_edit_file_diff(self, tool_use, file_path, blocks_text):
+    def _display_write_or_edit_file_diff(self, tool_use, file_path, blocks):
         """Display split diff view for write_or_edit_file tool."""
         header = Text("📝 File Edit ", style=RICH_STYLE_YELLOW)
         header.append(file_path, style=RICH_STYLE_BLUE_BOLD)
@@ -135,15 +135,15 @@ class ConfirmationHandler:
             Panel(header, box=HORIZONTALS, border_style=RICH_STYLE_YELLOW)
         )
 
-        blocks = DiffDisplay.parse_search_replace_blocks(blocks_text)
+        parsed_blocks = DiffDisplay.parse_search_replace_blocks(blocks)
 
-        if not blocks:
+        if not parsed_blocks:
             self.console.print(
                 Text("No valid search/replace blocks found", style=RICH_STYLE_RED)
             )
             return
 
-        for block in blocks:
+        for block in parsed_blocks:
             diff_table = DiffDisplay.create_split_diff_table(
                 block["search"], block["replace"], max_width=self.console.width - 4
             )

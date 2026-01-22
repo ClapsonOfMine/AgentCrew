@@ -110,7 +110,7 @@ class ToolDisplayHandlers:
         )
 
     def _display_write_or_edit_file_use(
-        self, tool_use: Dict, file_path: str, blocks_text: str
+        self, tool_use: Dict, file_path: str, blocks
     ):
         """Display write_or_edit_file tool with split diff view."""
         tool_icon = self.get_tool_icon(tool_use["name"])
@@ -121,10 +121,10 @@ class ToolDisplayHandlers:
 
         self.console.print(Panel(header, box=HORIZONTALS, title_align="left"))
 
-        blocks = DiffDisplay.parse_search_replace_blocks(blocks_text)
+        parsed_blocks = DiffDisplay.parse_search_replace_blocks(blocks)
 
-        if blocks:
-            for block in blocks:
+        if parsed_blocks:
+            for block in parsed_blocks:
                 diff_table = DiffDisplay.create_split_diff_table(
                     block["search"], block["replace"], max_width=self.console.width - 4
                 )
