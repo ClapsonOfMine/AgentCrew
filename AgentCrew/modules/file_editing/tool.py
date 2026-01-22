@@ -8,21 +8,7 @@ from typing import Dict, Any, Callable, Optional, List
 from .service import FileEditingService
 
 
-def convert_blocks_array_to_string(blocks: List[Dict[str, str]]) -> str:
-    """
-    Convert array of search/replace objects to string format.
-
-    Args:
-        blocks: List of dicts with 'search' and 'replace' keys
-
-    Returns:
-        String in the format:
-        <<<<<<< SEARCH
-        [search content]
-        =======
-        [replace content]
-        >>>>>>> REPLACE
-    """
+def convert_blocks_to_string(blocks: List[Dict[str, str]]) -> str:
     result_parts = []
     for block in blocks:
         search_text = block.get("search", "")
@@ -31,32 +17,29 @@ def convert_blocks_array_to_string(blocks: List[Dict[str, str]]) -> str:
             f"<<<<<<< SEARCH\n{search_text}\n=======\n{replace_text}\n>>>>>>> REPLACE"
         )
         result_parts.append(block_str)
-
     return "\n".join(result_parts)
 
 
+def is_full_content_mode(blocks: List[Dict[str, str]]) -> bool:
+    if len(blocks) == 1:
+        block = blocks[0]
+        search_text = block.get("search", "")
+        return search_text == ""
+    return False
+
+
 def get_file_write_or_edit_tool_definition(provider="claude") -> Dict[str, Any]:
-    """
-    Get tool definition for file editing.
+    tool_description = """Write/edit files via search/replace blocks.
 
-    Args:
-        provider: LLM provider name ("claude", "openai", "groq", "google")
-
-    Returns:
-        Provider-specific tool definition
-    """
-    tool_description = """Write/edit files via search/replace blocks or full content.
-
-LOGIC: string = full content | array = search/replace
+FORMAT: Array of {"search": "...", "replace": "..."} objects
+- Empty search + replace with content = write full file content
+- Non-empty search + replace = search/replace operation
+- Non-empty search + empty replace = delete matched content
 
 RULES:
 1. SEARCH must match exactly (character-perfect)
 2. Include changing lines +0-3 context
-3. Multiple blocks in one call OK
-4. Preserve whitespace/indentation
-5. Empty REPLACE = delete
-
-EXAMPLES: Add import (existing+new) | Delete (full→empty) | Modify (signature+changes)
+3. Preserve whitespace/indentation
 
 Auto syntax check (30+ langs) with rollback on error
 """
@@ -67,27 +50,22 @@ Auto syntax check (30+ langs) with rollback on error
             "description": "Path (absolute/relative). Use ~ for home. Ex: './src/main.py'",
         },
         "text_or_search_replace_blocks": {
-            "anyOf": [
-                {"type": "string"},
-                {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "search": {
-                                "type": "string",
-                                "description": "Exact content to find (character-perfect match required)",
-                            },
-                            "replace": {
-                                "type": "string",
-                                "description": "Replacement content (empty string to delete)",
-                            },
-                        },
-                        "required": ["search", "replace"],
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "search": {
+                        "type": "string",
+                        "description": "Exact content to find. Empty string means full file write mode.",
+                    },
+                    "replace": {
+                        "type": "string",
+                        "description": "Replacement content (empty string to delete)",
                     },
                 },
-            ],
-            "description": 'Full content string OR array of search/replace blocks (≤50%). For blocks, use array format: [{"search": "exact content to find", "replace": "replacement content"}]',
+                "required": ["search", "replace"],
+            },
+            "description": 'Array of search/replace blocks. For full file write: [{"search": "", "replace": "full content"}]. For edits: [{"search": "exact match", "replace": "replacement"}]',
         },
     }
 
@@ -124,47 +102,37 @@ Auto syntax check (30+ langs) with rollback on error
 def get_file_write_or_edit_tool_handler(
     file_editing_service: FileEditingService,
 ) -> Callable:
-    """
-    Get the handler function for the file editing tool.
-
-    Args:
-        file_editing_service: FileEditingService instance
-
-    Returns:
-        Handler function
-    """
-
     def handle_file_write_or_edit(**params) -> str:
-        """
-        Tool execution handler.
-
-        Args:
-            **params: Tool parameters (file_path, text_or_search_replace_blocks)
-
-        Returns:
-            Success or error message
-        """
         file_path = params.get("file_path")
-        text_or_search_replace_blocks = params.get("text_or_search_replace_blocks")
+        blocks = params.get("text_or_search_replace_blocks")
 
         if not file_path:
             raise ValueError("Error: No file path provided.")
 
-        if text_or_search_replace_blocks is None:
-            raise ValueError("Error: No content or search/replace blocks provided.")
+        if blocks is None:
+            raise ValueError("Error: No search/replace blocks provided.")
 
-        is_search_replace = isinstance(text_or_search_replace_blocks, list)
-
-        if is_search_replace:
-            text_or_search_replace_blocks = convert_blocks_array_to_string(
-                text_or_search_replace_blocks
+        if not isinstance(blocks, list):
+            raise ValueError(
+                "Error: text_or_search_replace_blocks must be an array of search/replace objects."
             )
 
-        result = file_editing_service.write_or_edit_file(
-            file_path=file_path,
-            is_search_replace=is_search_replace,
-            text_or_search_replace_blocks=text_or_search_replace_blocks,
-        )
+        full_content_mode = is_full_content_mode(blocks)
+
+        if full_content_mode:
+            content = blocks[0].get("replace", "")
+            result = file_editing_service.write_or_edit_file(
+                file_path=file_path,
+                is_search_replace=False,
+                text_or_search_replace_blocks=content,
+            )
+        else:
+            blocks_string = convert_blocks_to_string(blocks)
+            result = file_editing_service.write_or_edit_file(
+                file_path=file_path,
+                is_search_replace=True,
+                text_or_search_replace_blocks=blocks_string,
+            )
 
         if result["status"] == "success":
             parts = [f"{result['file_path']}"]
@@ -208,13 +176,6 @@ def get_file_write_or_edit_tool_handler(
 
 
 def register(service_instance: Optional[FileEditingService] = None, agent=None):
-    """
-    Register file editing tools with AgentCrew tool registry.
-
-    Args:
-        service_instance: Optional FileEditingService instance
-        agent: Optional agent to register with directly
-    """
     from AgentCrew.modules.tools.registration import register_tool
 
     if service_instance is None:
