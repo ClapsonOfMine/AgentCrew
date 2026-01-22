@@ -10,7 +10,7 @@ definitions for the CommandExecutionService.
 # ==============================================================================
 
 # Maximum number of commands that can run concurrently (application-wide)
-MAX_CONCURRENT_COMMANDS = 3
+MAX_CONCURRENT_COMMANDS = 10
 
 # Maximum lifetime for a single command execution (seconds)
 MAX_COMMAND_LIFETIME = 600
@@ -19,7 +19,7 @@ MAX_COMMAND_LIFETIME = 600
 MAX_OUTPUT_LINES = 300
 
 # Maximum number of commands allowed per minute (application-wide rate limit)
-MAX_COMMANDS_PER_MINUTE = 10
+MAX_COMMANDS_PER_MINUTE = 50
 
 # Default timeout for command execution (seconds)
 DEFAULT_TIMEOUT = 5
