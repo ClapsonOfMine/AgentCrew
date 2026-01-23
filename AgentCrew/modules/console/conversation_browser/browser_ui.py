@@ -1,6 +1,4 @@
-"""Conversation browser with split-panel interface.
-Provides Rich-based UI for listing and loading conversations with preview.
-"""
+"""Conversation browser UI rendering components."""
 
 from __future__ import annotations
 
@@ -17,7 +15,7 @@ from rich.box import ROUNDED
 
 from loguru import logger
 
-from .constants import (
+from ..constants import (
     RICH_STYLE_YELLOW,
     RICH_STYLE_YELLOW_BOLD,
     RICH_STYLE_BLUE,
@@ -28,8 +26,8 @@ from .constants import (
 )
 
 
-class ConversationBrowser:
-    """Interactive conversation browser with split-panel layout."""
+class ConversationBrowserUI:
+    """Handles UI rendering for the conversation browser."""
 
     def __init__(
         self,
@@ -38,21 +36,13 @@ class ConversationBrowser:
             Callable[[str], List[Dict[str, Any]]]
         ] = None,
     ):
-        """Initialize the conversation browser.
-
-        Args:
-            console: Rich console for rendering
-            get_conversation_history: Optional callback to fetch full conversation history
-        """
         self.console = console
         self.conversations: List[Dict[str, Any]] = []
         self.selected_index = 0
         self.scroll_offset = 0
         self.max_list_items = 50
-        self._running = False
         self._get_conversation_history = get_conversation_history
         self._preview_cache: Dict[str, Tuple[List[Dict[str, Any]], int]] = {}
-        self._g_pressed = False
 
     def set_conversations(self, conversations: List[Dict[str, Any]]):
         """Set the conversations list to browse."""
@@ -87,7 +77,7 @@ class ConversationBrowser:
         header_table.add_column("right", justify="right", ratio=1)
 
         left_text = Text()
-        left_text.append("📚 ", style="bold")
+        left_text.append("\U0001f4da ", style="bold")
         left_text.append(f"{len(self.conversations)} ", style=RICH_STYLE_GREEN_BOLD)
         left_text.append("conversations", style=RICH_STYLE_GRAY)
 
@@ -152,7 +142,7 @@ class ConversationBrowser:
             if is_selected:
                 table.add_row(
                     Text(index_text, style=RICH_STYLE_GREEN_BOLD),
-                    Text(f"▸ {title}", style=RICH_STYLE_GREEN_BOLD),
+                    Text(f"\u25b8 {title}", style=RICH_STYLE_GREEN_BOLD),
                     Text(timestamp, style=RICH_STYLE_GREEN),
                 )
             else:
@@ -164,10 +154,10 @@ class ConversationBrowser:
 
         scroll_parts = []
         if self.scroll_offset > 0:
-            scroll_parts.append(f"↑{self.scroll_offset}")
+            scroll_parts.append(f"\u2191{self.scroll_offset}")
         remaining = len(self.conversations) - self.scroll_offset - visible_count
         if remaining > 0:
-            scroll_parts.append(f"↓{remaining}")
+            scroll_parts.append(f"\u2193{remaining}")
 
         subtitle = None
         if scroll_parts:
@@ -266,7 +256,7 @@ class ConversationBrowser:
         preview_lines = []
 
         title = convo.get("title", "Untitled")
-        preview_lines.append(Text(f"📌 {title}", style=RICH_STYLE_YELLOW_BOLD))
+        preview_lines.append(Text(f"\U0001f4cc {title}", style=RICH_STYLE_YELLOW_BOLD))
 
         convo_id = convo.get("id", "unknown")
         timestamp = self._format_timestamp(convo.get("timestamp"))
@@ -275,7 +265,7 @@ class ConversationBrowser:
         meta_table.add_column("key", style=RICH_STYLE_GRAY)
         meta_table.add_column("value", style=RICH_STYLE_WHITE)
 
-        display_id = convo_id[:24] + "…" if len(convo_id) > 24 else convo_id
+        display_id = convo_id[:24] + "\u2026" if len(convo_id) > 24 else convo_id
         meta_table.add_row("ID:", display_id)
         meta_table.add_row("Created:", timestamp)
 
@@ -297,13 +287,13 @@ class ConversationBrowser:
                 max_content_len = 120
                 content_display = content.replace("\n", " ").strip()
                 if len(content_display) > max_content_len:
-                    content_display = content_display[:max_content_len] + "…"
+                    content_display = content_display[:max_content_len] + "\u2026"
 
                 preview_lines.append(Text(""))
 
                 if role == "user":
                     user_header = Text()
-                    user_header.append("👤 ", style="bold")
+                    user_header.append("\U0001f464 ", style="bold")
                     user_header.append("User", style=RICH_STYLE_BLUE)
                     preview_lines.append(user_header)
                     preview_lines.append(
@@ -311,7 +301,7 @@ class ConversationBrowser:
                     )
                 else:
                     assistant_header = Text()
-                    assistant_header.append("🤖 ", style="bold")
+                    assistant_header.append("\U0001f916 ", style="bold")
                     assistant_header.append("Assistant", style=RICH_STYLE_GREEN)
                     preview_lines.append(assistant_header)
                     preview_lines.append(
@@ -326,7 +316,7 @@ class ConversationBrowser:
                 preview_lines.append(Text(""))
                 preview_lines.append(Rule(style=RICH_STYLE_GRAY))
                 preview_lines.append(
-                    Text(f"  … and {remaining} more messages", style=RICH_STYLE_GRAY)
+                    Text(f"  \u2026 and {remaining} more messages", style=RICH_STYLE_GRAY)
                 )
         else:
             basic_preview = convo.get("preview", "No preview available")
@@ -353,9 +343,9 @@ class ConversationBrowser:
         help_table.add_column("section3", justify="right", ratio=1)
 
         nav_text = Text()
-        nav_text.append("↑/k ", style=RICH_STYLE_GREEN_BOLD)
+        nav_text.append("\u2191/k ", style=RICH_STYLE_GREEN_BOLD)
         nav_text.append("Up  ", style=RICH_STYLE_GRAY)
-        nav_text.append("↓/j ", style=RICH_STYLE_GREEN_BOLD)
+        nav_text.append("\u2193/j ", style=RICH_STYLE_GREEN_BOLD)
         nav_text.append("Down  ", style=RICH_STYLE_GRAY)
         nav_text.append("gg ", style=RICH_STYLE_GREEN_BOLD)
         nav_text.append("Top  ", style=RICH_STYLE_GRAY)
@@ -382,7 +372,7 @@ class ConversationBrowser:
             box=ROUNDED,
         )
 
-    def _render(self):
+    def render(self):
         """Render the split-panel interface."""
         layout = Layout()
         layout.split_column(
@@ -404,7 +394,7 @@ class ConversationBrowser:
         self.console.clear()
         self.console.print(layout)
 
-    def _handle_navigation(self, direction: str) -> bool:
+    def handle_navigation(self, direction: str) -> bool:
         """Handle navigation (up/down/top/bottom). Returns True if selection changed."""
         if not self.conversations:
             return False
@@ -442,116 +432,3 @@ class ConversationBrowser:
     def get_selected_conversation_index(self) -> int:
         """Get the 1-based index of the currently selected conversation."""
         return self.selected_index + 1
-
-    def show(self) -> Optional[str]:
-        """Show the interactive conversation browser.
-
-        Returns:
-            The ID of the selected conversation, or None if cancelled.
-        """
-        if not self.conversations:
-            self.console.print(
-                Text("No conversations available.", style=RICH_STYLE_YELLOW)
-            )
-            return None
-
-        self._running = True
-        self._g_pressed = False
-        selected_id = None
-
-        from prompt_toolkit import PromptSession
-        from prompt_toolkit.key_binding import KeyBindings
-        from prompt_toolkit.keys import Keys
-
-        self._render()
-
-        kb = KeyBindings()
-
-        @kb.add(Keys.Up)
-        @kb.add("k")
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("up"):
-                self._render()
-
-        @kb.add(Keys.Down)
-        @kb.add("j")
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("down"):
-                self._render()
-
-        @kb.add(Keys.ControlP)
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("up"):
-                self._render()
-
-        @kb.add(Keys.ControlN)
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("down"):
-                self._render()
-
-        @kb.add("g")
-        def _(event):
-            if self._g_pressed:
-                self._g_pressed = False
-                if self._handle_navigation("top"):
-                    self._render()
-            else:
-                self._g_pressed = True
-
-        @kb.add("G")
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("bottom"):
-                self._render()
-
-        @kb.add(Keys.ControlU)
-        @kb.add(Keys.PageUp)
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("page_up"):
-                self._render()
-
-        @kb.add(Keys.ControlD)
-        @kb.add(Keys.PageDown)
-        def _(event):
-            self._g_pressed = False
-            if self._handle_navigation("page_down"):
-                self._render()
-
-        @kb.add(Keys.Enter)
-        @kb.add("l")
-        def _(event):
-            nonlocal selected_id
-            self._g_pressed = False
-            selected_id = self.get_selected_conversation_id()
-            event.app.exit()
-
-        @kb.add(Keys.Escape)
-        @kb.add("q")
-        def _(event):
-            self._g_pressed = False
-            event.app.exit()
-
-        @kb.add(Keys.ControlC)
-        def _(event):
-            self._g_pressed = False
-            event.app.exit()
-
-        @kb.add(Keys.Any)
-        def _(event):
-            self._g_pressed = False
-
-        try:
-            session = PromptSession(key_bindings=kb)
-            session.prompt("")
-        except (KeyboardInterrupt, EOFError):
-            pass
-        except Exception as e:
-            logger.error(f"Error in conversation browser: {e}")
-
-        self._running = False
-        return selected_id

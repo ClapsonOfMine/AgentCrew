@@ -177,7 +177,7 @@ class DisplayHandlers:
             )
             return None
 
-        from .conversation_browser import ConversationBrowser
+        from .conversation_browser.browser import ConversationBrowser
 
         browser = ConversationBrowser(
             console=self.console,
