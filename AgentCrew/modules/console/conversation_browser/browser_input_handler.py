@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING, Optional, Callable, List
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
@@ -22,13 +22,16 @@ class ConversationBrowserInputHandler:
         ui: ConversationBrowserUI,
         on_select: Optional[Callable[[str], None]] = None,
         on_cancel: Optional[Callable[[], None]] = None,
+        on_delete: Optional[Callable[[List[str]], bool]] = None,
     ):
         self._ui = ui
         self._running = False
         self._g_pressed = False
+        self._d_pressed = False
         self._selected_id: Optional[str] = None
         self._on_select = on_select
         self._on_cancel = on_cancel
+        self._on_delete = on_delete
 
     def _create_key_bindings(self) -> KeyBindings:
         """Create and configure key bindings for the browser."""
@@ -38,6 +41,7 @@ class ConversationBrowserInputHandler:
         @kb.add("k")
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("up"):
                 self._ui.render()
 
@@ -45,23 +49,27 @@ class ConversationBrowserInputHandler:
         @kb.add("j")
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("down"):
                 self._ui.render()
 
         @kb.add(Keys.ControlP)
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("up"):
                 self._ui.render()
 
         @kb.add(Keys.ControlN)
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("down"):
                 self._ui.render()
 
         @kb.add("g")
         def _(event):
+            self._d_pressed = False
             if self._g_pressed:
                 self._g_pressed = False
                 if self._ui.handle_navigation("top"):
@@ -72,6 +80,7 @@ class ConversationBrowserInputHandler:
         @kb.add("G")
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("bottom"):
                 self._ui.render()
 
@@ -79,6 +88,7 @@ class ConversationBrowserInputHandler:
         @kb.add(Keys.PageUp)
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("page_up"):
                 self._ui.render()
 
@@ -86,13 +96,31 @@ class ConversationBrowserInputHandler:
         @kb.add(Keys.PageDown)
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             if self._ui.handle_navigation("page_down"):
                 self._ui.render()
+
+        @kb.add("v")
+        def _(event):
+            self._g_pressed = False
+            self._d_pressed = False
+            if self._ui.toggle_selection():
+                self._ui.render()
+
+        @kb.add("d")
+        def _(event):
+            self._g_pressed = False
+            if self._d_pressed:
+                self._d_pressed = False
+                self._handle_delete()
+            else:
+                self._d_pressed = True
 
         @kb.add(Keys.Enter)
         @kb.add("l")
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             self._selected_id = self._ui.get_selected_conversation_id()
             event.app.exit()
 
@@ -100,18 +128,46 @@ class ConversationBrowserInputHandler:
         @kb.add("q")
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             event.app.exit()
 
         @kb.add(Keys.ControlC)
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
             event.app.exit()
 
         @kb.add(Keys.Any)
         def _(event):
             self._g_pressed = False
+            self._d_pressed = False
 
         return kb
+
+    def _handle_delete(self):
+        """Handle delete action for selected or current conversation."""
+        if not self._ui.conversations:
+            return
+
+        if self._ui.selected_items:
+            indices_to_delete = list(self._ui.selected_items)
+            ids_to_delete = self._ui.get_selected_conversation_ids()
+        else:
+            indices_to_delete = [self._ui.selected_index]
+            current_id = self._ui.get_selected_conversation_id()
+            ids_to_delete = [current_id] if current_id else []
+
+        if not ids_to_delete:
+            return
+
+        if self._on_delete:
+            success = self._on_delete(ids_to_delete)
+            if success:
+                self._ui.remove_conversations(indices_to_delete)
+                self._ui.render()
+        else:
+            self._ui.remove_conversations(indices_to_delete)
+            self._ui.render()
 
     def run(self) -> Optional[str]:
         """Run the input handler loop.
@@ -121,6 +177,7 @@ class ConversationBrowserInputHandler:
         """
         self._running = True
         self._g_pressed = False
+        self._d_pressed = False
         self._selected_id = None
 
         self._ui.render()

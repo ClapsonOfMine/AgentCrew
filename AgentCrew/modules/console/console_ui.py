@@ -71,14 +71,6 @@ class ConsoleUI(Observer):
         self.conversation_handler = ConversationHandler(self)
         self.command_handlers = CommandHandlers(self)
 
-    def _get_conversation_history(self, conversation_id: str):
-        """Get conversation history for preview in browser."""
-        if self.message_handler.persistent_service:
-            return self.message_handler.persistent_service.get_conversation_history(
-                conversation_id
-            )
-        return None
-
     def listen(self, event: str, data: Any = None):
         """
         Update method required by the Observer interface. Handles events from the MessageHandler.
@@ -223,8 +215,10 @@ class ConsoleUI(Observer):
             )
         elif event == "conversations_listed":
             self.display_handlers.display_conversations(
-                data
-            )  # data is list of conversation metadata
+                data,
+                get_history_callback=self.conversation_handler.get_conversation_history,
+                delete_callback=self.conversation_handler.delete_conversations,
+            )
             self.conversation_handler.update_cached_conversations(data)
         elif event == "conversation_loaded":
             loaded_text = Text("Loaded conversation: ", style=RICH_STYLE_YELLOW)
@@ -466,7 +460,8 @@ class ConsoleUI(Observer):
                         try:
                             selected_id = self.display_handlers.display_conversations(
                                 conversations,
-                                get_history_callback=self._get_conversation_history,
+                                get_history_callback=self.conversation_handler.get_conversation_history,
+                                delete_callback=self.conversation_handler.delete_conversations,
                             )
                             if selected_id:
                                 self.conversation_handler.handle_load_conversation(

@@ -43,6 +43,7 @@ class ConversationBrowserUI:
         self.max_list_items = 50
         self._get_conversation_history = get_conversation_history
         self._preview_cache: Dict[str, Tuple[List[Dict[str, Any]], int]] = {}
+        self.selected_items: set[int] = set()
 
     def set_conversations(self, conversations: List[Dict[str, Any]]):
         """Set the conversations list to browse."""
@@ -50,6 +51,46 @@ class ConversationBrowserUI:
         self.selected_index = 0
         self.scroll_offset = 0
         self._preview_cache.clear()
+        self.selected_items.clear()
+
+    def toggle_selection(self, index: Optional[int] = None) -> bool:
+        """Toggle selection state of an item. Returns True if state changed."""
+        idx = index if index is not None else self.selected_index
+        if idx < 0 or idx >= len(self.conversations):
+            return False
+        if idx in self.selected_items:
+            self.selected_items.discard(idx)
+        else:
+            self.selected_items.add(idx)
+        return True
+
+    def clear_selections(self):
+        """Clear all selected items."""
+        self.selected_items.clear()
+
+    def get_selected_conversation_ids(self) -> List[str]:
+        """Get IDs of all selected conversations."""
+        ids = []
+        for idx in sorted(self.selected_items):
+            if 0 <= idx < len(self.conversations):
+                convo_id = self.conversations[idx].get("id")
+                if convo_id:
+                    ids.append(convo_id)
+        return ids
+
+    def remove_conversations(self, indices: List[int]):
+        """Remove conversations at specified indices and update UI state."""
+        for idx in sorted(indices, reverse=True):
+            if 0 <= idx < len(self.conversations):
+                convo_id = self.conversations[idx].get("id")
+                if convo_id:
+                    self._preview_cache.pop(convo_id, None)
+                del self.conversations[idx]
+        self.selected_items.clear()
+        if self.selected_index >= len(self.conversations):
+            self.selected_index = max(0, len(self.conversations) - 1)
+        if self.scroll_offset > 0 and self.scroll_offset >= len(self.conversations):
+            self.scroll_offset = max(0, len(self.conversations) - self.max_list_items)
 
     def _format_timestamp(self, timestamp) -> str:
         """Format timestamp for display."""
@@ -124,7 +165,7 @@ class ConversationBrowserUI:
         )
         table.add_column("#", width=5, justify="right", no_wrap=True)
         table.add_column("Title", no_wrap=True, overflow="ellipsis")
-        table.add_column("Date", width=16, justify="right", no_wrap=True)
+        table.add_column("Date", width=10, justify="right", no_wrap=True)
 
         visible_count = min(
             self.max_list_items, len(self.conversations) - self.scroll_offset
@@ -133,22 +174,44 @@ class ConversationBrowserUI:
         for i in range(visible_count):
             idx = self.scroll_offset + i
             convo = self.conversations[idx]
-            is_selected = idx == self.selected_index
+            is_cursor = idx == self.selected_index
+            is_marked = idx in self.selected_items
 
             index_text = f"{idx + 1}"
-            title = convo.get("title", "Untitled")
+            title = convo.get("title", "Untitled").replace("\n", " ")
             timestamp = self._format_timestamp(convo.get("timestamp"))
 
-            if is_selected:
+            mark_indicator = "\u25cf " if is_marked else "  "
+            cursor_indicator = "\u25b8" if is_cursor else " "
+
+            if is_cursor and is_marked:
+                table.add_row(
+                    Text(index_text, style="bold magenta"),
+                    Text(
+                        f"{mark_indicator}{cursor_indicator}{title}",
+                        style="bold magenta",
+                    ),
+                    Text(timestamp, style="magenta"),
+                )
+            elif is_cursor:
                 table.add_row(
                     Text(index_text, style=RICH_STYLE_GREEN_BOLD),
-                    Text(f"\u25b8 {title}", style=RICH_STYLE_GREEN_BOLD),
+                    Text(
+                        f"{mark_indicator}{cursor_indicator}{title}",
+                        style=RICH_STYLE_GREEN_BOLD,
+                    ),
                     Text(timestamp, style=RICH_STYLE_GREEN),
+                )
+            elif is_marked:
+                table.add_row(
+                    Text(index_text, style="magenta"),
+                    Text(f"{mark_indicator} {title}", style="magenta"),
+                    Text(timestamp, style="magenta"),
                 )
             else:
                 table.add_row(
                     Text(index_text, style=RICH_STYLE_GRAY),
-                    Text(f"  {title}", style=RICH_STYLE_BLUE),
+                    Text(f"{mark_indicator} {title}", style=RICH_STYLE_BLUE),
                     Text(timestamp, style=RICH_STYLE_GRAY),
                 )
 
@@ -316,7 +379,9 @@ class ConversationBrowserUI:
                 preview_lines.append(Text(""))
                 preview_lines.append(Rule(style=RICH_STYLE_GRAY))
                 preview_lines.append(
-                    Text(f"  \u2026 and {remaining} more messages", style=RICH_STYLE_GRAY)
+                    Text(
+                        f"  \u2026 and {remaining} more messages", style=RICH_STYLE_GRAY
+                    )
                 )
         else:
             basic_preview = convo.get("preview", "No preview available")
@@ -355,14 +420,16 @@ class ConversationBrowserUI:
         action_text = Text()
         action_text.append("Enter/l ", style=RICH_STYLE_GREEN_BOLD)
         action_text.append("Load  ", style=RICH_STYLE_GRAY)
-        action_text.append("Esc/q ", style=RICH_STYLE_GREEN_BOLD)
-        action_text.append("Exit", style=RICH_STYLE_GRAY)
+        action_text.append("v ", style=RICH_STYLE_GREEN_BOLD)
+        action_text.append("Select  ", style=RICH_STYLE_GRAY)
+        action_text.append("dd ", style=RICH_STYLE_GREEN_BOLD)
+        action_text.append("Delete", style=RICH_STYLE_GRAY)
 
         page_text = Text()
-        page_text.append("PgUp/Ctrl+U ", style=RICH_STYLE_GREEN_BOLD)
-        page_text.append("Page Up  ", style=RICH_STYLE_GRAY)
-        page_text.append("PgDn/Ctrl+D ", style=RICH_STYLE_GREEN_BOLD)
-        page_text.append("Page Down", style=RICH_STYLE_GRAY)
+        page_text.append("Esc/q ", style=RICH_STYLE_GREEN_BOLD)
+        page_text.append("Exit  ", style=RICH_STYLE_GRAY)
+        if self.selected_items:
+            page_text.append(f"({len(self.selected_items)} selected)", style="magenta")
 
         help_table.add_row(nav_text, action_text, page_text)
 

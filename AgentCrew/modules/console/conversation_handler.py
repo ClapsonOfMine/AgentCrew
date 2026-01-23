@@ -4,7 +4,7 @@ Manages conversation loading, listing, and display functionality.
 """
 
 from __future__ import annotations
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from rich.text import Text
 
 from .constants import RICH_STYLE_YELLOW, RICH_STYLE_RED
@@ -20,9 +20,15 @@ class ConversationHandler:
 
     def __init__(self, console_ui: ConsoleUI):
         """Initialize the conversation handler."""
+        self._console_ui = console_ui
         self.console = console_ui.console
         self.display_handlers = console_ui.display_handlers
         self._cached_conversations = []
+
+    @property
+    def _message_handler(self):
+        """Get message handler from console UI."""
+        return self._console_ui.message_handler
 
     def handle_load_conversation(self, load_arg: str, message_handler):
         """
@@ -92,3 +98,30 @@ class ConversationHandler:
     def get_cached_conversations(self):
         """Get the cached conversations list."""
         return self._cached_conversations
+
+    def get_conversation_history(
+        self, conversation_id: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Get conversation history for preview in browser."""
+        if self._message_handler.persistent_service:
+            return self._message_handler.persistent_service.get_conversation_history(
+                conversation_id
+            )
+        return None
+
+    def delete_conversations(self, conversation_ids: List[str]) -> bool:
+        """Delete conversations by their IDs.
+
+        Args:
+            conversation_ids: List of conversation IDs to delete
+
+        Returns:
+            True if all deletions were successful
+        """
+        if not conversation_ids:
+            return False
+        success = True
+        for convo_id in conversation_ids:
+            if not self._message_handler.delete_conversation_by_id(convo_id):
+                success = False
+        return success

@@ -28,19 +28,24 @@ class ConversationBrowser:
         get_conversation_history: Optional[
             Callable[[str], List[Dict[str, Any]]]
         ] = None,
+        on_delete: Optional[Callable[[List[str]], bool]] = None,
     ):
         """Initialize the conversation browser.
 
         Args:
             console: Rich console for rendering
             get_conversation_history: Optional callback to fetch full conversation history
+            on_delete: Optional callback to delete conversations by IDs. Returns True if successful.
         """
         self._console = console
         self._ui = ConversationBrowserUI(
             console=console,
             get_conversation_history=get_conversation_history,
         )
-        self._input_handler = ConversationBrowserInputHandler(ui=self._ui)
+        self._input_handler = ConversationBrowserInputHandler(
+            ui=self._ui,
+            on_delete=on_delete,
+        )
 
     def set_conversations(self, conversations: List[Dict[str, Any]]):
         """Set the conversations list to browse."""

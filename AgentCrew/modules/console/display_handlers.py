@@ -161,12 +161,14 @@ class DisplayHandlers:
         self,
         conversations: List[Dict[str, Any]],
         get_history_callback=None,
+        delete_callback=None,
     ):
         """Display available conversations using interactive browser.
 
         Args:
             conversations: List of conversation metadata
             get_history_callback: Optional callback to fetch full conversation history
+            delete_callback: Optional callback to delete conversations by IDs
 
         Returns:
             Selected conversation ID or None if cancelled
@@ -182,6 +184,7 @@ class DisplayHandlers:
         browser = ConversationBrowser(
             console=self.console,
             get_conversation_history=get_history_callback,
+            on_delete=delete_callback,
         )
         browser.set_conversations(conversations)
         return browser.show()
