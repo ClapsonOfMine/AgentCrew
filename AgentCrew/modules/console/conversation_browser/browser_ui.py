@@ -41,12 +41,15 @@ class ConversationBrowserUI:
         self.conversations: List[Dict[str, Any]] = []
         self.selected_index = 0
         self.scroll_offset = 0
-        self.max_list_items = 50
         self._get_conversation_history = get_conversation_history
         self._preview_cache: Dict[str, Tuple[List[Dict[str, Any]], int]] = {}
         self.selected_items: set[int] = set()
         self._live: Optional[Live] = None
         self._layout: Optional[Layout] = None
+
+    @property
+    def max_list_items(self) -> int:
+        return self.console.height - 9
 
     def set_conversations(self, conversations: List[Dict[str, Any]]):
         """Set the conversations list to browse."""
