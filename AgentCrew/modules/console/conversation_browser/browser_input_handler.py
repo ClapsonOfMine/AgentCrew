@@ -180,7 +180,7 @@ class ConversationBrowserInputHandler:
         self._d_pressed = False
         self._selected_id = None
 
-        self._ui.render()
+        self._ui.start_live()
 
         kb = self._create_key_bindings()
 
@@ -191,6 +191,8 @@ class ConversationBrowserInputHandler:
             pass
         except Exception as e:
             logger.error(f"Error in conversation browser input handler: {e}")
+        finally:
+            self._ui.stop_live()
 
         self._running = False
         return self._selected_id

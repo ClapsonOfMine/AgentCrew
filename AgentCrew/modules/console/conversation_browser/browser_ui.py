@@ -12,6 +12,7 @@ from rich.text import Text
 from rich.layout import Layout
 from rich.rule import Rule
 from rich.box import ROUNDED
+from rich.live import Live
 
 from loguru import logger
 
@@ -44,6 +45,8 @@ class ConversationBrowserUI:
         self._get_conversation_history = get_conversation_history
         self._preview_cache: Dict[str, Tuple[List[Dict[str, Any]], int]] = {}
         self.selected_items: set[int] = set()
+        self._live: Optional[Live] = None
+        self._layout: Optional[Layout] = None
 
     def set_conversations(self, conversations: List[Dict[str, Any]]):
         """Set the conversations list to browse."""
@@ -439,8 +442,8 @@ class ConversationBrowserUI:
             box=ROUNDED,
         )
 
-    def render(self):
-        """Render the split-panel interface."""
+    def _create_layout(self) -> Layout:
+        """Create the layout structure."""
         layout = Layout()
         layout.split_column(
             Layout(name="header", size=3),
@@ -452,14 +455,50 @@ class ConversationBrowserUI:
             Layout(name="list", ratio=1, minimum_size=40),
             Layout(name="preview", ratio=1, minimum_size=40),
         )
+        return layout
 
-        layout["header"].update(self._create_header())
-        layout["list"].update(self._create_list_panel())
-        layout["preview"].update(self._create_preview_panel())
-        layout["help"].update(self._create_help_panel())
+    def _update_layout(self):
+        """Update layout panels with current content."""
+        if self._layout is None:
+            return
+        self._layout["header"].update(self._create_header())
+        self._layout["list"].update(self._create_list_panel())
+        self._layout["preview"].update(self._create_preview_panel())
+        self._layout["help"].update(self._create_help_panel())
 
+    def start_live(self):
+        """Start live display mode."""
         self.console.clear()
-        self.console.print(layout)
+        self._layout = self._create_layout()
+        self._update_layout()
+        self._live = Live(
+            self._layout,
+            console=self.console,
+            refresh_per_second=10,
+            screen=True,
+        )
+        self._live.start()
+
+    def stop_live(self):
+        """Stop live display mode."""
+        if self._live:
+            self._live.stop()
+            self._live = None
+        self._layout = None
+
+    def render(self):
+        """Update the display with current state."""
+        if self._live and self._layout:
+            self._update_layout()
+            self._live.refresh()
+        else:
+            layout = self._create_layout()
+            layout["header"].update(self._create_header())
+            layout["list"].update(self._create_list_panel())
+            layout["preview"].update(self._create_preview_panel())
+            layout["help"].update(self._create_help_panel())
+            self.console.clear()
+            self.console.print(layout)
 
     def handle_navigation(self, direction: str) -> bool:
         """Handle navigation (up/down/top/bottom). Returns True if selection changed."""
