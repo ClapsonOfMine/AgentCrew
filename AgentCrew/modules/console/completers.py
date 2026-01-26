@@ -174,7 +174,7 @@ class ChatCompleter(Completer):
             ),
             (
                 "/debug",
-                "Show debug information (agent history and streamline messages)",
+                "Show debug info (usage: /debug [agent|chat])",
             ),
             ("/think", "Set thinking budget (usage: /think <budget>)"),
             (

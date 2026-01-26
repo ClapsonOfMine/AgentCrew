@@ -43,14 +43,8 @@ class CommandProcessor:
             return CommandResult(handled=True, clear_flag=True)
         elif user_input.lower().startswith("/copy"):
             return await self._handle_copy_command(user_input)
-        elif user_input.lower() == "/debug":
-            self.message_handler._notify(
-                "debug_requested", self.message_handler.agent.clean_history
-            )
-            self.message_handler._notify(
-                "debug_requested", self.message_handler.streamline_messages
-            )
-            return CommandResult(handled=True, clear_flag=True)
+        elif user_input.lower().startswith("/debug"):
+            return self._handle_debug_command(user_input)
         elif user_input.lower().startswith("/think "):
             try:
                 budget = user_input[7:].strip()
@@ -758,6 +752,44 @@ class CommandProcessor:
             self.message_handler._notify("error", f"End voice command failed: {str(e)}")
             self.message_handler._notify("voice_recording_completed", None)
             return CommandResult(handled=True, clear_flag=True)
+
+    def _handle_debug_command(self, user_input: str) -> CommandResult:
+        """Handle /debug command with optional filtering.
+        
+        Usage:
+            /debug         - Show both agent and chat messages
+            /debug agent   - Show only agent messages
+            /debug chat    - Show only chat/streamline messages
+        """
+        parts = user_input.lower().split()
+        filter_type = parts[1] if len(parts) > 1 else None
+        
+        if filter_type and filter_type not in ("agent", "chat"):
+            self.message_handler._notify(
+                "error",
+                f"Invalid filter '{filter_type}'. Use 'agent' or 'chat'."
+            )
+            return CommandResult(handled=True, clear_flag=True)
+        
+        if filter_type is None or filter_type == "agent":
+            self.message_handler._notify(
+                "debug_requested",
+                {
+                    "type": "agent",
+                    "messages": self.message_handler.agent.clean_history
+                }
+            )
+        
+        if filter_type is None or filter_type == "chat":
+            self.message_handler._notify(
+                "debug_requested",
+                {
+                    "type": "chat",
+                    "messages": self.message_handler.streamline_messages
+                }
+            )
+        
+        return CommandResult(handled=True, clear_flag=True)
 
     def _handle_toggle_transfer_command(self, user_input: str) -> CommandResult:
         """Handle /toggle_transfer command to toggle the enforce_transfer property of agent_manager."""

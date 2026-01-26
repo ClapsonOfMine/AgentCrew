@@ -136,32 +136,138 @@ class CommandHandler:
 
     def display_debug_info(self):
         """Display debug information about the current messages."""
-        try:
-            # Format the messages for display
-            debug_info = json.dumps(
-                self.chat_window.message_handler.agent.history, indent=2
-            )
-        except Exception as _:
-            debug_info = str(self.chat_window.message_handler.agent.history)
-        # Add as a system message
-        self.chat_window.chat_components.add_system_message(
-            f"DEBUG INFO:\n\n```json\n{debug_info}\n```"
+        # Display agent messages
+        self._display_debug_messages(
+            "Agent Messages",
+            self.chat_window.message_handler.agent.history
         )
-
-        try:
-            # Format the messages for display
-            debug_info = json.dumps(
-                self.chat_window.message_handler.streamline_messages, indent=2
-            )
-        except Exception as _:
-            debug_info = str(self.chat_window.message_handler.streamline_messages)
-        # Add as a system message
-        self.chat_window.chat_components.add_system_message(
-            f"DEBUG INFO:\n\n```json\n{debug_info}\n```"
+        
+        # Display chat/streamline messages
+        self._display_debug_messages(
+            "Chat Messages",
+            self.chat_window.message_handler.streamline_messages
         )
 
         # Update status bar
         self.chat_window.display_status_message("Debug information displayed")
+
+    def _display_debug_messages(
+        self,
+        title: str,
+        messages: list,
+        max_content_length: int = 200
+    ):
+        """Display formatted debug messages with content truncation.
+        
+        Args:
+            title: Section title for the debug output
+            messages: List of message dictionaries
+            max_content_length: Maximum length for message content (default: 200)
+        """
+        formatted_messages = self._format_messages_for_debug(
+            messages, max_content_length
+        )
+        
+        try:
+            debug_info = json.dumps(formatted_messages, indent=2)
+        except Exception:
+            debug_info = str(formatted_messages)
+        
+        self.chat_window.chat_components.add_system_message(
+            f"DEBUG - {title} ({len(messages)} messages):\n\n```json\n{debug_info}\n```"
+        )
+
+    def _format_messages_for_debug(
+        self,
+        messages: list,
+        max_content_length: int = 200
+    ) -> list:
+        """Format messages for debug display with truncated content.
+        
+        Args:
+            messages: List of message dictionaries
+            max_content_length: Maximum length for message content
+            
+        Returns:
+            List of formatted message dictionaries
+        """
+        formatted = []
+        
+        for i, msg in enumerate(messages):
+            formatted_msg = {"#": i}
+            
+            # Copy basic fields
+            if "role" in msg:
+                formatted_msg["role"] = msg["role"]
+            if "agent" in msg:
+                formatted_msg["agent"] = msg["agent"]
+            
+            # Truncate content
+            content = msg.get("content", "")
+            formatted_msg["content"] = self._truncate_content(
+                content, max_content_length
+            )
+            
+            # Include tool_use/tool_result indicators if present
+            if isinstance(content, list):
+                content_types = []
+                for item in content:
+                    if isinstance(item, dict):
+                        item_type = item.get("type", "unknown")
+                        if item_type == "tool_use":
+                            tool_name = item.get("name", "unknown")
+                            content_types.append(f"tool_use:{tool_name}")
+                        elif item_type == "tool_result":
+                            content_types.append("tool_result")
+                        elif item_type not in ("text",):
+                            content_types.append(item_type)
+                if content_types:
+                    formatted_msg["content_types"] = content_types
+            
+            formatted.append(formatted_msg)
+        
+        return formatted
+
+    def _truncate_content(self, content: Any, max_length: int) -> str:
+        """Truncate content to max_length with ellipsis.
+        
+        Args:
+            content: Message content (can be string, list, or dict)
+            max_length: Maximum length for the output
+            
+        Returns:
+            Truncated string representation
+        """
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            # Extract text from content blocks
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict):
+                    if item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                    elif item.get("type") == "tool_use":
+                        text_parts.append(f"[tool:{item.get('name', 'unknown')}]")
+                    elif item.get("type") == "tool_result":
+                        result = item.get("content", "")
+                        if isinstance(result, str):
+                            text_parts.append(f"[result:{result[:50]}...]")
+                        else:
+                            text_parts.append("[result:...]")
+                elif isinstance(item, str):
+                    text_parts.append(item)
+            text = " | ".join(text_parts)
+        else:
+            text = str(content)
+        
+        # Clean up whitespace
+        text = " ".join(text.split())
+        
+        if len(text) <= max_length:
+            return text
+        
+        return text[:max_length - 3] + "..."
 
     def handle_event(self, event: str, data: Any) -> bool:
         """
@@ -193,15 +299,24 @@ class CommandHandler:
             return True
 
         elif event == "debug_requested":
-            try:
-                debug_info = json.dumps(data, indent=2)
-                self.chat_window.chat_components.add_system_message(
-                    f"DEBUG INFO:\n\n```json\n{debug_info}\n```"
-                )
-            except Exception:
-                self.chat_window.chat_components.add_system_message(
-                    f"DEBUG INFO:\n\n{str(data)}"
-                )
+            if isinstance(data, dict) and "type" in data and "messages" in data:
+                # New format with type and messages
+                msg_type = data["type"]
+                messages = data["messages"]
+                title = "Agent Messages" if msg_type == "agent" else "Chat Messages"
+                self._display_debug_messages(title, messages)
+            else:
+                # Legacy format - just raw messages
+                try:
+                    formatted = self._format_messages_for_debug(data)
+                    debug_info = json.dumps(formatted, indent=2)
+                    self.chat_window.chat_components.add_system_message(
+                        f"DEBUG INFO ({len(data)} messages):\n\n```json\n{debug_info}\n```"
+                    )
+                except Exception:
+                    self.chat_window.chat_components.add_system_message(
+                        f"DEBUG INFO:\n\n{str(data)}"
+                    )
             return True
 
         elif event == "agent_changed":
