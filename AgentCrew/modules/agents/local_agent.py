@@ -763,7 +763,7 @@ Whenever condition on `when` clause in a **Behavior** matches, tailor your respo
                     continue
 
                 if is_shrinkable and i < shrink_threshold:
-                    msg["content"] = "[REDACTED]"
+                    msg["content"] = "[PRUNED]"
                     continue
 
                 # Check if content starts with [UNIQUE]
