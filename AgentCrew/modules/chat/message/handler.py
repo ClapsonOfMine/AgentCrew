@@ -470,9 +470,13 @@ class MessageHandler(Observable):
             if isinstance(e, BadRequestError):
                 if e.code == "model_max_prompt_tokens_exceeded":
                     from AgentCrew.modules.agents import LocalAgent
+                    from AgentCrew.modules.llm.model_registry import ModelRegistry
 
                     if isinstance(self.agent, LocalAgent):
-                        self.agent.input_tokens_usage = 128_000
+                        max_token = ModelRegistry.get_model_limit(
+                            self.agent.get_model()
+                        )
+                        self.agent.input_tokens_usage = max_token
                         return await self.get_assistant_response()
             if self.current_user_input:
                 self.conversation_manager.store_conversation_turn(
