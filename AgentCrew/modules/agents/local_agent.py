@@ -672,7 +672,7 @@ Whenever condition on `when` clause in a **Behavior** matches, tailor your respo
                 adaptive_messages["content"].append(
                     {
                         "type": "text",
-                        "text": f"Cwd structure:\n{dir_structure}",
+                        "text": f"cwd `{os.getcwd()}` structure:\n{dir_structure}",
                     }
                 )
 
