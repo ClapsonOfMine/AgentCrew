@@ -125,10 +125,9 @@ class SettingsTab(QWidget):
         # Theme dropdown
         theme_label = QLabel("Theme:")
         self.theme_dropdown = QComboBox()
-        self.theme_dropdown.addItems(
-            ["dark", "light", "nord", "dracula", "unicorn", "saigontech"]
-        )
-        self.theme_dropdown.setCurrentText("dark")  # Default to dark
+        from AgentCrew.modules.gui.themes import ThemeLoader
+        self.theme_dropdown.addItems(sorted(ThemeLoader.get_available_themes()))
+        self.theme_dropdown.setCurrentText("catppuccin")
         self.theme_dropdown.setStyleSheet(style_provider.get_combo_box_style())
         global_settings_form_layout.addRow(theme_label, self.theme_dropdown)
 

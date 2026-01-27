@@ -1,5 +1,6 @@
 # Include package assets
 include AgentCrew/assets/agentcrew_logo.png
+recursive-include AgentCrew/modules/gui/themes *.yaml
 
 # Include documentation
 include README.md

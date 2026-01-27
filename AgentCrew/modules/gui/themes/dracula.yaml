@@ -1,0 +1,1262 @@
+name: Dracula
+description: Dracula dark theme
+
+colors:
+  background: "#282A36"
+  current_line: "#44475A"
+  foreground: "#F8F8F2"
+  comment: "#6272A4"
+  cyan: "#8BE9FD"
+  green: "#50FA7B"
+  orange: "#FFB86C"
+  pink: "#FF79C6"
+  purple: "#BD93F9"
+  red: "#FF5555"
+  yellow: "#F1FA8C"
+  white: "#ffffff"
+  transparent: "transparent"
+
+icons:
+  web_search: "\U0001F50D"
+  fetch_webpage: "\U0001F310"
+  transfer: "\u2197\ufe0f"
+  adapt: "\U0001F9E0"
+  retrieve_memory: "\U0001F4AD"
+  forget_memory_topic: "\U0001F5D1\ufe0f"
+  read_repo: "\U0001F4C2"
+  get_file: "\U0001F4C4"
+  default: "\U0001F527"
+
+styles:
+  main: |
+    QMainWindow {
+        background-color: ${background};
+    }
+    QScrollArea {
+        border: none;
+        background-color: ${background};
+    }
+    QWidget#chatContainer {
+        background-color: ${background};
+    }
+    QSplitter::handle {
+        background-color: ${current_line};
+    }
+    QSplitter::handle:hover {
+        background-color: ${comment};
+    }
+    QSplitter::handle:pressed {
+        background-color: ${purple};
+    }
+    QStatusBar {
+        background-color: ${background};
+        color: ${foreground};
+    }
+    QToolTip {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        padding: 4px;
+    }
+    QMessageBox {
+        background-color: ${background};
+    }
+    QMessageBox QLabel {
+        color: ${foreground};
+        background-color: ${transparent};
+    }
+    QListView {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        padding: 2px;
+        outline: 0px;
+    }
+    QListView::item {
+        padding: 4px 8px;
+        border-radius: 2px;
+    }
+    QListView::item:selected {
+        background-color: ${purple};
+        color: ${foreground};
+    }
+    QListView::item:hover {
+        background-color: ${comment};
+    }
+    QScrollBar:vertical {
+        border: none;
+        background: ${background};
+        width: 10px;
+        margin: 0px;
+    }
+    QScrollBar::handle:vertical {
+        background: ${current_line};
+        min-height: 20px;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:vertical:hover {
+        background: ${purple};
+    }
+    QScrollBar::handle:vertical:pressed {
+        background: ${pink};
+    }
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+        border: none;
+        background: none;
+        height: 0px;
+    }
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+        background: none;
+    }
+    QScrollBar:horizontal {
+        border: none;
+        background: ${background};
+        height: 10px;
+        margin: 0px;
+    }
+    QScrollBar::handle:horizontal {
+        background: ${current_line};
+        min-width: 20px;
+        border-radius: 5px;
+    }
+    QScrollBar::handle:horizontal:hover {
+        background: ${purple};
+    }
+    QScrollBar::handle:horizontal:pressed {
+        background: ${pink};
+    }
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+        border: none;
+        background: none;
+        width: 0px;
+    }
+    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+        background: none;
+    }
+    QLabel QMenu {
+        background-color: ${background};
+        border: 1px solid ${comment};
+        padding: 4px;
+        border-radius: 6px;
+    }
+    QLabel QMenu::item {
+        color: ${foreground};
+        padding: 8px 24px 8px 12px;
+        border-radius: 4px;
+        margin: 2px;
+    }
+    QLabel QMenu::item:selected {
+        background-color: ${purple};
+        color: ${foreground};
+    }
+    QLabel QMenu::item:pressed {
+        background-color: ${pink};
+    }
+    QLabel QMenu::separator {
+        height: 1px;
+        background: ${comment};
+        margin: 4px 8px;
+    }
+
+  button_primary: |
+    QPushButton {
+        background-color: ${purple};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: ${pink};
+    }
+    QPushButton:pressed {
+        background-color: ${cyan};
+    }
+    QPushButton:disabled {
+        background-color: ${current_line};
+        color: ${comment};
+    }
+
+  button_secondary: |
+    QPushButton {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: ${comment};
+    }
+    QPushButton:pressed {
+        background-color: ${purple};
+    }
+    QPushButton:disabled {
+        background-color: ${background};
+        color: ${current_line};
+    }
+
+  button_stop: |
+    QPushButton {
+        background-color: ${red};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: ${orange};
+    }
+    QPushButton:pressed {
+        background-color: ${red};
+    }
+
+  button_stop_stopping: |
+    QPushButton {
+        background-color: ${current_line};
+        color: ${comment};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+
+  button_red: |
+    QPushButton {
+        background-color: ${red};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: ${orange};
+    }
+    QPushButton:pressed {
+        background-color: ${red};
+    }
+    QPushButton:disabled {
+        background-color: ${current_line};
+        color: ${comment};
+    }
+
+  button_green: |
+    QPushButton {
+        background-color: ${green};
+        color: ${background};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: ${cyan};
+    }
+    QPushButton:pressed {
+        background-color: ${green};
+    }
+    QPushButton:disabled {
+        background-color: ${current_line};
+        color: ${comment};
+    }
+
+  button_disabled: |
+    QPushButton {
+        background-color: ${current_line};
+        color: ${comment};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+
+  button_menu: |
+    QPushButton {
+        background-color: ${purple};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+        padding-left: 12px;
+    }
+    QPushButton:hover {
+        background-color: ${pink};
+    }
+    QPushButton:pressed {
+        background-color: ${cyan};
+    }
+    QPushButton:disabled {
+        background-color: ${current_line};
+        color: ${comment};
+    }
+    QPushButton::menu-indicator {
+        subcontrol-origin: padding;
+        subcontrol-position: right center;
+        right: 5px;
+        width: 16px;
+    }
+
+  button_agent_menu: |
+    QPushButton {
+        background-color: ${purple};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+        padding-left: 12px;
+    }
+    QPushButton:hover {
+        background-color: ${pink};
+    }
+    QPushButton:pressed {
+        background-color: ${cyan};
+    }
+    QPushButton:disabled {
+        background-color: ${current_line};
+        color: ${comment};
+    }
+    QPushButton::menu-indicator {
+        subcontrol-origin: padding;
+        subcontrol-position: right center;
+        right: 5px;
+        width: 16px;
+    }
+
+  button_rollback: |
+    QPushButton {
+        background-color: ${pink};
+        color: ${foreground};
+        border: none;
+        border-radius: 15px;
+        padding: 8px;
+        font-size: 24px;
+        font-weight: bold;
+        width: 30px;
+        height: 30px;
+    }
+    QPushButton:hover {
+        background-color: ${cyan};
+    }
+    QPushButton:pressed {
+        background-color: ${pink};
+    }
+
+  button_consolidated: |
+    QPushButton {
+        background-color: ${pink};
+        color: ${foreground};
+        border: none;
+        border-radius: 15px;
+        padding: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        width: 30px;
+        height: 30px;
+    }
+    QPushButton:hover {
+        background-color: ${cyan};
+    }
+    QPushButton:pressed {
+        background-color: ${pink};
+    }
+
+  button_unconsolidate: |
+    QPushButton {
+        background-color: ${comment};
+        color: ${foreground};
+        border: none;
+        border-radius: 15px;
+        padding: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        width: 30px;
+        height: 30px;
+    }
+    QPushButton:hover {
+        background-color: ${red};
+    }
+    QPushButton:pressed {
+        background-color: #FF6E6E;
+    }
+
+  api_keys_group: |
+    QGroupBox {
+        background-color: ${background};
+    }
+    QLabel {
+        background-color: ${background};
+    }
+
+  editor_container_widget: |
+    QWidget {
+        background-color: ${background};
+    }
+
+  combo_box: |
+    QComboBox {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        padding: 6px 8px;
+        min-width: 120px;
+    }
+    QComboBox:hover {
+        border: 1px solid ${purple};
+    }
+    QComboBox:focus {
+        border: 1px solid ${cyan};
+    }
+    QComboBox::drop-down {
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 20px;
+        border-left-width: 1px;
+        border-left-color: ${comment};
+        border-left-style: solid;
+        border-top-right-radius: 4px;
+        border-bottom-right-radius: 4px;
+        background-color: ${current_line};
+    }
+    QComboBox::down-arrow {
+        width: 0;
+        height: 0;
+        border-left: 4px solid ${transparent};
+        border-right: 4px solid ${transparent};
+        border-top: 6px solid ${foreground};
+    }
+    QComboBox QAbstractItemView {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        selection-background-color: ${purple};
+        selection-color: ${foreground};
+        outline: 0px;
+    }
+
+  text_input: |
+    QTextEdit {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        padding: 8px;
+    }
+    QTextEdit:focus {
+        border: 1px solid ${cyan};
+    }
+
+  line_edit: |
+    QLineEdit {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        padding: 8px;
+    }
+    QLineEdit:focus {
+        border: 1px solid ${cyan};
+    }
+
+  menu_bar: |
+    QMenuBar {
+        background-color: ${background};
+        color: ${foreground};
+        padding: 2px;
+    }
+    QMenuBar::item {
+        background-color: ${transparent};
+        color: ${foreground};
+        padding: 4px 12px;
+        border-radius: 4px;
+    }
+    QMenuBar::item:selected {
+        background-color: ${current_line};
+    }
+    QMenuBar::item:pressed {
+        background-color: ${comment};
+    }
+    QMenu {
+        background-color: ${background};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        padding: 4px;
+    }
+    QMenu::item {
+        padding: 6px 24px 6px 12px;
+        border-radius: 4px;
+    }
+    QMenu::item:selected {
+        background-color: ${purple};
+        color: ${foreground};
+    }
+    QMenu::separator {
+        height: 1px;
+        background: ${comment};
+        margin-left: 10px;
+        margin-right: 5px;
+    }
+
+  context_menu: |
+    QMenu {
+        background-color: ${background};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        padding: 4px;
+        border-radius: 6px;
+    }
+    QMenu::item {
+        padding: 8px 24px 8px 12px;
+        border-radius: 4px;
+        margin: 2px;
+        color: ${foreground};
+    }
+    QMenu::item:selected {
+        background-color: ${purple};
+        color: ${white};
+    }
+    QMenu::item:pressed {
+        background-color: ${pink};
+    }
+    QMenu::item:disabled {
+        background-color: ${transparent};
+        color: ${comment};
+    }
+    QMenu::separator {
+        height: 1px;
+        background: ${comment};
+        margin: 4px 8px;
+    }
+
+  agent_menu: |
+    QMenu {
+        background-color: ${background};
+        color: ${foreground};
+        border: 1px solid ${current_line};
+        border-radius: 4px;
+        padding: 4px;
+    }
+    QMenu::item {
+        padding: 6px 20px;
+        background-color: ${transparent};
+    }
+    QMenu::item:selected {
+        background-color: ${purple};
+        color: ${foreground};
+        border-radius: 3px;
+    }
+    QMenu::separator {
+        height: 1px;
+        background-color: ${current_line};
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+
+  status_indicator: |
+    QLabel {
+        background-color: ${current_line};
+        color: ${foreground};
+        padding: 8px;
+        border-radius: 5px;
+        font-weight: bold;
+    }
+
+  version_label: |
+    QLabel {
+        color: ${foreground};
+        padding: 2px 8px;
+        font-size: 11px;
+    }
+
+  system_message_toggle_button: |
+    QPushButton {
+        background-color: ${transparent};
+        color: ${cyan};
+        border: none;
+        text-align: left;
+        padding: 2px;
+    }
+    QPushButton:hover {
+        color: ${pink};
+    }
+
+  sidebar: "background-color: ${background};"
+
+  conversation_list: |
+    QListWidget {
+        background-color: ${background};
+        border: 1px solid ${current_line};
+        border-radius: 4px;
+    }
+    QListWidget::item {
+        color: ${foreground};
+        background-color: ${background};
+        border: none;
+        border-bottom: 1px solid ${current_line};
+        margin: 0px;
+        padding: 8px;
+    }
+    QListWidget::item:selected {
+        background-color: ${purple};
+        color: ${foreground};
+    }
+    QListWidget::item:hover:!selected {
+        background-color: ${current_line};
+    }
+
+  search_box: |
+    QLineEdit {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        padding: 8px;
+    }
+    QLineEdit:focus {
+        border: 1px solid ${cyan};
+    }
+
+  token_usage: |
+    QLabel {
+        color: ${foreground};
+        font-weight: bold;
+        padding: 8px;
+        background-color: ${background};
+        border-top: 1px solid ${current_line};
+    }
+
+  token_usage_widget: "background-color: ${background};"
+
+  user_bubble: |
+    QFrame {
+        border-radius: 5px;
+        background-color: ${purple};
+        border: none;
+        padding: 2px;
+    }
+
+  assistant_bubble: |
+    QFrame {
+        border-radius: 5px;
+        background-color: ${current_line};
+        border: none;
+        padding: 2px;
+    }
+
+  thinking_bubble: |
+    QFrame {
+        border-radius: 5px;
+        background-color: ${comment};
+        border: none;
+        padding: 2px;
+    }
+
+  consolidated_bubble: |
+    QFrame {
+        border-radius: 5px;
+        background-color: ${current_line};
+        border: 1px solid ${comment};
+        padding: 2px;
+    }
+
+  tool_dialog_text_edit: |
+    QTextEdit {
+        background-color: ${current_line};
+        color: ${foreground};
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        padding: 8px;
+        font-family: monospace;
+    }
+    QTextEdit:focus {
+        border: 1px solid ${cyan};
+    }
+
+  tool_dialog_yes_button: |
+    QPushButton {
+        background-color: ${green};
+        color: ${background};
+        font-weight: bold;
+        padding: 6px 14px;
+        border: none;
+        border-radius: 4px;
+    }
+    QPushButton:hover {
+        background-color: ${cyan};
+    }
+
+  tool_dialog_all_button: |
+    QPushButton {
+        background-color: ${purple};
+        color: ${foreground};
+        font-weight: bold;
+        padding: 6px 14px;
+        border: none;
+        border-radius: 4px;
+    }
+    QPushButton:hover {
+        background-color: ${pink};
+    }
+
+  tool_dialog_no_button: |
+    QPushButton {
+        background-color: ${red};
+        color: ${foreground};
+        font-weight: bold;
+        padding: 6px 14px;
+        border: none;
+        border-radius: 4px;
+    }
+    QPushButton:hover {
+        background-color: ${orange};
+    }
+
+  system_message_label: |
+    color: ${foreground};
+    padding: 2px;
+
+  system_message_toggle: |
+    QPushButton {
+        background-color: ${transparent};
+        color: ${cyan};
+        border: none;
+        text-align: left;
+        padding: 2px;
+    }
+    QPushButton:hover {
+        color: ${pink};
+    }
+
+  config_dialog: |
+    QDialog {
+        background-color: ${background};
+        color: ${foreground};
+    }
+    QTabWidget::pane {
+        border: 1px solid ${current_line};
+        background-color: ${background};
+        border-radius: 4px;
+    }
+    QTabBar::tab {
+        background-color: ${current_line};
+        color: ${foreground};
+        padding: 8px;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        border: 1px solid ${comment};
+        border-bottom: none;
+        margin-right: 2px;
+    }
+    QTabBar::tab:selected {
+        background-color: ${background};
+        border-bottom-color: ${background};
+        color: ${cyan};
+    }
+    QTabBar::tab:hover:!selected {
+        background-color: ${comment};
+    }
+    QPushButton {
+        background-color: ${purple};
+        color: ${foreground};
+        border: none;
+        border-radius: 4px;
+        padding: 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: ${pink};
+    }
+    QPushButton:pressed {
+        background-color: ${cyan};
+    }
+    QPushButton:disabled {
+        background-color: ${current_line};
+        color: ${comment};
+    }
+    QListWidget {
+        background-color: ${background};
+        border: 1px solid ${current_line};
+        border-radius: 4px;
+        padding: 4px;
+        color: ${foreground};
+    }
+    QListWidget::item {
+        padding: 6px;
+        border-radius: 2px;
+        color: ${foreground};
+        background-color: ${background};
+    }
+    QListWidget::item:selected {
+        background-color: ${purple};
+        color: ${foreground};
+    }
+    QListWidget::item:hover:!selected {
+        background-color: ${current_line};
+    }
+    QLineEdit, QTextEdit {
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        padding: 6px;
+        background-color: ${current_line};
+        color: ${foreground};
+    }
+    QLineEdit:focus, QTextEdit:focus {
+        border: 1px solid ${cyan};
+    }
+    QCheckBox {
+        spacing: 8px;
+        color: ${foreground};
+    }
+    QCheckBox::indicator {
+        width: 18px;
+        height: 18px;
+        border-radius: 3px;
+        background-color: ${current_line};
+        border: 2px solid ${comment};
+    }
+    QCheckBox::indicator:checked {
+        background-color: ${purple};
+        border: 2px solid ${purple};
+    }
+    QCheckBox::indicator:indeterminate {
+        background-color: ${yellow};
+        border: 2px solid ${yellow};
+        border-radius: 9px;
+    }
+    QCheckBox::indicator:hover {
+        border: 2px solid ${cyan};
+    }
+    QCheckBox::indicator:hover:checked {
+        background-color: ${cyan};
+        border: 2px solid ${cyan};
+    }
+    QCheckBox::indicator:hover:indeterminate {
+        background-color: ${pink};
+        border: 2px solid ${pink};
+    }
+    QCheckBox::indicator:disabled {
+        background-color: ${background};
+        border: 2px solid ${current_line};
+    }
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid ${comment};
+        border-radius: 4px;
+        margin-top: 12px;
+        padding-top: 12px;
+        background-color: ${background};
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        padding: 0 4px 4px 4px;
+        color: ${cyan};
+        background-color: ${background};
+        left: 10px;
+    }
+    QScrollArea {
+        background-color: ${background};
+        border: none;
+    }
+    QScrollArea > QWidget > QWidget {
+        background-color: ${background};
+    }
+    QLabel {
+        color: ${foreground};
+        padding: 2px;
+    }
+    QSplitter::handle {
+        background-color: ${current_line};
+    }
+    QSplitter::handle:hover {
+        background-color: ${comment};
+    }
+    QSplitter::handle:pressed {
+        background-color: ${purple};
+    }
+
+  panel: "background-color: ${background};"
+
+  scroll_area: |
+    background-color: ${background};
+    border: none;
+
+  editor_widget: "background-color: ${background};"
+
+  group_box: "background-color: ${background};"
+
+  splitter_color: |
+    QSplitter::handle {
+        background-color: ${current_line};
+    }
+    QSplitter::handle:hover {
+        background-color: ${comment};
+    }
+    QSplitter::handle:pressed {
+        background-color: ${purple};
+    }
+
+  metadata_header_label: |
+    QLabel {
+        color: ${foreground};
+        font-style: italic;
+        padding-bottom: 5px;
+    }
+
+  user_message_label: |
+    QLabel {
+        color: ${foreground};
+    }
+
+  assistant_message_label: |
+    QLabel {
+        color: ${foreground};
+    }
+
+  thinking_message_label: |
+    QLabel {
+        color: ${foreground};
+    }
+
+  user_sender_label: |
+    QLabel {
+        font-weight: bold;
+        color: ${foreground};
+        padding: 2px;
+    }
+
+  assistant_sender_label: |
+    QLabel {
+        font-weight: bold;
+        color: ${foreground};
+        padding: 2px;
+    }
+
+  thinking_sender_label: |
+    QLabel {
+        font-weight: bold;
+        color: ${foreground};
+        padding: 2px;
+    }
+
+  user_file_name_label: |
+    QLabel {
+        font-weight: bold;
+        color: ${foreground};
+        padding-left: 10px;
+    }
+
+  assistant_file_name_label: |
+    QLabel {
+        font-weight: bold;
+        color: ${foreground};
+        padding-left: 10px;
+    }
+
+  user_file_info_label: |
+    QLabel {
+        color: ${yellow};
+    }
+
+  assistant_file_info_label: |
+    QLabel {
+        color: ${comment};
+    }
+
+  code_css: |
+    table td {border: 1px solid ${foreground}; padding: 5px;}
+    table { border-collapse: collapse; }
+    pre { line-height: 1; background-color: ${background}; border-radius: 8px; padding: 12px; color: ${foreground}; white-space: pre-wrap; word-wrap: break-word; }
+    td.linenos .normal { color: ${comment}; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+    span.linenos { color: ${comment}; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+    td.linenos .special { color: ${foreground}; background-color: ${current_line}; padding-left: 5px; padding-right: 5px; }
+    span.linenos.special { color: ${foreground}; background-color: ${current_line}; padding-left: 5px; padding-right: 5px; }
+    .codehilite .hll { background-color: ${current_line} }
+    .codehilite { background: ${background}; border-radius: 8px; padding: 10px; color: ${foreground}; }
+    .codehilite .c { color: ${comment}; font-style: italic }
+    .codehilite .err { border: 1px solid ${red}; color: ${red}; }
+    .codehilite .k { color: ${pink}; font-weight: bold }
+    .codehilite .o { color: ${cyan} }
+    .codehilite .ch { color: ${comment}; font-style: italic }
+    .codehilite .cm { color: ${comment}; font-style: italic }
+    .codehilite .cp { color: ${yellow} }
+    .codehilite .cpf { color: ${comment}; font-style: italic }
+    .codehilite .c1 { color: ${comment}; font-style: italic }
+    .codehilite .cs { color: ${comment}; font-style: italic }
+    .codehilite .gd { color: ${red} }
+    .codehilite .ge { font-style: italic }
+    .codehilite .ges { font-weight: bold; font-style: italic }
+    .codehilite .gr { color: ${red} }
+    .codehilite .gh { color: ${purple}; font-weight: bold }
+    .codehilite .gi { color: ${green} }
+    .codehilite .go { color: ${foreground} }
+    .codehilite .gp { color: ${purple}; font-weight: bold }
+    .codehilite .gs { font-weight: bold }
+    .codehilite .gu { color: ${purple}; font-weight: bold }
+    .codehilite .gt { color: ${red} }
+    .codehilite .kc { color: ${pink}; font-weight: bold }
+    .codehilite .kd { color: ${pink}; font-weight: bold }
+    .codehilite .kn { color: ${pink}; font-weight: bold }
+    .codehilite .kp { color: ${pink} }
+    .codehilite .kr { color: ${pink}; font-weight: bold }
+    .codehilite .kt { color: ${orange}; font-weight: bold }
+    .codehilite .m { color: ${purple} }
+    .codehilite .s { color: ${green} }
+    .codehilite .na { color: ${cyan} }
+    .codehilite .nb { color: ${purple} }
+    .codehilite .nc { color: ${yellow}; font-weight: bold }
+    .codehilite .no { color: ${orange} }
+    .codehilite .nd { color: ${pink} }
+    .codehilite .ni { color: ${foreground}; font-weight: bold }
+    .codehilite .ne { color: ${red}; font-weight: bold }
+    .codehilite .nf { color: ${purple}; font-weight: bold }
+    .codehilite .nl { color: ${foreground} }
+    .codehilite .nn { color: ${yellow}; font-weight: bold }
+    .codehilite .nt { color: ${pink}; font-weight: bold }
+    .codehilite .nv { color: ${foreground} }
+    .codehilite .ow { color: ${cyan}; font-weight: bold }
+    .codehilite .w { color: ${comment} }
+    .codehilite .mb { color: ${purple} }
+    .codehilite .mf { color: ${purple} }
+    .codehilite .mh { color: ${purple} }
+    .codehilite .mi { color: ${purple} }
+    .codehilite .mo { color: ${purple} }
+    .codehilite .sa { color: ${green} }
+    .codehilite .sb { color: ${green} }
+    .codehilite .sc { color: ${green} }
+    .codehilite .dl { color: ${green} }
+    .codehilite .sd { color: ${comment}; font-style: italic }
+    .codehilite .s2 { color: ${green} }
+    .codehilite .se { color: ${orange}; font-weight: bold }
+    .codehilite .sh { color: ${green} }
+    .codehilite .si { color: ${green}; font-weight: bold }
+    .codehilite .sx { color: ${green} }
+    .codehilite .sr { color: ${green} }
+    .codehilite .s1 { color: ${green} }
+    .codehilite .ss { color: ${green} }
+    .codehilite .bp { color: ${purple} }
+    .codehilite .fm { color: ${purple}; font-weight: bold }
+    .codehilite .vc { color: ${foreground} }
+    .codehilite .vg { color: ${foreground} }
+    .codehilite .vi { color: ${foreground} }
+    .codehilite .vm { color: ${foreground} }
+    .codehilite .il { color: ${purple} }
+
+  checkbox: |
+    QCheckBox {
+        spacing: 8px;
+        color: ${foreground};
+    }
+    QCheckBox::indicator {
+        width: 18px;
+        height: 18px;
+        border-radius: 3px;
+        background-color: ${current_line};
+        border: 2px solid ${comment};
+    }
+    QCheckBox::indicator:checked {
+        background-color: ${purple};
+        border: 2px solid ${purple};
+    }
+    QCheckBox::indicator:indeterminate {
+        background-color: ${yellow};
+        border: 2px solid ${yellow};
+        border-radius: 9px;
+    }
+    QCheckBox::indicator:hover {
+        border: 2px solid ${cyan};
+    }
+    QCheckBox::indicator:hover:checked {
+        background-color: ${cyan};
+        border: 2px solid ${cyan};
+    }
+    QCheckBox::indicator:hover:indeterminate {
+        background-color: ${pink};
+        border: 2px solid ${pink};
+    }
+    QCheckBox::indicator:disabled {
+        background-color: ${background};
+        border: 2px solid ${current_line};
+    }
+
+  tool_widget: |
+    QWidget {
+        background-color: ${transparent};
+    }
+
+  tool_card: |
+    QFrame#toolCard {
+        border-radius: 6px;
+        background-color: rgba(139, 233, 253, 0.08);
+        border: 1px solid rgba(139, 233, 253, 0.4);
+        padding: 1px;
+    }
+
+  tool_card_error: |
+    QFrame#toolCard {
+        border-radius: 6px;
+        background-color: rgba(255, 85, 85, 0.08);
+        border: 1px solid rgba(255, 85, 85, 0.4);
+        padding: 1px;
+    }
+
+  tool_header: |
+    QLabel {
+        font-weight: 500;
+        color: #c7c9d1;
+    }
+
+  tool_toggle_button: |
+    QPushButton {
+        background-color: ${transparent};
+        border: none;
+        color: #6272a4;
+        font-weight: normal;
+        font-size: 11px;
+    }
+    QPushButton:hover {
+        color: ${cyan};
+    }
+
+  tool_status: |
+    QLabel {
+        font-weight: 500;
+        padding: 2px;
+        font-size: 11px;
+    }
+    QLabel[status="running"] {
+        color: ${orange};
+    }
+    QLabel[status="complete"] {
+        color: ${green};
+    }
+    QLabel[status="error"] {
+        color: ${red};
+    }
+
+  tool_content: |
+    QLabel {
+        color: #c7c9d1;
+        padding: 1px;
+        font-size: 11px;
+    }
+    QLabel[role="title"] {
+        font-weight: 500;
+        color: #c7c9d1;
+        font-size: 12px;
+    }
+    QLabel[role="key"] {
+        color: ${cyan};
+        font-weight: 500;
+        font-size: 11px;
+    }
+    QLabel[role="value"] {
+        color: #a6a9b8;
+        font-size: 11px;
+    }
+    QLabel[role="error"] {
+        color: ${red};
+        font-size: 11px;
+    }
+
+  tool_progress: |
+    QProgressBar {
+        border: none;
+        background-color: rgba(68, 71, 90, 0.4);
+        border-radius: 5px;
+        text-align: center;
+    }
+    QProgressBar::chunk {
+        background-color: ${cyan};
+        border-radius: 5px;
+    }
+
+  tool_separator: |
+    QFrame {
+        background-color: rgba(139, 233, 253, 0.3);
+        border: none;
+    }
+
+  diff_colors:
+    background: ${background}
+    panel_bg: "#21222c"
+    header_bg: ${current_line}
+    header_text: ${foreground}
+    line_number_bg: "#1e1f29"
+    line_number_text: ${comment}
+    removed_bg: "#3d2a36"
+    removed_text: ${red}
+    removed_highlight: ${red}
+    added_bg: "#2a3d36"
+    added_text: ${green}
+    added_highlight: ${green}
+    unchanged_text: ${comment}
+    border: ${current_line}
+    block_header_bg: ${purple}
+    block_header_text: ${background}
+
+  json_editor_colors:
+    background: ${background}
+    text: ${foreground}
+    border: ${current_line}
+    string: ${green}
+    number: ${orange}
+    keyword: ${purple}
+    punctuation: ${foreground}
+    error: ${red}
+
+  json_editor: |
+    QPlainTextEdit {
+        background-color: ${background};
+        color: ${foreground};
+        border: 1px solid ${current_line};
+        border-radius: 4px;
+        padding: 8px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    QPlainTextEdit:focus {
+        border: 1px solid ${cyan};
+    }
+
+  markdown_editor_colors:
+    background: ${background}
+    text: ${foreground}
+    border: ${current_line}
+    header: ${purple}
+    bold: ${orange}
+    italic: ${green}
+    code: ${pink}
+    code_background: ${current_line}
+    link: ${cyan}
+    image: ${purple}
+    list: ${yellow}
+    blockquote: ${comment}
+    hr: ${current_line}
+    strikethrough: ${red}
+    error: ${red}
+
+  markdown_editor: |
+    QPlainTextEdit {
+        background-color: ${background};
+        color: ${foreground};
+        border: 1px solid ${current_line};
+        border-radius: 4px;
+        padding: 8px;
+        font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        selection-background-color: ${current_line};
+        selection-color: ${foreground};
+    }
+    QPlainTextEdit:focus {
+        border: 1px solid ${cyan};
+    }
