@@ -39,6 +39,7 @@ class ConversationBrowserUI:
     ):
         self.console = console
         self.conversations: List[Dict[str, Any]] = []
+        self._all_conversations: List[Dict[str, Any]] = []
         self.selected_index = 0
         self.scroll_offset = 0
         self._get_conversation_history = get_conversation_history
@@ -46,6 +47,8 @@ class ConversationBrowserUI:
         self.selected_items: set[int] = set()
         self._live: Optional[Live] = None
         self._layout: Optional[Layout] = None
+        self._search_query: str = ""
+        self._search_mode: bool = False
 
     @property
     def max_list_items(self) -> int:
@@ -53,10 +56,66 @@ class ConversationBrowserUI:
 
     def set_conversations(self, conversations: List[Dict[str, Any]]):
         """Set the conversations list to browse."""
+        self._all_conversations = conversations
         self.conversations = conversations
         self.selected_index = 0
         self.scroll_offset = 0
         self._preview_cache.clear()
+        self.selected_items.clear()
+        self._search_query = ""
+        self._search_mode = False
+
+    @property
+    def search_mode(self) -> bool:
+        return self._search_mode
+
+    @property
+    def search_query(self) -> str:
+        return self._search_query
+
+    def start_search_mode(self):
+        """Enter search mode, preserving previous search query."""
+        self._search_mode = True
+
+    def exit_search_mode(self, clear_filter: bool = False):
+        """Exit search mode."""
+        self._search_mode = False
+        if clear_filter:
+            self._search_query = ""
+            self.conversations = self._all_conversations
+            self.selected_index = 0
+            self.scroll_offset = 0
+            self.selected_items.clear()
+
+    def update_search_query(self, query: str):
+        """Update search query and filter conversations."""
+        self._search_query = query
+        self._filter_conversations()
+
+    def append_search_char(self, char: str):
+        """Append a character to search query."""
+        self._search_query += char
+        self._filter_conversations()
+
+    def backspace_search(self):
+        """Remove last character from search query."""
+        if self._search_query:
+            self._search_query = self._search_query[:-1]
+        self._filter_conversations()
+
+    def _filter_conversations(self):
+        """Filter conversations based on search query."""
+        if not self._search_query:
+            self.conversations = self._all_conversations
+        else:
+            query_lower = self._search_query.lower()
+            self.conversations = [
+                c
+                for c in self._all_conversations
+                if query_lower in c.get("title", "").lower()
+            ]
+        self.selected_index = 0
+        self.scroll_offset = 0
         self.selected_items.clear()
 
     def toggle_selection(self, index: Optional[int] = None) -> bool:
@@ -126,6 +185,10 @@ class ConversationBrowserUI:
         left_text = Text()
         left_text.append("\U0001f4da ", style="bold")
         left_text.append(f"{len(self.conversations)} ", style=RICH_STYLE_GREEN_BOLD)
+        if self._search_query:
+            left_text.append(
+                f"/ {len(self._all_conversations)} ", style=RICH_STYLE_GRAY
+            )
         left_text.append("conversations", style=RICH_STYLE_GRAY)
 
         center_text = Text()
@@ -403,6 +466,9 @@ class ConversationBrowserUI:
 
     def _create_help_panel(self) -> Panel:
         """Create the help panel with keyboard shortcuts."""
+        if self._search_mode:
+            return self._create_search_bar()
+
         help_table = Table(
             show_header=False,
             box=None,
@@ -432,10 +498,14 @@ class ConversationBrowserUI:
         action_text.append("Delete", style=RICH_STYLE_GRAY)
 
         page_text = Text()
+        page_text.append("/ ", style=RICH_STYLE_GREEN_BOLD)
+        page_text.append("Search  ", style=RICH_STYLE_GRAY)
         page_text.append("Esc/q ", style=RICH_STYLE_GREEN_BOLD)
-        page_text.append("Exit  ", style=RICH_STYLE_GRAY)
+        page_text.append("Exit", style=RICH_STYLE_GRAY)
         if self.selected_items:
-            page_text.append(f"({len(self.selected_items)} selected)", style="magenta")
+            page_text.append(
+                f"  ({len(self.selected_items)} selected)", style="magenta"
+            )
 
         help_table.add_row(nav_text, action_text, page_text)
 
@@ -443,6 +513,36 @@ class ConversationBrowserUI:
             help_table,
             border_style="yellow",
             box=ROUNDED,
+        )
+
+    def _create_search_bar(self) -> Panel:
+        """Create the search bar panel."""
+        search_text = Text()
+        search_text.append("/ ", style=RICH_STYLE_GREEN_BOLD)
+        search_text.append(self._search_query, style=RICH_STYLE_WHITE)
+        search_text.append("\u2588", style="blink bold cyan")
+
+        help_text = Text()
+        help_text.append("  Enter ", style=RICH_STYLE_GREEN_BOLD)
+        help_text.append("Confirm  ", style=RICH_STYLE_GRAY)
+        help_text.append("Esc ", style=RICH_STYLE_GREEN_BOLD)
+        help_text.append("Cancel", style=RICH_STYLE_GRAY)
+
+        search_table = Table(
+            show_header=False,
+            box=None,
+            padding=0,
+            expand=True,
+        )
+        search_table.add_column("search", justify="left", ratio=2)
+        search_table.add_column("help", justify="right", ratio=1)
+        search_table.add_row(search_text, help_text)
+
+        return Panel(
+            search_table,
+            border_style="cyan",
+            box=ROUNDED,
+            title=Text("Search ", style=RICH_STYLE_YELLOW_BOLD),
         )
 
     def _create_layout(self) -> Layout:

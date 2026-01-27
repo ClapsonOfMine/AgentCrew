@@ -123,12 +123,16 @@ class DisplayHandlers:
 
     def display_debug_info(self, debug_info):
         """Display debug information with formatting and truncation.
-        
+
         Args:
             debug_info: Either a dict with 'type' and 'messages' keys (new format)
                        or a raw list of messages (legacy format)
         """
-        if isinstance(debug_info, dict) and "type" in debug_info and "messages" in debug_info:
+        if (
+            isinstance(debug_info, dict)
+            and "type" in debug_info
+            and "messages" in debug_info
+        ):
             # New format with type and messages
             msg_type = debug_info["type"]
             messages = debug_info["messages"]
@@ -137,11 +141,11 @@ class DisplayHandlers:
             # Legacy format - just raw messages
             title = "Messages"
             messages = debug_info
-        
+
         self.console.print(
             Text(f"\n{title} ({len(messages)} messages):", style=RICH_STYLE_YELLOW)
         )
-        
+
         formatted = self._format_messages_for_debug(messages)
         try:
             self.console.print(json.dumps(formatted, indent=2))
@@ -149,36 +153,34 @@ class DisplayHandlers:
             self.console.print(str(formatted))
 
     def _format_messages_for_debug(
-        self,
-        messages: list,
-        max_content_length: int = 200
+        self, messages, max_content_length: int = 200
     ) -> list:
         """Format messages for debug display with truncated content.
-        
+
         Args:
             messages: List of message dictionaries
             max_content_length: Maximum length for message content
-            
+
         Returns:
             List of formatted message dictionaries
         """
         formatted = []
-        
+
         for i, msg in enumerate(messages):
-            formatted_msg = {"#": i}
-            
+            formatted_msg = {"#": i, "content": ""}
+
             # Copy basic fields
             if "role" in msg:
                 formatted_msg["role"] = msg["role"]
             if "agent" in msg:
                 formatted_msg["agent"] = msg["agent"]
-            
+
             # Truncate content
             content = msg.get("content", "")
             formatted_msg["content"] = self._truncate_content(
                 content, max_content_length
             )
-            
+
             # Include tool_use/tool_result indicators if present
             if isinstance(content, list):
                 content_types = []
@@ -194,18 +196,18 @@ class DisplayHandlers:
                             content_types.append(item_type)
                 if content_types:
                     formatted_msg["content_types"] = content_types
-            
+
             formatted.append(formatted_msg)
-        
+
         return formatted
 
     def _truncate_content(self, content, max_length: int = 200) -> str:
         """Truncate content to max_length with ellipsis.
-        
+
         Args:
             content: Message content (can be string, list, or dict)
             max_length: Maximum length for the output
-            
+
         Returns:
             Truncated string representation
         """
@@ -231,14 +233,14 @@ class DisplayHandlers:
             text = " | ".join(text_parts)
         else:
             text = str(content)
-        
+
         # Clean up whitespace
         text = " ".join(text.split())
-        
+
         if len(text) <= max_length:
             return text
-        
-        return text[:max_length - 3] + "..."
+
+        return text[: max_length - 3] + "..."
 
     def display_models(self, models_by_provider: Dict):
         """Display available models grouped by provider."""

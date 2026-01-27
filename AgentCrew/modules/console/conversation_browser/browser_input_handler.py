@@ -40,6 +40,8 @@ class ConversationBrowserInputHandler:
         @kb.add(Keys.Up)
         @kb.add("k")
         def _(event):
+            if self._ui.search_mode:
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("up"):
@@ -48,6 +50,8 @@ class ConversationBrowserInputHandler:
         @kb.add(Keys.Down)
         @kb.add("j")
         def _(event):
+            if self._ui.search_mode:
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("down"):
@@ -55,6 +59,8 @@ class ConversationBrowserInputHandler:
 
         @kb.add(Keys.ControlP)
         def _(event):
+            if self._ui.search_mode:
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("up"):
@@ -62,6 +68,8 @@ class ConversationBrowserInputHandler:
 
         @kb.add(Keys.ControlN)
         def _(event):
+            if self._ui.search_mode:
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("down"):
@@ -69,6 +77,10 @@ class ConversationBrowserInputHandler:
 
         @kb.add("g")
         def _(event):
+            if self._ui.search_mode:
+                self._ui.append_search_char("g")
+                self._ui.render()
+                return
             self._d_pressed = False
             if self._g_pressed:
                 self._g_pressed = False
@@ -79,6 +91,10 @@ class ConversationBrowserInputHandler:
 
         @kb.add("G")
         def _(event):
+            if self._ui.search_mode:
+                self._ui.append_search_char("G")
+                self._ui.render()
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("bottom"):
@@ -87,6 +103,8 @@ class ConversationBrowserInputHandler:
         @kb.add(Keys.ControlU)
         @kb.add(Keys.PageUp)
         def _(event):
+            if self._ui.search_mode:
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("page_up"):
@@ -95,6 +113,8 @@ class ConversationBrowserInputHandler:
         @kb.add(Keys.ControlD)
         @kb.add(Keys.PageDown)
         def _(event):
+            if self._ui.search_mode:
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.handle_navigation("page_down"):
@@ -102,6 +122,10 @@ class ConversationBrowserInputHandler:
 
         @kb.add("v")
         def _(event):
+            if self._ui.search_mode:
+                self._ui.append_search_char("v")
+                self._ui.render()
+                return
             self._g_pressed = False
             self._d_pressed = False
             if self._ui.toggle_selection():
@@ -109,6 +133,10 @@ class ConversationBrowserInputHandler:
 
         @kb.add("d")
         def _(event):
+            if self._ui.search_mode:
+                self._ui.append_search_char("d")
+                self._ui.render()
+                return
             self._g_pressed = False
             if self._d_pressed:
                 self._d_pressed = False
@@ -116,17 +144,51 @@ class ConversationBrowserInputHandler:
             else:
                 self._d_pressed = True
 
+        @kb.add("/")
+        def _(event):
+            if self._ui.search_mode:
+                self._ui.append_search_char("/")
+                self._ui.render()
+                return
+            self._g_pressed = False
+            self._d_pressed = False
+            self._ui.start_search_mode()
+            self._ui.render()
+
+        @kb.add(Keys.Backspace)
+        def _(event):
+            if self._ui.search_mode:
+                self._ui.backspace_search()
+                self._ui.render()
+
         @kb.add(Keys.Enter)
         @kb.add("l")
         def _(event):
             self._g_pressed = False
             self._d_pressed = False
+            if self._ui.search_mode:
+                self._ui.exit_search_mode(clear_filter=False)
+                self._ui.render()
+                return
             self._selected_id = self._ui.get_selected_conversation_id()
             event.app.exit()
 
         @kb.add(Keys.Escape)
+        def _(event):
+            self._g_pressed = False
+            self._d_pressed = False
+            if self._ui.search_mode:
+                self._ui.exit_search_mode(clear_filter=True)
+                self._ui.render()
+                return
+            event.app.exit()
+
         @kb.add("q")
         def _(event):
+            if self._ui.search_mode:
+                self._ui.append_search_char("q")
+                self._ui.render()
+                return
             self._g_pressed = False
             self._d_pressed = False
             event.app.exit()
@@ -135,10 +197,20 @@ class ConversationBrowserInputHandler:
         def _(event):
             self._g_pressed = False
             self._d_pressed = False
+            if self._ui.search_mode:
+                self._ui.exit_search_mode(clear_filter=True)
+                self._ui.render()
+                return
             event.app.exit()
 
         @kb.add(Keys.Any)
         def _(event):
+            if self._ui.search_mode:
+                char = event.data
+                if char and char.isprintable():
+                    self._ui.append_search_char(char)
+                    self._ui.render()
+                return
             self._g_pressed = False
             self._d_pressed = False
 
