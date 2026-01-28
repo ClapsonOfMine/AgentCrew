@@ -286,7 +286,6 @@ class MCPService:
                             logger.warning(
                                 f"MCPService: Failed to send ping to {server_id}: {e}"
                             )
-                            self.connected_servers[server_id] = False
                     else:
                         logger.warning(
                             f"MCPService: Session for {server_id} not available, stopping keep-alive"
