@@ -83,6 +83,11 @@ class A2AServer:
                 f"/{agent_name}",
                 routes=[
                     Route(
+                        "/.well-known/agent-card.json",
+                        self._get_agent_card_factory(agent_name),
+                        methods=["GET"],
+                    ),
+                    Route(
                         "/.well-known/agent.json",
                         self._get_agent_card_factory(agent_name),
                         methods=["GET"],

@@ -608,6 +608,7 @@ class AgentTaskManager(TaskManager):
 
         except Exception as e:
             logger.error(str(e))
+            logger.debug(self.task_history[task.context_id])
             # Handle errors
             task.status.state = TaskState.failed
             task.status.timestamp = datetime.now().isoformat()
