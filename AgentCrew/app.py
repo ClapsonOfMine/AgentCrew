@@ -246,13 +246,24 @@ class AgentCrewApplication:
         except Exception as e:
             raise ValueError(f"Failed to load output schema: {e}")
 
+    def _clean_json_response(self, response: str) -> str:
+        import re
+
+        cleaned = response.strip()
+        pattern = r"^```(?:json)?\s*\n?(.*?)\n?```$"
+        match = re.match(pattern, cleaned, re.DOTALL)
+        if match:
+            cleaned = match.group(1).strip()
+        return cleaned
+
     def _validate_response_against_schema(
         self, response: str, schema_dict: Dict[str, Any]
     ) -> tuple[bool, Optional[str]]:
         from jsonschema import validate, ValidationError
 
         try:
-            response_json = json.loads(response)
+            cleaned_response = self._clean_json_response(response)
+            response_json = json.loads(cleaned_response)
         except json.JSONDecodeError as e:
             return (
                 False,
