@@ -233,6 +233,10 @@ class ChatCompleter(Completer):
                 "/delete_behavior",
                 "Delete an adaptive behavior (usage: /delete_behavior <id>)",
             ),
+            (
+                "/visual",
+                "Open visual mode to view raw message content with vim-like navigation",
+            ),
             ("/exit", "Exit the application"),
             ("/quit", "Exit the application"),
         ]

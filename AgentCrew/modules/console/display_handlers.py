@@ -495,6 +495,10 @@ class DisplayHandlers:
                 style=RICH_STYLE_YELLOW,
             ),
             Text(
+                "Use '/visual' to view raw message content with vim-like navigation and copy.",
+                style=RICH_STYLE_YELLOW,
+            ),
+            Text(
                 "Tool calls require confirmation before execution.",
                 style=RICH_STYLE_BLUE,
             ),

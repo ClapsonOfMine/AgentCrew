@@ -494,6 +494,23 @@ class ConsoleUI(Observer):
                         self.print_welcome_message()
                         continue
 
+                    elif user_input.strip() == "/visual":
+                        self.input_handler._stop_input_thread()
+                        try:
+                            from .visual_mode import VisualModeViewer
+
+                            viewer = VisualModeViewer(
+                                console=self.console,
+                                on_copy=self.copy_to_clipboard,
+                            )
+                            viewer.set_messages(
+                                self.message_handler.streamline_messages
+                            )
+                            viewer.show()
+                        finally:
+                            self.input_handler._start_input_thread()
+                        continue
+
                     # Handle toggle_session_yolo command directly (console only, session-based)
                     elif user_input.strip() == "/toggle_session_yolo":
                         self.command_handlers.handle_toggle_session_yolo_command()
