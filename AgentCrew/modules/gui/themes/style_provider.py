@@ -32,7 +32,9 @@ class StyleProvider(QObject):
     def update_theme(self, reload=True):
         if reload:
             global_config = self.config_manager.read_global_config_data()
-            new_theme = global_config.get("global_settings", {}).get("theme", "catppuccin")
+            new_theme = global_config.get("global_settings", {}).get(
+                "theme", "catppuccin"
+            )
 
             if new_theme != self.theme:
                 self.theme = new_theme

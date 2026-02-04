@@ -3,13 +3,26 @@ import fnmatch
 import subprocess
 import json
 import asyncio
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import base64
+from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from loguru import logger
 
 from tree_sitter_language_pack import get_parser
 from tree_sitter import Parser
 
 from .parsers import get_parser_for_language, BaseLanguageParser
+from AgentCrew.modules.chat.file_handler import (
+    FileHandler,
+    ALLOWED_MIME_TYPES,
+)
+import mimetypes
+
+IMAGE_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+]
 
 if TYPE_CHECKING:
     from AgentCrew.modules.llm.base import BaseLLMService
@@ -59,6 +72,7 @@ class CodeAnalysisService:
                         analyzing large repositories (>500 files).
         """
         self.llm_service = llm_service
+        self.file_handler = FileHandler()
         if self.llm_service:
             if self.llm_service.provider_name == "google":
                 self.llm_service.model = "gemini-2.5-flash-lite"
@@ -666,18 +680,41 @@ Example response format:
         file_path,
         start_line=None,
         end_line=None,
-    ) -> Dict[str, str]:
+    ) -> Union[Tuple[str, str], Tuple[str, Dict[str, Any]]]:
         """
         Return the content of a file, optionally reading only a specific line range.
+        For document files (PDF, DOCX, XLSX, PPTX), uses Docling to convert
+        to text/markdown and ignores start_line/end_line parameters.
+        For image files, returns base64 encoded data in image_url format.
 
         Args:
             file_path: Path to the file to read
-            start_line: Optional starting line number (1-indexed)
-            end_line: Optional ending line number (1-indexed, inclusive)
+            start_line: Optional starting line number (1-indexed) - ignored for document files
+            end_line: Optional ending line number (1-indexed, inclusive) - ignored for document files
 
         Returns:
-            Dictionary with file content (key: "file", value: file content string)
+            Tuple of (file_path, content) where content is either:
+            - str: text content for text/document files
+            - dict: {"type": "image_url", "image_url": {"url": "data:mime;base64,..."}} for images
         """
+        mime_type, _ = mimetypes.guess_type(file_path)
+
+        if mime_type and mime_type in IMAGE_MIME_TYPES:
+            with open(file_path, "rb") as file:
+                binary_data = file.read()
+            base64_data = base64.b64encode(binary_data).decode("utf-8")
+            return file_path, {
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime_type};base64,{base64_data}"},
+            }
+
+        if mime_type and mime_type in ALLOWED_MIME_TYPES:
+            result = self.file_handler.process_file(file_path)
+            if result and "text" in result:
+                return file_path, result["text"]
+            elif result is None:
+                raise ValueError(f"Failed to process document file: {file_path}")
+
         with open(file_path, "rb") as file:
             content = file.read()
 
@@ -700,9 +737,11 @@ Example response format:
                 end_line = total_lines
 
             selected_lines = lines[start_line - 1 : end_line]
-            return {"file": "\n".join(selected_lines)}
+            return file_path, "\n".join(selected_lines)
 
-        return {"file": decoded_content}
+        return file_path, decoded_content
+
+        return file_path, decoded_content
 
     def _build_file_tree(self, file_paths: List[str]) -> Dict[str, Any]:
         """Build a hierarchical tree structure from flat file paths.

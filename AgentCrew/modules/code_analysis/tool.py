@@ -109,7 +109,7 @@ def get_file_content_tool_definition(provider="claude"):
     Returns:
         Dict containing the tool definition
     """
-    tool_description = "Gets the content of a file, or a specific lines within that file (function or class body). Use this to examine the logic of specific functions, the structure of classes, or the overall content of a file."
+    tool_description = "Gets the content of a file, or a specific lines within that file (function or class body). Use this to examine the logic of specific functions, the structure of classes, or the overall content of a file. Also supports reading document files (PDF, DOCX, XLSX, PPTX, images) which will be converted to text/markdown - for document files, start_line and end_line parameters are ignored."
 
     tool_arguments = {
         "file_path": {
@@ -157,7 +157,7 @@ def get_file_content_tool_handler(
 ):
     """Returns a function that handles the get_file_content tool."""
 
-    def handler(**params) -> str:
+    def handler(**params):
         file_path = params.get("file_path", "./")
         start_line = params.get("start_line")
         end_line = params.get("end_line")
@@ -168,16 +168,17 @@ def get_file_content_tool_handler(
         if not os.path.isabs(file_path):
             file_path = os.path.abspath(file_path)
 
-        results = code_analysis_service.get_file_content(
+        path, file_content = code_analysis_service.get_file_content(
             file_path, start_line=start_line, end_line=end_line
         )
 
-        content = ""
+        if isinstance(file_content, dict) and file_content.get("type") == "image_url":
+            return [
+                {"type": "text", "text": f"Image file: {path}"},
+                file_content,
+            ]
 
-        for path, code in results.items():
-            content += f"{path}: {code}\n"
-
-        return content
+        return f"`{path}`: {file_content}"
 
     return handler
 

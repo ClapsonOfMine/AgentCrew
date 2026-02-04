@@ -62,8 +62,9 @@ class MenuBuilder:
             for agent_name in available_agents:
                 agent_action = QAction(agent_name, self.chat_window)
                 agent_action.triggered.connect(
-                    lambda checked,
-                    name=agent_name: self.chat_window.command_handler.change_agent(name)
+                    lambda checked, name=agent_name: (
+                        self.chat_window.command_handler.change_agent(name)
+                    )
                 )
                 agents_menu.addAction(agent_action)
             current_agent = agent_manager.get_current_agent()
@@ -84,8 +85,9 @@ class MenuBuilder:
         for agent_name in available_agents:
             agent_action = QAction(agent_name, self.chat_window)
             agent_action.triggered.connect(
-                lambda checked,
-                name=agent_name: self.chat_window.command_handler.change_agent(name)
+                lambda checked, name=agent_name: (
+                    self.chat_window.command_handler.change_agent(name)
+                )
             )
             agents_menu.addAction(agent_action)
 
@@ -107,9 +109,8 @@ class MenuBuilder:
             for model in models:
                 model_action = QAction(f"{model.name} ({model.id})", self.chat_window)
                 model_action.triggered.connect(
-                    lambda checked,
-                    model_id=f"{model.provider}/{model.id}": self.chat_window.command_handler.change_model(
-                        model_id
+                    lambda checked, model_id=f"{model.provider}/{model.id}": (
+                        self.chat_window.command_handler.change_model(model_id)
                     )
                 )
                 provider_menu.addAction(model_action)

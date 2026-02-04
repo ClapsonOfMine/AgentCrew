@@ -126,6 +126,7 @@ class SettingsTab(QWidget):
         theme_label = QLabel("Theme:")
         self.theme_dropdown = QComboBox()
         from AgentCrew.modules.gui.themes import ThemeLoader
+
         self.theme_dropdown.addItems(sorted(ThemeLoader.get_available_themes()))
         self.theme_dropdown.setCurrentText("catppuccin")
         self.theme_dropdown.setStyleSheet(style_provider.get_combo_box_style())
