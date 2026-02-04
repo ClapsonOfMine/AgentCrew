@@ -11,10 +11,6 @@ from tree_sitter_language_pack import get_parser
 from tree_sitter import Parser
 
 from .parsers import get_parser_for_language, BaseLanguageParser
-from AgentCrew.modules.chat.file_handler import (
-    FileHandler,
-    ALLOWED_MIME_TYPES,
-)
 import mimetypes
 
 IMAGE_MIME_TYPES = [
@@ -72,7 +68,7 @@ class CodeAnalysisService:
                         analyzing large repositories (>500 files).
         """
         self.llm_service = llm_service
-        self.file_handler = FileHandler()
+        self.file_handler = None
         if self.llm_service:
             if self.llm_service.provider_name == "google":
                 self.llm_service.model = "gemini-2.5-flash-lite"
@@ -697,6 +693,12 @@ Example response format:
             - str: text content for text/document files
             - dict: {"type": "image_url", "image_url": {"url": "data:mime;base64,..."}} for images
         """
+
+        from AgentCrew.modules.chat.file_handler import (
+            FileHandler,
+            ALLOWED_MIME_TYPES,
+        )
+
         mime_type, _ = mimetypes.guess_type(file_path)
 
         if mime_type and mime_type in IMAGE_MIME_TYPES:
@@ -709,6 +711,8 @@ Example response format:
             }
 
         if mime_type and mime_type in ALLOWED_MIME_TYPES:
+            if self.file_handler is None:
+                self.file_handler = FileHandler()
             result = self.file_handler.process_file(file_path)
             if result and "text" in result:
                 return file_path, result["text"]
