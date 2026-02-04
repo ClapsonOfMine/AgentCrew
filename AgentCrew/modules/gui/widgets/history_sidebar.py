@@ -23,6 +23,11 @@ from qtpy.QtWidgets import QApplication
 
 from AgentCrew.modules.gui.themes import StyleProvider
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from AgentCrew.modules.chat.message_handler import MessageHandler
+
 
 class ConversationSidebar(QWidget):
     """Sidebar widget showing conversation history"""
@@ -31,7 +36,7 @@ class ConversationSidebar(QWidget):
     error_occurred = Signal(str)
     new_conversation_requested = Signal()  # Add this new signal
 
-    def __init__(self, message_handler, parent=None):
+    def __init__(self, message_handler: MessageHandler, parent=None):
         super().__init__(parent)
         self.message_handler = message_handler
         # Store conversations locally to filter

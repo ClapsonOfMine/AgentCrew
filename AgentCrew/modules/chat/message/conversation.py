@@ -198,6 +198,7 @@ class ConversationManager:
     def delete_conversation_by_id(self, conversation_id: str) -> bool:
         """
         Deletes a conversation by its ID, handling file deletion and UI updates.
+        Also deletes associated memory data.
 
         Args:
             conversation_id: The ID of the conversation to delete.
@@ -215,6 +216,22 @@ class ConversationManager:
             logger.info(
                 f"INFO: Successfully deleted conversation file for ID: {conversation_id}"
             )
+
+            if self.message_handler.memory_service:
+                memory_result = (
+                    self.message_handler.memory_service.delete_by_conversation_id(
+                        conversation_id
+                    )
+                )
+                if memory_result.get("success"):
+                    logger.info(
+                        f"INFO: Deleted {memory_result.get('count', 0)} memories for conversation {conversation_id}"
+                    )
+                else:
+                    logger.warning(
+                        f"WARNING: Failed to delete memories for conversation {conversation_id}: {memory_result.get('message')}"
+                    )
+
             self.message_handler._notify("conversations_changed", None)
             self.message_handler._notify(
                 "system_message", f"Conversation {conversation_id[:8]}... deleted."
@@ -224,7 +241,7 @@ class ConversationManager:
                 logger.info(
                     f"INFO: Deleted conversation {conversation_id} was the current one. Starting new conversation."
                 )
-                self.start_new_conversation()  # This will notify "clear_requested"
+                self.start_new_conversation()
             return True
         else:
             error_msg = f"Failed to delete conversation {conversation_id[:8]}..."

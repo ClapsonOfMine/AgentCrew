@@ -655,6 +655,56 @@ class ChromaMemoryService(BaseMemoryService):
             "count": len(ids),
         }
 
+    def delete_by_conversation_id(self, conversation_id: str) -> Dict[str, Any]:
+        """
+        Delete all memories associated with a specific conversation ID.
+
+        Args:
+            conversation_id: The conversation ID (session_id) to delete memories for
+
+        Returns:
+            Dict with success status and count of deleted memories
+        """
+        try:
+            collection = self._initialize_collection()
+
+            results = collection.get(
+                where={"session_id": conversation_id},
+                include=["metadatas"],
+            )
+
+            if not results["ids"]:
+                return {
+                    "success": True,
+                    "message": f"No memories found for conversation {conversation_id}",
+                    "count": 0,
+                }
+
+            ids_to_remove = results["ids"]
+            collection.delete(ids=ids_to_remove)
+
+            if conversation_id in self.current_conversation_context:
+                del self.current_conversation_context[conversation_id]
+
+            logger.info(
+                f"Deleted {len(ids_to_remove)} memories for conversation {conversation_id}"
+            )
+
+            return {
+                "success": True,
+                "message": f"Successfully removed {len(ids_to_remove)} memories for conversation {conversation_id}",
+                "count": len(ids_to_remove),
+            }
+        except Exception as e:
+            logger.error(
+                f"Error deleting memories for conversation {conversation_id}: {e}"
+            )
+            return {
+                "success": False,
+                "message": f"Error deleting memories: {str(e)}",
+                "count": 0,
+            }
+
     def get_queue_status(self) -> Dict[str, Any]:
         """Get current queue status for monitoring."""
         return {

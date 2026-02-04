@@ -150,3 +150,16 @@ class BaseMemoryService(ABC):
             Dict with success status and information about the operation
         """
         pass
+
+    @abstractmethod
+    def delete_by_conversation_id(self, conversation_id: str) -> Dict[str, Any]:
+        """
+        Delete all memories associated with a specific conversation ID.
+
+        Args:
+            conversation_id: The conversation ID (session_id) to delete memories for
+
+        Returns:
+            Dict with success status and count of deleted memories
+        """
+        pass
