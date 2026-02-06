@@ -43,6 +43,7 @@ class OpenAIService(BaseLLMService):
         ):
             if budget_tokens == "0" or budget_tokens == "none":
                 self.reasoning_effort = None
+                return True
             elif budget_tokens not in ["minimal", "low", "medium", "high"]:
                 raise ValueError("budget_tokens must be low, medium or high")
 

@@ -52,6 +52,7 @@ class GithubCopilotService(CustomLLMService):
         ):
             if budget_tokens == "0" or budget_tokens == "none":
                 self.reasoning_effort = None
+                return True
             elif budget_tokens not in ["low", "medium", "high", "max"]:
                 raise ValueError("budget_tokens must be low, medium or high")
 
