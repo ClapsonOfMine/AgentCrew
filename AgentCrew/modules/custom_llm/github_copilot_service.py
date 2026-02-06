@@ -37,6 +37,29 @@ class GithubCopilotService(CustomLLMService):
         # self._interaction_id = None
         logger.info("Initialized Github Copilot Service")
 
+    def set_think(self, budget_tokens) -> bool:
+        """
+        Enable or disable thinking mode with the specified token budget.
+
+        Args:
+            budget_tokens (int): Token budget for thinking. 0 to disable thinking mode.
+
+        Returns:
+            bool: True if thinking mode is supported and successfully set, False otherwise.
+        """
+        if "thinking" in ModelRegistry.get_model_capabilities(
+            f"{self._provider_name}/{self.model}"
+        ):
+            if budget_tokens == "0" or budget_tokens == "none":
+                self.reasoning_effort = None
+            elif budget_tokens not in ["low", "medium", "high", "max"]:
+                raise ValueError("budget_tokens must be low, medium or high")
+
+            self.reasoning_effort = budget_tokens
+            return True
+        logger.info("Thinking mode is not supported for OpenAI models.")
+        return False
+
     def _github_copilot_token_to_open_ai_key(self, copilot_api_key):
         """
         Convert GitHub Copilot token to OpenAI key format.
