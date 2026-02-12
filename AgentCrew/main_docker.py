@@ -99,6 +99,17 @@ def chat(provider, agent_config, mcp_config, memory_llm, memory_path):
 @common_options
 @click.option("--model-id", default=None, help="Model ID from provider")
 @click.option("--api-key", default=None, help="API key for authentication (optional)")
+@click.option(
+    "--store-type",
+    default="memory",
+    type=click.Choice(["memory", "file", "redis"]),
+    help="Task store backend: memory, file, or redis",
+)
+@click.option(
+    "--store-option",
+    multiple=True,
+    help="Store options as key=value pairs (e.g. --store-option base_dir=./data)",
+)
 def a2a_server(
     host,
     port,
@@ -110,12 +121,20 @@ def a2a_server(
     memory_path,
     model_id,
     api_key,
+    store_type,
+    store_option,
 ):
     """Start an A2A server exposing all SwissKnife agents"""
     from AgentCrew.app import AgentCrewApplication
 
     if memory_path:
         os.environ["MEMORYDB_PATH"] = memory_path
+
+    store_options = {}
+    for opt in store_option:
+        if "=" in opt:
+            k, v = opt.split("=", 1)
+            store_options[k.strip()] = v.strip()
 
     app = AgentCrewApplication()
     app.run_server(
@@ -128,6 +147,8 @@ def a2a_server(
         api_key=api_key,
         mcp_config=mcp_config,
         memory_llm=memory_llm,
+        store_type=store_type,
+        store_options=store_options if store_options else None,
     )
 
 

@@ -172,6 +172,8 @@ class AgentCrewApplication:
         api_key: Optional[str] = None,
         mcp_config: Optional[str] = None,
         memory_llm: Optional[str] = None,
+        store_type: str = "memory",
+        store_options: Optional[dict] = None,
     ) -> None:
         from AgentCrew.modules.a2a.server import A2AServer
         from AgentCrew.modules.mcpclient import MCPSessionManager
@@ -209,6 +211,8 @@ class AgentCrewApplication:
                 port=port,
                 base_url=base_url,
                 api_key=api_key,
+                store_type=store_type,
+                store_options=store_options,
             )
 
             click.echo(f"Starting A2A server on {host}:{port}")

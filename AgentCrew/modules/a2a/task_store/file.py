@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+import asyncio
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from a2a.types import (
+    Task,
+    TaskArtifactUpdateEvent,
+    TaskStatusUpdateEvent,
+)
+
+from .base import TaskStore
+
+
+class FileTaskStore(TaskStore):
+    def __init__(self, base_dir: str = ".agentcrew/a2a_tasks"):
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        (self.base_dir / "tasks").mkdir(exist_ok=True)
+        (self.base_dir / "history").mkdir(exist_ok=True)
+        (self.base_dir / "events").mkdir(exist_ok=True)
+        self.lock = asyncio.Lock()
+
+    def _task_path(self, task_id: str) -> Path:
+        return self.base_dir / "tasks" / f"{task_id}.json"
+
+    def _history_path(self, context_id: str) -> Path:
+        return self.base_dir / "history" / f"{context_id}.json"
+
+    def _events_path(self, task_id: str) -> Path:
+        return self.base_dir / "events" / f"{task_id}.json"
+
+    def _safe_filename(self, name: str) -> str:
+        return name.replace("/", "_").replace("\\", "_").replace("..", "_")
+
+    async def get_task(self, task_id: str) -> Optional[Task]:
+        async with self.lock:
+            path = self._task_path(self._safe_filename(task_id))
+            if not path.exists():
+                return None
+            data = json.loads(path.read_text())
+            return Task.model_validate(data)
+
+    async def save_task(self, task: Task) -> None:
+        async with self.lock:
+            path = self._task_path(self._safe_filename(task.id))
+            path.write_text(task.model_dump_json(exclude_none=True))
+
+    async def delete_task(self, task_id: str) -> None:
+        async with self.lock:
+            path = self._task_path(self._safe_filename(task_id))
+            if path.exists():
+                path.unlink()
+
+    async def has_task(self, task_id: str) -> bool:
+        async with self.lock:
+            return self._task_path(self._safe_filename(task_id)).exists()
+
+    async def get_task_history(self, context_id: str) -> List[Dict[str, Any]]:
+        async with self.lock:
+            path = self._history_path(self._safe_filename(context_id))
+            if not path.exists():
+                return []
+            return json.loads(path.read_text())
+
+    async def save_task_history(
+        self, context_id: str, history: List[Dict[str, Any]]
+    ) -> None:
+        async with self.lock:
+            path = self._history_path(self._safe_filename(context_id))
+            path.write_text(json.dumps(history, default=str))
+
+    async def append_task_history_message(
+        self, context_id: str, message: Dict[str, Any]
+    ) -> None:
+        async with self.lock:
+            path = self._history_path(self._safe_filename(context_id))
+            history = []
+            if path.exists():
+                history = json.loads(path.read_text())
+            history.append(message)
+            path.write_text(json.dumps(history, default=str))
+
+    async def has_task_history(self, context_id: str) -> bool:
+        async with self.lock:
+            return self._history_path(self._safe_filename(context_id)).exists()
+
+    async def get_task_events(
+        self, task_id: str
+    ) -> List[Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]]:
+        async with self.lock:
+            path = self._events_path(self._safe_filename(task_id))
+            if not path.exists():
+                return []
+            raw_events = json.loads(path.read_text())
+            return self.deserialize_events(raw_events)
+
+    async def append_task_event(
+        self,
+        task_id: str,
+        event: Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent],
+    ) -> None:
+        async with self.lock:
+            path = self._events_path(self._safe_filename(task_id))
+            events = []
+            if path.exists():
+                events = json.loads(path.read_text())
+            events.append(json.loads(event.model_dump_json(exclude_none=True)))
+            path.write_text(json.dumps(events))
+
+    async def cleanup_task(self, task_id: str) -> None:
+        async with self.lock:
+            safe_id = self._safe_filename(task_id)
+            for path in [
+                self._task_path(safe_id),
+                self._events_path(safe_id),
+            ]:
+                if path.exists():
+                    path.unlink()

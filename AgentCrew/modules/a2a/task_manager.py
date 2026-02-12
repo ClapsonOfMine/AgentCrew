@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from typing import TYPE_CHECKING
-from collections import defaultdict
 from AgentCrew.modules.agents.base import MessageType
 from loguru import logger
 import tempfile
@@ -42,6 +41,7 @@ from .adapters import (
 )
 from .common.server.task_manager import TaskManager
 from .errors import A2AError
+from .task_store import TaskStore
 
 if TYPE_CHECKING:
     from typing import Any, AsyncIterable, Dict, Optional, Union
@@ -65,17 +65,13 @@ class AgentTaskManager(TaskManager):
     TERMINAL_STATES = {TaskState.completed, TaskState.canceled, TaskState.failed}
     INPUT_REQUIRED_STATES = {TaskState.input_required}
 
-    def __init__(self, agent_name: str, agent_manager: AgentManager):
+    def __init__(self, agent_name: str, agent_manager: AgentManager, store: TaskStore):
         self.agent_name = agent_name
         self.agent_manager = agent_manager
-        self.tasks: Dict[str, Task] = {}
-        self.task_history: Dict[str, list[Dict[str, Any]]] = {}
+        self.store = store
         self.streaming_tasks: Dict[str, asyncio.Queue] = {}
         self.file_handler = None
 
-        self.task_events: Dict[
-            str, list[Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]]
-        ] = defaultdict(list)
         self.streaming_enabled_tasks: set[str] = set()
 
         self.pending_ask_responses: Dict[str, asyncio.Event] = {}
@@ -148,8 +144,8 @@ class AgentTaskManager(TaskManager):
             or f"task_{request.params.message.message_id}"
         )
 
-        if task_id in self.tasks:
-            existing_task = self.tasks[task_id]
+        existing_task = await self.store.get_task(task_id)
+        if existing_task:
             error = self._validate_task_not_terminal(existing_task, "send message")
             if error:
                 return SendMessageResponse(
@@ -168,7 +164,8 @@ class AgentTaskManager(TaskManager):
                     root=SendMessageSuccessResponse(id=request.id, result=existing_task)
                 )
 
-        if task_id not in self.tasks:
+        task = existing_task
+        if not task:
             task = Task(
                 id=task_id,
                 context_id=request.params.message.context_id or f"ctx_{task_id}",
@@ -176,13 +173,11 @@ class AgentTaskManager(TaskManager):
                     state=TaskState.working, timestamp=datetime.now().isoformat()
                 ),
             )
-            self.tasks[task.id] = task
+            await self.store.save_task(task)
 
-        task = self.tasks[task_id]
-        if task.context_id not in self.task_history:
-            self.task_history[task.context_id] = []
+        if not await self.store.has_task_history(task.context_id):
+            await self.store.save_task_history(task.context_id, [])
 
-        # Convert A2A message to SwissKnife format
         message = convert_a2a_message_to_agent(request.params.message)
         if next(
             (m for m in message.get("content", []) if m.get("type", "text") == "file"),
@@ -217,11 +212,10 @@ class AgentTaskManager(TaskManager):
 
             message["content"] = new_parts
 
-        self.task_history[task.context_id].append(message)
+        await self.store.append_task_history_message(task.context_id, message)
 
         asyncio.create_task(self._process_agent_task(self.agent, task))
 
-        # Return initial task state
         return SendMessageResponse(
             root=SendMessageSuccessResponse(id=request.id, result=task)
         )
@@ -271,8 +265,7 @@ class AgentTaskManager(TaskManager):
                 )
 
         finally:
-            # Clean up
-            self.tasks.pop(task_id, None)
+            await self.store.delete_task(task_id)
             self.streaming_tasks.pop(task_id, None)
 
     def _create_ask_tool_message(
@@ -304,7 +297,7 @@ class AgentTaskManager(TaskManager):
             ],
         )
 
-    def _record_and_emit_event(
+    async def _record_and_emit_event(
         self, task_id: str, event: Union[TaskStatusUpdateEvent, TaskArtifactUpdateEvent]
     ):
         """
@@ -314,7 +307,7 @@ class AgentTaskManager(TaskManager):
             task_id: Task ID
             event: Event to record and emit
         """
-        self.task_events[task_id].append(event)
+        await self.store.append_task_event(task_id, event)
 
         for key, queue in list(self.streaming_tasks.items()):
             if key.startswith(task_id):
@@ -342,16 +335,13 @@ class AgentTaskManager(TaskManager):
 
         try:
             artifacts = []
-            if task.context_id not in self.task_history:
+            if not await self.store.has_task_history(task.context_id):
                 raise ValueError("Task history is not existed")
 
             input_tokens = 0
             output_tokens = 0
 
             async def _process_task():
-                # Process with agent
-
-                # Create artifacts from response
                 current_response = ""
                 response_message = ""
                 thinking_content = ""
@@ -364,29 +354,24 @@ class AgentTaskManager(TaskManager):
                     input_tokens += _input_tokens
                     output_tokens += _output_tokens
 
+                task_history = await self.store.get_task_history(task.context_id)
                 async for (
                     response_message,
                     chunk_text,
                     thinking_chunk,
-                ) in agent.process_messages(
-                    self.task_history[task.context_id], callback=process_result
-                ):
-                    # Update current response
+                ) in agent.process_messages(task_history, callback=process_result):
                     if response_message:
                         current_response = response_message
 
-                    # Update task status
                     task.status.state = TaskState.working
                     task.status.timestamp = datetime.now().isoformat()
 
-                    # If this is a streaming task, send updates
                     if task.id in self.streaming_enabled_tasks:
-                        # Send thinking update if available
                         if thinking_chunk:
                             think_text_chunk, signature = thinking_chunk
                             if think_text_chunk:
                                 thinking_content += think_text_chunk
-                                self._record_and_emit_event(
+                                await self._record_and_emit_event(
                                     task.id,
                                     TaskStatusUpdateEvent(
                                         task_id=task.id,
@@ -407,13 +392,12 @@ class AgentTaskManager(TaskManager):
                             if signature:
                                 thinking_signature += signature
 
-                        # Send chunk update
                         if chunk_text:
                             artifact = convert_agent_response_to_a2a_artifact(
                                 chunk_text,
                                 artifact_id=f"artifact_{task.id}_{len(artifacts)}",
                             )
-                            self._record_and_emit_event(
+                            await self._record_and_emit_event(
                                 task.id,
                                 TaskArtifactUpdateEvent(
                                     task_id=task.id,
@@ -429,7 +413,7 @@ class AgentTaskManager(TaskManager):
                             artifact_id=f"artifact_{task.id}_{len(artifacts)}",
                             tool_uses=tool_uses,
                         )
-                        self._record_and_emit_event(
+                        await self._record_and_emit_event(
                             task.id,
                             TaskArtifactUpdateEvent(
                                 task_id=task.id,
@@ -439,7 +423,6 @@ class AgentTaskManager(TaskManager):
                         )
                         await asyncio.sleep(0.7)
 
-                    # Add thinking content as a separate message if available
                     thinking_data = (
                         (thinking_content, thinking_signature)
                         if thinking_content
@@ -449,7 +432,9 @@ class AgentTaskManager(TaskManager):
                         MessageType.Thinking, {"thinking": thinking_data}
                     )
                     if thinking_message:
-                        self.task_history[task.context_id].append(thinking_message)
+                        await self.store.append_task_history_message(
+                            task.context_id, thinking_message
+                        )
 
                     assistant_message = agent.format_message(
                         MessageType.Assistant,
@@ -461,7 +446,9 @@ class AgentTaskManager(TaskManager):
                         },
                     )
                     if assistant_message:
-                        self.task_history[task.context_id].append(assistant_message)
+                        await self.store.append_task_history_message(
+                            task.context_id, assistant_message
+                        )
 
                     for tool_use in tool_uses:
                         tool_name = tool_use["name"]
@@ -476,7 +463,7 @@ class AgentTaskManager(TaskManager):
                                 question, guided_answers
                             )
 
-                            self._record_and_emit_event(
+                            await self._record_and_emit_event(
                                 task.id,
                                 TaskStatusUpdateEvent(
                                     task_id=task.id,
@@ -511,11 +498,11 @@ class AgentTaskManager(TaskManager):
                                 {"tool_use": tool_use, "tool_result": tool_result},
                             )
                             if tool_result_message:
-                                self.task_history[task.context_id].append(
-                                    tool_result_message
+                                await self.store.append_task_history_message(
+                                    task.context_id, tool_result_message
                                 )
 
-                            self._record_and_emit_event(
+                            await self._record_and_emit_event(
                                 task.id,
                                 TaskStatusUpdateEvent(
                                     task_id=task.id,
@@ -537,8 +524,8 @@ class AgentTaskManager(TaskManager):
                                     {"tool_use": tool_use, "tool_result": tool_result},
                                 )
                                 if tool_result_message:
-                                    self.task_history[task.context_id].append(
-                                        tool_result_message
+                                    await self.store.append_task_history_message(
+                                        task.context_id, tool_result_message
                                     )
 
                             except Exception as e:
@@ -551,8 +538,8 @@ class AgentTaskManager(TaskManager):
                                     },
                                 )
                                 if error_message:
-                                    self.task_history[task.context_id].append(
-                                        error_message
+                                    await self.store.append_task_history_message(
+                                        task.context_id, error_message
                                     )
 
                     return await _process_task()
@@ -567,31 +554,28 @@ class AgentTaskManager(TaskManager):
                     },
                 )
                 if assistant_message:
-                    self.task_history[task.context_id].append(assistant_message)
-                user_message = (
-                    self.task_history[task.context_id][0]
-                    .get("content", [{}])[0]
-                    .get("text", "")
-                )
+                    await self.store.append_task_history_message(
+                        task.context_id, assistant_message
+                    )
+                task_history = await self.store.get_task_history(task.context_id)
+                user_message = task_history[0].get("content", [{}])[0].get("text", "")
                 if self.memory_service:
                     self.memory_service.store_conversation(
                         user_message, current_response, self.agent_name
                     )
 
-            # Create artifact from final response
             artifact = convert_agent_response_to_a2a_artifact(
                 current_response, artifact_id=f"artifact_{task.id}_final"
             )
             artifacts.append(artifact)
 
-            # Update task with final state
             task.status.state = TaskState.completed
             task.status.timestamp = datetime.now().isoformat()
             task.artifacts = artifacts
+            await self.store.save_task(task)
 
-            # If this is a streaming task, send final update
             if task.id in self.streaming_enabled_tasks:
-                self._record_and_emit_event(
+                await self._record_and_emit_event(
                     task.id,
                     TaskStatusUpdateEvent(
                         task_id=task.id,
@@ -608,14 +592,14 @@ class AgentTaskManager(TaskManager):
 
         except Exception as e:
             logger.error(str(e))
-            logger.debug(self.task_history[task.context_id])
-            # Handle errors
+            task_history = await self.store.get_task_history(task.context_id)
+            logger.debug(task_history)
             task.status.state = TaskState.failed
             task.status.timestamp = datetime.now().isoformat()
+            await self.store.save_task(task)
 
-            # If this is a streaming task, send error
             if task.id in self.streaming_enabled_tasks:
-                self._record_and_emit_event(
+                await self._record_and_emit_event(
                     task.id,
                     TaskStatusUpdateEvent(
                         task_id=task.id,
@@ -641,16 +625,15 @@ class AgentTaskManager(TaskManager):
             JSON-RPC response with task result
         """
         task_id = request.params.id
-        if task_id not in self.tasks:
+        task = await self.store.get_task(task_id)
+        if not task:
             return GetTaskResponse(
                 root=JSONRPCErrorResponse(
                     id=request.id, error=A2AError.task_not_found(task_id)
                 )
             )
 
-        return GetTaskResponse(
-            root=GetTaskSuccessResponse(id=request.id, result=self.tasks[task_id])
-        )
+        return GetTaskResponse(root=GetTaskSuccessResponse(id=request.id, result=task))
 
     async def on_cancel_task(self, request: CancelTaskRequest) -> CancelTaskResponse:
         """
@@ -663,14 +646,13 @@ class AgentTaskManager(TaskManager):
             JSON-RPC response with task result
         """
         task_id = request.params.id
-        if task_id not in self.tasks:
+        task = await self.store.get_task(task_id)
+        if not task:
             return CancelTaskResponse(
                 root=JSONRPCErrorResponse(
                     id=request.id, error=A2AError.task_not_found(task_id)
                 )
             )
-
-        task = self.tasks[task_id]
 
         error = self._validate_task_not_terminal(task, "cancel")
         if error:
@@ -678,11 +660,10 @@ class AgentTaskManager(TaskManager):
                 root=JSONRPCErrorResponse(id=request.id, error=error)
             )
 
-        # Update task status
         task.status.state = TaskState.canceled
         task.status.timestamp = datetime.now().isoformat()
+        await self.store.save_task(task)
 
-        # If this is a streaming task, send cancellation
         if task_id in self.streaming_tasks:
             queue = self.streaming_tasks[task_id]
             await queue.put(
@@ -733,7 +714,8 @@ class AgentTaskManager(TaskManager):
         """
         task_id = request.params.id
 
-        if task_id not in self.tasks:
+        task = await self.store.get_task(task_id)
+        if not task:
             error = A2AError.task_not_found(task_id)
             yield SendStreamingMessageResponse(
                 root=JSONRPCErrorResponse(id=request.id, error=error)
@@ -749,15 +731,11 @@ class AgentTaskManager(TaskManager):
             )
             return
 
-        task = self.tasks[task_id]
-
-        if task_id in self.task_events:
-            for event in self.task_events[task_id]:
-                yield SendStreamingMessageResponse(
-                    root=SendStreamingMessageSuccessResponse(
-                        id=request.id, result=event
-                    )
-                )
+        stored_events = await self.store.get_task_events(task_id)
+        for event in stored_events:
+            yield SendStreamingMessageResponse(
+                root=SendStreamingMessageSuccessResponse(id=request.id, result=event)
+            )
 
         if self._is_terminal_state(task.status.state):
             return
@@ -801,24 +779,22 @@ class AgentTaskManager(TaskManager):
 class MultiAgentTaskManager:
     """Manages tasks for multiple agents"""
 
-    def __init__(self, agent_manager: AgentManager):
+    def __init__(
+        self,
+        agent_manager: AgentManager,
+        store_type: str = "memory",
+        store_options: Optional[Dict[str, Any]] = None,
+    ):
+        from .task_store import create_task_store
+
         self.agent_manager = agent_manager
         self.agent_task_managers: Dict[str, AgentTaskManager] = {}
 
-        # Initialize task managers for all agents
         for agent_name in agent_manager.agents:
+            store = create_task_store(store_type, **(store_options or {}))
             self.agent_task_managers[agent_name] = AgentTaskManager(
-                agent_name, agent_manager
+                agent_name, agent_manager, store
             )
 
     def get_task_manager(self, agent_name: str) -> Optional[AgentTaskManager]:
-        """
-        Get the task manager for a specific agent.
-
-        Args:
-            agent_name: Name of the agent
-
-        Returns:
-            The task manager if found, None otherwise
-        """
         return self.agent_task_managers.get(agent_name)

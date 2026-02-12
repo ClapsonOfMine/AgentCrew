@@ -44,6 +44,8 @@ class A2AServer:
         port: int = 41241,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
+        store_type: str = "memory",
+        store_options: Optional[dict] = None,
     ):
         logger.info(f"Initializing A2A server with host={host}, port={port}")
         self.agent_manager = agent_manager
@@ -55,13 +57,14 @@ class A2AServer:
 
         self.exposed_url = os.getenv("A2A_SERVER_EXPOSED_URL", self.base_url)
 
-        # Create agent registry
         self.agent_registry = AgentRegistry(agent_manager, self.exposed_url)
 
-        # Create task manager
-        self.task_manager = MultiAgentTaskManager(agent_manager)
+        self.task_manager = MultiAgentTaskManager(
+            agent_manager,
+            store_type=store_type,
+            store_options=store_options,
+        )
 
-        # Create Starlette app
         self.app = self._create_app()
 
     def _create_app(self) -> Starlette:

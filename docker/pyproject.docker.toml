@@ -47,6 +47,7 @@ dependencies = [
   "loguru>=0.7.3",
   "jsonschema>=4.25.1",
   "tomli-w>=1.2.0",
+  "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]

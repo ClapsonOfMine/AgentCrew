@@ -1,6 +1,6 @@
 [project]
 name = "agentcrew-ai"
-version = "0.9.3"
+version = "0.9.4"
 requires-python = ">=3.12"
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -66,6 +66,9 @@ nvidia = [
   "torchvision>=0.23.0",
   "torchaudio>=2.8.0",
   "docling>=2.26.0",
+]
+redis = [
+  "redis>=5.0.0",
 ]
 
 [tool.uv]
