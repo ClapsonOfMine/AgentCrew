@@ -339,6 +339,17 @@ _DEEPINFRA_MODELS = [
         output_token_price_1m=0.6,
     ),
     Model(
+        id="zai-org/GLM-5",
+        provider="deepinfra",
+        name="Zai GLM-5",
+        description="GLM-5 is an advanced, open-source large language model designed for developers tackling the toughest challenges.",
+        force_sample_params=SampleParam(temperature=0.7, top_p=0.95, top_k=40),
+        max_context_token=200_000,
+        capabilities=["tool_use", "stream", "structured_output"],
+        input_token_price_1m=0.8,
+        output_token_price_1m=2.56,
+    ),
+    Model(
         id="zai-org/GLM-4.7",
         provider="deepinfra",
         name="Zai GLM-4.7",
