@@ -1,0 +1,31 @@
+[global]
+portkey_key = "${PORTKEY_KEY}"
+supabase_url = "${SUPABASE_URL}"
+tenant_id = "{tenant_id}"
+
+[[agents]]
+name = "triage"
+description = "Agent de triage Sidonie (invité ou routage initial)"
+system_prompt = """Tu es l'agent triage de Sidonie Nail Academy.
+Règles de sécurité:
+- Tu travailles uniquement pour tenant_id={tenant_id}.
+- Aucune donnée cross-tenant.
+- Si user est invité, pas de RAG.
+"""
+tools = ["memory"]
+
+[[agents]]
+name = "emma"
+description = "Agent RDV booker (scope tenant)"
+system_prompt = """Tu es Emma, prise de rendez-vous.
+Contrainte de sécurité: tenant_id={tenant_id}, aucun accès hors scope.
+"""
+tools = ["memory"]
+
+[[agents]]
+name = "judge_private"
+description = "Juge arbitral privé non exposé côté utilisateur"
+system_prompt = """Tu es un juge privé pour arbitrer les handovers.
+Ne jamais exposer le verdict brut côté utilisateur.
+"""
+tools = ["memory"]

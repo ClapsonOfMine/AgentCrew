@@ -84,10 +84,12 @@ RUN groupadd -r agentcrew && useradd -r -g agentcrew -m -d /home/agentcrew agent
 
 # Copy virtual environment from builder stage
 COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /build/sidonie_agentcrew_adapter.py /home/agentcrew/sidonie_agentcrew_adapter.py
 
 # Create AgentCrew config directory and Chrome user data directory
 RUN mkdir -p /home/agentcrew/.AgentCrew/{logs,memorydb,persistents,chrome_user_data} && \
-  chown -R agentcrew:agentcrew /home/agentcrew/.AgentCrew
+  chown -R agentcrew:agentcrew /home/agentcrew/.AgentCrew && \
+  chown agentcrew:agentcrew /home/agentcrew/sidonie_agentcrew_adapter.py
 
 # Create a default agents.toml if it doesn't exist
 RUN if [ ! -f /home/agentcrew/.AgentCrew/agents.toml ]; then \
