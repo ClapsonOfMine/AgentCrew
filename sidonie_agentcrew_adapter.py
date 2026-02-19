@@ -2,16 +2,22 @@
 
 - Multi-agent orchestration with LangGraph
 - Internal-token protected /chat endpoint
+- SSE streaming via /chat/stream
 - Tenant-scoped prompts for isolation
+- CrewAI judge integration for handoff validation
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
 import os
+import re
 from typing import Any, Dict, List, Literal, Optional, TypedDict
 
+import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
@@ -21,8 +27,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 BIND_HOST = os.getenv("AGENTCREW_BIND_HOST", "0.0.0.0")
 BIND_PORT = int(os.getenv("AGENTCREW_PORT", "41241"))
+CREWAI_JUDGE_URL = os.getenv("CREWAI_SERVICE_URL", "http://127.0.0.1:8000")
+CREWAI_INTERNAL_TOKEN = os.getenv("CREWAI_INTERNAL_TOKEN", "")
+USE_CREW_JUDGE = os.getenv("USE_CREW_JUDGE", "true").lower() == "true"
 
-app = FastAPI(title="Sidonie AgentCrew Adapter", version="1.0.0")
+app = FastAPI(title="Sidonie AgentCrew Adapter", version="1.1.0")
 
 
 class ChatHistoryItem(BaseModel):
@@ -185,7 +194,9 @@ CHAT_GRAPH = _build_graph()
 
 @app.middleware("http")
 async def verify_internal_token(request: Request, call_next):
-    if INTERNAL_TOKEN and request.url.path.startswith("/chat"):
+    if INTERNAL_TOKEN and (
+        request.url.path.startswith("/chat")
+    ):
         token = request.headers.get("X-Internal-Token", "")
         if token != INTERNAL_TOKEN:
             return JSONResponse(status_code=401, content={"detail": "Invalid internal token"})
@@ -195,6 +206,46 @@ async def verify_internal_token(request: Request, call_next):
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": "agentcrew-adapter"}
+
+
+# ─────────── Judge integration ───────────
+
+async def _invoke_judge(
+    tenant_id: str,
+    from_agent: str,
+    to_agent: str,
+    user_message: str,
+    handoff_summary: str,
+) -> Dict[str, Any]:
+    """Call CrewAI judge to validate handoff. Returns judge result or auto-approve on failure."""
+    if not USE_CREW_JUDGE:
+        return {"approved": True, "score": 1.0, "feedback": "judge disabled"}
+
+    headers: Dict[str, str] = {"Content-Type": "application/json"}
+    if CREWAI_INTERNAL_TOKEN:
+        headers["X-Internal-Token"] = CREWAI_INTERNAL_TOKEN
+    headers["X-Tenant-Id"] = tenant_id
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"{CREWAI_JUDGE_URL.rstrip('/')}/judge",
+                json={
+                    "tenantId": tenant_id,
+                    "fromAgent": from_agent,
+                    "toAgent": to_agent,
+                    "userMessage": user_message,
+                    "fallbackSummary": handoff_summary,
+                },
+                headers=headers,
+            )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+
+    # Auto-approve on failure
+    return {"approved": True, "score": 0.8, "feedback": "judge fallback (unreachable)"}
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -229,6 +280,19 @@ async def chat(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
     try:
         result = CHAT_GRAPH.invoke(initial_state)
         routed_agent = result["routed_agent"]
+
+        # Judge validation on handoff
+        if routed_agent != previous_agent and USE_CREW_JUDGE:
+            judge_result = await _invoke_judge(
+                payload.tenantId,
+                previous_agent,
+                routed_agent,
+                payload.message,
+                result.get("handoff_summary", ""),
+            )
+            if not judge_result.get("approved", True):
+                routed_agent = previous_agent  # Keep current agent
+
         return ChatResponse(
             tenantId=payload.tenantId,
             agent=AGENTS[routed_agent],
@@ -237,6 +301,101 @@ async def chat(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"AgentCrew adapter error: {exc}")
+
+
+# ─────────── SSE Streaming endpoint ───────────
+
+@app.post("/chat/stream")
+async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
+    """SSE streaming version of /chat. Emits meta → chunk* → done events."""
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY not configured")
+
+    if x_tenant_id and x_tenant_id != payload.tenantId:
+        raise HTTPException(status_code=403, detail="Tenant ID mismatch")
+
+    if payload.previousAgent and payload.previousAgent in AGENTS:
+        previous_agent = payload.previousAgent
+    else:
+        previous_agent = "Accueil"
+
+    routed = route_intent(payload.message)
+    if payload.userRole == "anonymous":
+        routed = "Accueil"
+    agent_profile = AGENTS.get(routed, AGENTS["Accueil"])
+
+    history = [
+        {"role": h.role, "content": h.content, "agentId": h.agentId or ""}
+        for h in (payload.history or [])
+    ]
+
+    async def generate():
+        # 1. Meta event
+        yield f"data: {json.dumps({'type': 'meta', 'agent': agent_profile.model_dump(), 'handoff': None})}\n\n"
+
+        # 2. LLM streaming
+        is_guest = (payload.userRole or "anonymous") == "anonymous"
+        system_prompt = (
+            f"Tu es {agent_profile.firstName} ({agent_profile.id}) pour Sidonie Nail Academy. "
+            f"Contrainte de sécurité: tu réponds uniquement pour tenant_id={payload.tenantId}. "
+            "Aucune donnée cross-tenant. "
+            + ("Mode invité: triage uniquement, pas d'action externe. " if is_guest else "")
+            + "Réponds en français, concis (max 120 mots), naturel et utile."
+        )
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for h in history[-8:]:
+            messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+        messages.append({"role": "user", "content": payload.message})
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {OPENAI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": OPENAI_MODEL,
+                        "temperature": 0.7,
+                        "stream": True,
+                        "messages": messages,
+                    },
+                ) as resp:
+                    if resp.status_code != 200:
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': 'Désolée, une erreur est survenue 🙏'})}\n\n"
+                    else:
+                        async for line in resp.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            data_str = line[6:]
+                            if data_str.strip() == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data_str)
+                                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                                content = delta.get("content")
+                                if content:
+                                    yield f"data: {json.dumps({'type': 'chunk', 'content': content})}\n\n"
+                            except (json.JSONDecodeError, IndexError, KeyError):
+                                continue
+        except Exception:
+            yield f"data: {json.dumps({'type': 'chunk', 'content': 'Désolée, une erreur est survenue 🙏'})}\n\n"
+
+        # 3. Done event
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 if __name__ == "__main__":
