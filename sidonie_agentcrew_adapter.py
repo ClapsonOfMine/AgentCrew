@@ -307,7 +307,10 @@ async def chat(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
 
 @app.post("/chat/stream")
 async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
-    """SSE streaming version of /chat. Emits meta → chunk* → done events."""
+    """SSE streaming version of /chat. Emits meta → chunk* → done events.
+
+    Uses LangGraph routing + CrewAI judge validation before streaming the LLM response.
+    """
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=503, detail="OPENAI_API_KEY not configured")
 
@@ -319,21 +322,54 @@ async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(
     else:
         previous_agent = "Accueil"
 
-    routed = route_intent(payload.message)
-    if payload.userRole == "anonymous":
-        routed = "Accueil"
-    agent_profile = AGENTS.get(routed, AGENTS["Accueil"])
-
+    # --- Routing via LangGraph (same as /chat) ---
     history = [
         {"role": h.role, "content": h.content, "agentId": h.agentId or ""}
         for h in (payload.history or [])
     ]
 
-    async def generate():
-        # 1. Meta event
-        yield f"data: {json.dumps({'type': 'meta', 'agent': agent_profile.model_dump(), 'handoff': None})}\n\n"
+    initial_state: AgentState = {
+        "tenant_id": payload.tenantId,
+        "user_role": payload.userRole or "anonymous",
+        "message": payload.message,
+        "history": history,
+        "previous_agent": previous_agent,
+        "routed_agent": "Accueil",
+        "handoff_summary": "",
+        "response_text": "",
+    }
 
-        # 2. LLM streaming
+    # Run only the router node to determine the agent (don't run the LLM node — we'll stream it)
+    routed = route_intent(payload.message)
+    if (payload.userRole or "anonymous") == "anonymous":
+        routed = "Accueil"
+    handoff_summary = _build_handoff(previous_agent, routed, payload.message)
+
+    # --- Judge validation on handoff ---
+    if routed != previous_agent and USE_CREW_JUDGE:
+        judge_result = await _invoke_judge(
+            payload.tenantId,
+            previous_agent,
+            routed,
+            payload.message,
+            handoff_summary,
+        )
+        if not judge_result.get("approved", True):
+            routed = previous_agent  # Judge rejected handoff, keep current agent
+            handoff_summary = ""
+
+    agent_profile = AGENTS.get(routed, AGENTS["Accueil"])
+
+    async def generate():
+        # 1. Meta event (includes agent + handoff info)
+        meta = {"type": "meta", "agent": agent_profile.model_dump()}
+        if handoff_summary:
+            meta["handoff"] = handoff_summary
+        else:
+            meta["handoff"] = None
+        yield f"data: {json.dumps(meta)}\n\n"
+
+        # 2. LLM streaming via OpenAI
         is_guest = (payload.userRole or "anonymous") == "anonymous"
         system_prompt = (
             f"Tu es {agent_profile.firstName} ({agent_profile.id}) pour Sidonie Nail Academy. "
@@ -365,7 +401,8 @@ async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(
                     },
                 ) as resp:
                     if resp.status_code != 200:
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': 'Désolée, une erreur est survenue 🙏'})}\n\n"
+                        err_msg = "Désolée, une erreur est survenue"
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': err_msg + ' 🙏'})}\n\n"
                     else:
                         async for line in resp.aiter_lines():
                             if not line.startswith("data: "):
@@ -382,7 +419,8 @@ async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(
                             except (json.JSONDecodeError, IndexError, KeyError):
                                 continue
         except Exception:
-            yield f"data: {json.dumps({'type': 'chunk', 'content': 'Désolée, une erreur est survenue 🙏'})}\n\n"
+            err_msg = "Désolée, une erreur est survenue"
+            yield f"data: {json.dumps({'type': 'chunk', 'content': err_msg + ' 🙏'})}\n\n"
 
         # 3. Done event
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
