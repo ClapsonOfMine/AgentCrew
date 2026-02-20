@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from typing import Any, Dict, List, Literal, Optional, TypedDict
@@ -21,6 +22,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("agentcrew-adapter")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s %(message)s")
 
 INTERNAL_TOKEN = os.getenv("AGENTCREW_INTERNAL_TOKEN", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -138,7 +142,8 @@ def _agent_node(agent_id: str):
                 ]
             )
             text = str(response.content).strip() if response and response.content else "Je suis là pour t'aider."
-        except Exception:
+        except Exception as exc:
+            logger.error("[agent_node:%s] LLM error: %s", agent_id, exc)
             text = AGENT_FALLBACK_TEXT.get(agent_id, "Je suis là pour t'aider.")
 
         state["response_text"] = text
