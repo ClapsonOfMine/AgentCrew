@@ -125,12 +125,14 @@ def _agent_node(agent_id: str):
         history_text = "\n".join([f"{h['role']}: {h['content']}" for h in state["history"][-8:]])
         is_guest = state["user_role"] == "anonymous"
 
+        expertise = AGENT_EXPERTISE.get(agent_id, "")
         system_prompt = (
             f"Tu es {profile.firstName} ({profile.id}) pour Sidonie Nail Academy. "
+            f"{expertise} "
             f"Contrainte de sécurité: tu réponds uniquement pour tenant_id={state['tenant_id']}. "
             "Aucune donnée cross-tenant. "
-            + ("Mode invité: triage uniquement, pas de RAG, pas d'action externe. " if is_guest else "")
-            + "Réponds en français, concis, utile, naturel."
+            + ("Mode invité: pas de RAG, pas d'action externe, mais tu peux répondre et orienter. " if is_guest else "")
+            + "Réponds en français, concis (max 120 mots), utile, naturel."
         )
 
         try:
@@ -152,12 +154,69 @@ def _agent_node(agent_id: str):
     return run
 
 
+# Instructions spécifiques par agent pour enrichir le system prompt
+AGENT_EXPERTISE: Dict[str, str] = {
+    "Accueil": (
+        "Tu es l'hôtesse d'accueil. Identifie le besoin du client et oriente-le vers "
+        "le bon service : formations (Sophie), rendez-vous (Emma), blog (Léa) ou support (Marie). "
+        "Si le besoin est clair, précise vers qui tu le diriges."
+    ),
+    "CoursExpert": (
+        "Tu es experte en formations onglerie. Tu présentes les parcours, niveaux, tarifs, "
+        "calendrier et certifications de Sidonie Nail Academy."
+    ),
+    "RDVBooker": (
+        "Tu gères la prise de rendez-vous. Demande le type de soin/service souhaité, "
+        "la date/heure préférée, et guide le client pour finaliser son créneau. "
+        "Tu peux proposer les créneaux disponibles."
+    ),
+    "BlogLover": (
+        "Tu es passionnée de nail art et contenu. Tu proposes des articles, tutos, "
+        "tendances et conseils beauté du blog Sidonie."
+    ),
+    "SupportHero": (
+        "Tu gères le support client. Tu traites les réclamations, litiges, "
+        "remboursements et problèmes techniques avec empathie et efficacité."
+    ),
+}
+
+
+# Instructions spécifiques par agent pour enrichir le system prompt
+AGENT_EXPERTISE: Dict[str, str] = {
+    "Accueil": (
+        "Tu es l'hôtesse d'accueil. Identifie le besoin du client et oriente-le vers "
+        "le bon service : formations (Sophie), rendez-vous (Emma), blog (Léa) ou support (Marie). "
+        "Si le besoin est clair, précise vers qui tu le diriges."
+    ),
+    "CoursExpert": (
+        "Tu es experte en formations onglerie. Tu présentes les parcours, niveaux, tarifs, "
+        "calendrier et certifications de Sidonie Nail Academy."
+    ),
+    "RDVBooker": (
+        "Tu gères la prise de rendez-vous. Demande le type de soin/service souhaité, "
+        "la date/heure préférée, et guide le client pour finaliser son créneau. "
+        "Tu peux proposer les créneaux disponibles."
+    ),
+    "BlogLover": (
+        "Tu es passionnée de nail art et contenu. Tu proposes des articles, tutos, "
+        "tendances et conseils beauté du blog Sidonie."
+    ),
+    "SupportHero": (
+        "Tu gères le support client. Tu traites les réclamations, litiges, "
+        "remboursements et problèmes techniques avec empathie et efficacité."
+    ),
+}
+
 def _router_node(state: AgentState) -> AgentState:
     routed = route_intent(state["message"])
-    if state["user_role"] == "anonymous":
-        routed = "Accueil"
+    # Les anonymes sont routés par intention comme les autres ;
+    # route_intent retourne déjà "Accueil" quand aucune intention n'est détectée.
     state["routed_agent"] = routed
     state["handoff_summary"] = _build_handoff(state["previous_agent"], routed, state["message"])
+    logger.info(
+        "[router] user_role=%s message=%r → routed=%s (prev=%s)",
+        state["user_role"], state["message"][:80], routed, state["previous_agent"],
+    )
     return state
 
 
@@ -312,10 +371,7 @@ async def chat(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
 
 @app.post("/chat/stream")
 async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(None)):
-    """SSE streaming version of /chat. Emits meta → chunk* → done events.
-
-    Uses LangGraph routing + CrewAI judge validation before streaming the LLM response.
-    """
+    """SSE streaming version of /chat. Emits meta → chunk* → done events."""
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=503, detail="OPENAI_API_KEY not configured")
 
@@ -327,60 +383,28 @@ async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(
     else:
         previous_agent = "Accueil"
 
-    # --- Routing via LangGraph (same as /chat) ---
+    routed = route_intent(payload.message)
+    agent_profile = AGENTS.get(routed, AGENTS["Accueil"])
+    logger.info("[stream] user_role=%s routed=%s", payload.userRole, routed)
+
     history = [
         {"role": h.role, "content": h.content, "agentId": h.agentId or ""}
         for h in (payload.history or [])
     ]
 
-    initial_state: AgentState = {
-        "tenant_id": payload.tenantId,
-        "user_role": payload.userRole or "anonymous",
-        "message": payload.message,
-        "history": history,
-        "previous_agent": previous_agent,
-        "routed_agent": "Accueil",
-        "handoff_summary": "",
-        "response_text": "",
-    }
-
-    # Run only the router node to determine the agent (don't run the LLM node — we'll stream it)
-    routed = route_intent(payload.message)
-    if (payload.userRole or "anonymous") == "anonymous":
-        routed = "Accueil"
-    handoff_summary = _build_handoff(previous_agent, routed, payload.message)
-
-    # --- Judge validation on handoff ---
-    if routed != previous_agent and USE_CREW_JUDGE:
-        judge_result = await _invoke_judge(
-            payload.tenantId,
-            previous_agent,
-            routed,
-            payload.message,
-            handoff_summary,
-        )
-        if not judge_result.get("approved", True):
-            routed = previous_agent  # Judge rejected handoff, keep current agent
-            handoff_summary = ""
-
-    agent_profile = AGENTS.get(routed, AGENTS["Accueil"])
-
     async def generate():
-        # 1. Meta event (includes agent + handoff info)
-        meta = {"type": "meta", "agent": agent_profile.model_dump()}
-        if handoff_summary:
-            meta["handoff"] = handoff_summary
-        else:
-            meta["handoff"] = None
-        yield f"data: {json.dumps(meta)}\n\n"
+        # 1. Meta event
+        yield f"data: {json.dumps({'type': 'meta', 'agent': agent_profile.model_dump(), 'handoff': None})}\n\n"
 
-        # 2. LLM streaming via OpenAI
+        # 2. LLM streaming
         is_guest = (payload.userRole or "anonymous") == "anonymous"
+        expertise = AGENT_EXPERTISE.get(routed, "")
         system_prompt = (
             f"Tu es {agent_profile.firstName} ({agent_profile.id}) pour Sidonie Nail Academy. "
+            f"{expertise} "
             f"Contrainte de sécurité: tu réponds uniquement pour tenant_id={payload.tenantId}. "
             "Aucune donnée cross-tenant. "
-            + ("Mode invité: triage uniquement, pas d'action externe. " if is_guest else "")
+            + ("Mode invité: pas de RAG, pas d'action externe, mais tu peux répondre et orienter. " if is_guest else "")
             + "Réponds en français, concis (max 120 mots), naturel et utile."
         )
 
@@ -406,8 +430,7 @@ async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(
                     },
                 ) as resp:
                     if resp.status_code != 200:
-                        err_msg = "Désolée, une erreur est survenue"
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': err_msg + ' 🙏'})}\n\n"
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': 'Désolée, une erreur est survenue 🙏'})}\n\n"
                     else:
                         async for line in resp.aiter_lines():
                             if not line.startswith("data: "):
@@ -424,8 +447,7 @@ async def chat_stream(payload: ChatRequest, x_tenant_id: Optional[str] = Header(
                             except (json.JSONDecodeError, IndexError, KeyError):
                                 continue
         except Exception:
-            err_msg = "Désolée, une erreur est survenue"
-            yield f"data: {json.dumps({'type': 'chunk', 'content': err_msg + ' 🙏'})}\n\n"
+            yield f"data: {json.dumps({'type': 'chunk', 'content': 'Désolée, une erreur est survenue 🙏'})}\n\n"
 
         # 3. Done event
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
