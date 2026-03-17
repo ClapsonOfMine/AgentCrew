@@ -80,7 +80,7 @@ AGENTS: Dict[str, AgentProfile] = {
     "CoursExpert": AgentProfile(id="CoursExpert", firstName="Sophie", icon="\U0001f393", color="#9370DB", tone="formations"),
     "RDVBooker": AgentProfile(id="RDVBooker", firstName="Emma", icon="\U0001f4f1", color="#32CD32", tone="rdv"),
     "BlogLover": AgentProfile(id="BlogLover", firstName="Léa", icon="\U0001f4dd", color="#FF69B4", tone="blog"),
-    "SupportHero": AgentProfile(id="SupportHero", firstName="Marie", icon="\U0001f6e0\ufe0f", color="#FFA500", tone="support"),
+    "SupportHero": AgentProfile(id="SupportHero", firstName="Clovis", icon="\U0001f6e0\ufe0f", color="#FFA500", tone="support"),
 }
 
 AGENT_FALLBACK_TEXT: Dict[str, str] = {
@@ -94,7 +94,7 @@ AGENT_FALLBACK_TEXT: Dict[str, str] = {
 AGENT_EXPERTISE: Dict[str, str] = {
     "Accueil": (
         "Tu es l'hôtesse d'accueil. Identifie le besoin du client et oriente-le vers "
-        "le bon service : formations (Sophie), rendez-vous (Emma), blog (Léa) ou support (Marie). "
+        "le bon service : formations (Sophie), rendez-vous (Emma), blog (Léa) ou support (Clovis). "
         "Si le besoin est clair, précise vers qui tu le diriges."
     ),
     "CoursExpert": (
