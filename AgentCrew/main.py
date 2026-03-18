@@ -424,6 +424,12 @@ def job(
 
 
 @cli.command()
+def update():
+    """Check for updates from GitHub and update AgentCrew if a new version is available"""
+    check_and_update()
+
+
+@cli.command()
 def copilot_auth():
     """Authenticate with GitHub Copilot and save the API key to config"""
     from AgentCrew.app import AgentCrewApplication
